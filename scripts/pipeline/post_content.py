@@ -35,9 +35,7 @@ POSTED_DIR = DATA / "posted"
 BACKUP_DIR = DATA / "backup"
 PUSHED_TITLES_FILE = DATA / "pushed_titles.json"
 TRANSLATE_TASKS_DIR = DATA / "translate_tasks"
-CONFIG_PATH = Path.home() / ".openclaw" / "skills" / "eir" / "config.json"
-
-EIR_API = "https://api.heyeir.com/api/oc"
+from eir_config import load_config as _load_eir_config, get_api_url, get_api_key
 
 # Rate limiting
 REQUEST_INTERVAL = 0.5  # seconds between requests
@@ -46,11 +44,12 @@ TIMEOUT = 60  # seconds
 
 
 def load_config():
-    if not CONFIG_PATH.exists():
-        print("❌ Config not found: %s" % CONFIG_PATH, file=sys.stderr)
+    config = _load_eir_config()
+    if not config.get("apiKey"):
+        print("❌ Config not found. Set EIR_API_KEY env var or create config/eir.json", file=sys.stderr)
         print("   Run `node scripts/connect.mjs <PAIRING_CODE>` first.", file=sys.stderr)
         sys.exit(1)
-    return json.loads(CONFIG_PATH.read_text())
+    return config
 
 
 def api_request(method, url, data=None, api_key="", retries=MAX_RETRIES):
@@ -253,7 +252,7 @@ def post_content(generated_file, api_key, dry_run=False, dedup=None, bilingual=F
     
     # POST to API
     time.sleep(REQUEST_INTERVAL)
-    status, resp = api_request("POST", EIR_API + "/content", payload, api_key)
+    status, resp = api_request("POST", get_api_url() + "/api/oc/content", payload, api_key)
     
     if status not in (200, 201):
         return {"slug": slug, "title": title, "lang": lang, "status": "error",

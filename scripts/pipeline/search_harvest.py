@@ -54,9 +54,9 @@ POOL_SUFFICIENT = {
 }
 POOL_SATURATED = 10
 
+from eir_config import load_config, get_api_url, get_api_key
+
 # Eir API (only used in degraded mode)
-EIR_CONFIG = Path.home() / ".openclaw" / "skills" / "eir" / "config.json"
-EIR_API = "https://api.heyeir.com/api"
 
 
 # ============================================================
@@ -65,9 +65,7 @@ EIR_API = "https://api.heyeir.com/api"
 
 def load_api_key():
     # type: () -> str
-    if EIR_CONFIG.exists():
-        return json.loads(EIR_CONFIG.read_text())["apiKey"]
-    raise RuntimeError("No Eir API key found")
+    return get_api_key()
 
 
 def fetch_directives():
@@ -75,7 +73,7 @@ def fetch_directives():
     """Fetch directives from Eir API and cache locally. (degraded mode only)"""
     api_key = load_api_key()
     req = urllib.request.Request(
-        "%s/oc/content" % EIR_API,
+        "%s/oc/content" % (get_api_url() + "/api"),
         headers={"Authorization": "Bearer %s" % api_key}
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
@@ -91,7 +89,7 @@ def fetch_used_urls():
     """Fetch already-used source URLs from Eir API. (degraded mode only)"""
     api_key = load_api_key()
     req = urllib.request.Request(
-        "%s/oc/sources" % EIR_API,
+        "%s/oc/sources" % (get_api_url() + "/api"),
         headers={"Authorization": "Bearer %s" % api_key}
     )
     try:

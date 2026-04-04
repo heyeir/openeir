@@ -25,9 +25,20 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
 
-const API_URL = process.env.EIR_API_URL || 'https://api.heyeir.com'
+const API_URL = process.env.EIR_API_URL
 const API_KEY = process.env.EIR_API_KEY
 const DRY_RUN = process.argv.includes('--dry-run')
+
+if (!API_URL) {
+  console.error('Error: EIR_API_URL environment variable not set')
+  console.error('Set it to your Eir API base URL (e.g., https://api.heyeir.com)')
+  process.exit(1)
+}
+
+if (!API_KEY) {
+  console.error('Error: EIR_API_KEY environment variable not set')
+  process.exit(1)
+}
 
 // ===== Helpers =====
 

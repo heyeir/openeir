@@ -36,7 +36,8 @@ EIR_CONFIG = CONFIG_DIR / "eir.json"
 OPENCLAW_DIR = Path.home() / ".openclaw"
 SESSIONS_DIR = OPENCLAW_DIR / "sessions"
 
-EIR_API = "https://api.heyeir.com/api/oc"
+sys.path.insert(0, str(Path(__file__).parent))
+from eir_config import load_config as _load_eir_config, get_api_url, get_api_key
 
 
 def load_settings() -> Dict:
@@ -181,7 +182,7 @@ def post_whispers_to_eir(whispers: List[Dict], api_key: str) -> Dict:
     payload = json.dumps({"items": whispers}).encode()
     
     req = urllib.request.Request(
-        f"{EIR_API}/whispers",
+        f"{get_api_url()}/api/oc/whispers",
         data=payload,
         method="POST",
         headers={

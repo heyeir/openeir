@@ -38,7 +38,9 @@ SETTINGS_FILE = CONFIG_DIR / "settings.json"
 EIR_CONFIG = CONFIG_DIR / "eir.json"
 TOPIC_ENRICHMENTS_FILE = DATA_DIR / "topic_enrichments.json"
 
-EIR_API = "https://api.heyeir.com/api/oc"
+# Import shared config
+sys.path.insert(0, str(Path(__file__).parent))
+from eir_config import load_config as _load_eir_config, get_api_url, get_api_key
 
 # Decay settings
 DECAY_HALF_LIFE_DAYS = 14  # Strength halves every 14 days without signals
@@ -166,7 +168,7 @@ def pull_from_eir(interests: Dict, api_key: str) -> Dict:
     """Pull interests from Eir profile."""
     try:
         req = urllib.request.Request(
-            f"{EIR_API}/profile",
+            f"{get_api_url()}/api/oc/profile",
             headers={"Authorization": f"Bearer {api_key}"}
         )
         with urllib.request.urlopen(req, timeout=15) as resp:
@@ -231,7 +233,7 @@ def push_to_eir(interests: Dict, api_key: str) -> bool:
         payload = json.dumps({"signals": signals}).encode()
         
         req = urllib.request.Request(
-            f"{EIR_API}/profile",
+            f"{get_api_url()}/api/oc/profile",
             data=payload,
             method="POST",
             headers={

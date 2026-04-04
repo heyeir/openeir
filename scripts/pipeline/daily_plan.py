@@ -32,8 +32,7 @@ SOURCE_CACHE_FILE = DATA_DIR / "source_cache.json"
 FEED_STATE_FILE = DATA_DIR / "feed_state.json"
 TOPIC_ENRICHMENTS_FILE = DATA_DIR / "topic_enrichments.json"
 
-EIR_CONFIG = Path.home() / ".openclaw" / "skills" / "eir" / "config.json"
-EIR_API = "https://api.heyeir.com/api"
+from eir_config import load_config, get_api_url, get_api_key
 
 # Pool thresholds (same as search_harvest.py)
 POOL_SUFFICIENT = {"high": 6, "medium": 4, "low": 3}
@@ -42,9 +41,7 @@ POOL_SATURATED = 10
 
 def load_api_key():
     # type: () -> str
-    if EIR_CONFIG.exists():
-        return json.loads(EIR_CONFIG.read_text())["apiKey"]
-    raise RuntimeError("No Eir API key found at %s" % EIR_CONFIG)
+    return get_api_key()
 
 
 def fetch_directives():
@@ -52,7 +49,7 @@ def fetch_directives():
     """Fetch directives from Eir API and cache locally."""
     api_key = load_api_key()
     req = urllib.request.Request(
-        "%s/oc/content" % EIR_API,
+        "%s/oc/content" % (get_api_url() + "/api"),
         headers={"Authorization": "Bearer %s" % api_key}
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
@@ -69,7 +66,7 @@ def fetch_used_urls():
     """Fetch already-used source URLs from Eir API."""
     api_key = load_api_key()
     req = urllib.request.Request(
-        "%s/oc/sources" % EIR_API,
+        "%s/oc/sources" % (get_api_url() + "/api"),
         headers={"Authorization": "Bearer %s" % api_key}
     )
     try:

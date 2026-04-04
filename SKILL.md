@@ -55,7 +55,7 @@ Or propose a default:
 
 ### Step 4: Setup + Test
 
-1. Create `~/.openclaw/curator/config.json` with interests and language
+1. Configure interests in `config/eir.json` (or set env vars)
 2. Run `python3 scripts/standalone/curate.py`
 3. **Process the output**:
    - Rank by relevance to user interests (most relevant first)
@@ -111,16 +111,9 @@ Agent: [sets up cron]
 
 ## Technical Setup
 
-### Step 1: Create workspace
+### Step 1: Initialize config
 
-```bash
-mkdir -p ~/.openclaw/curator
-cd ~/.openclaw/curator
-```
-
-### Step 2: Initialize config
-
-Create `~/.openclaw/curator/config.json`:
+Create `config/eir.json` in your skill directory (or set `EIR_CONFIG` env var to a custom path):
 
 ```json
 {
@@ -136,9 +129,9 @@ Create `~/.openclaw/curator/config.json`:
 **max_items**: Items per curation cycle.
 **sources**: RSS feeds (optional). If empty, uses web search only.
 
-### Step 3: Add RSS sources (optional)
+### Step 2: Add RSS sources (optional)
 
-Edit `config.json` to add feeds:
+Edit `config/eir.json` to add feeds:
 
 ```json
 {
@@ -168,10 +161,10 @@ Output goes to stdout as JSON. Agent should format and send via `message` tool.
 
 ### What happens
 
-1. **Load interests** from `~/.openclaw/curator/config.json`
+1. **Load interests** from `config/eir.json` (or env vars)
 2. **Fetch RSS** feeds (if configured)
 3. **Search web** for each interest topic (uses Tavily if `TAVILY_API_KEY` set, else Brave if `BRAVE_API_KEY` set)
-4. **Deduplicate** by URL (tracks seen URLs in `~/.openclaw/curator/seen.json`)
+4. **Deduplicate** by URL (tracks seen URLs in `data/seen.json`)
 5. **Generate summaries** for top items
 6. **Output JSON** array of items
 
@@ -196,7 +189,7 @@ Output goes to stdout as JSON. Agent should format and send via `message` tool.
 openclaw cron add --name "daily-news" \
   --cron "17 8 * * *" \
   --tz "Asia/Shanghai" \
-  --message "cd ~/.openclaw/workspace/heyeir/skills/eir-daily-content-curator && python3 scripts/standalone/curate.py | Format each item as: **title** - summary (source) url. Send to me."
+  --message "cd $SKILL_DIR && python3 scripts/standalone/curate.py | Format each item as: **title** - summary (source) url. Send to me."
 ```
 
 Or simpler — let the agent figure it out:
@@ -232,17 +225,21 @@ This scans `~/.openclaw/sessions/` for recent conversations and updates `config.
 | `python3 scripts/standalone/curate.py` | Run one curation cycle |
 | `python3 scripts/standalone/curate.py --dry-run` | Show what would be fetched (no output) |
 | `python3 scripts/standalone/extract_interests.py` | Update interests from conversations |
-| `cat ~/.openclaw/curator/config.json` | View current config |
-| `cat ~/.openclaw/curator/seen.json` | View seen URLs (dedup cache) |
+| `cat config/eir.json` | View current config |
+| `cat data/seen.json` | View seen URLs (dedup cache) |
 
 ## Environment variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
+| `EIR_API_URL` | For Eir mode | Eir API base URL (e.g. `https://api.heyeir.com`) |
+| `EIR_API_KEY` | For Eir mode | API key from pairing |
+| `EIR_CONFIG` | No | Custom config file path (default: `config/eir.json`) |
 | `TAVILY_API_KEY` | No | Tavily search API key (recommended) |
 | `BRAVE_API_KEY` | No | Brave search API key (fallback) |
 
-If neither is set, only RSS feeds are used.
+For standalone mode, only `TAVILY_API_KEY` or `BRAVE_API_KEY` is needed.
+For Eir mode, set `EIR_API_URL` and `EIR_API_KEY` (or configure in `config/eir.json`).
 
 ## Cron Schedule
 
@@ -296,9 +293,9 @@ openclaw cron add --name "eir-whisper" --cron "23 22 * * *" --tz "$YOUR_TZ" \
 
 | Issue | Solution |
 |-------|----------|
-| No items generated | Check `config.json` has interests. Add RSS sources. |
+| No items generated | Check `config/eir.json` has interests. Add RSS sources. |
 | RSS fetch fails | Verify URL with `curl -s <url> \| head`. Some sites block bots. |
-| Duplicates appearing | Delete `~/.openclaw/curator/seen.json` to reset dedup cache. |
+| Duplicates appearing | Delete `data/seen.json` to reset dedup cache. |
 | Wrong language | Set `"language": "zh"` or `"en"` in config. |
 
 ## Eir mode (optional)
@@ -313,7 +310,7 @@ Connect to [heyeir.com](https://heyeir.com) for enhanced features:
 Setup: Get pairing code from Eir Settings → Connect OpenClaw, then:
 
 ```bash
-python3 scripts/connect.py <pairing-code>
+node scripts/connect.mjs <pairing-code>
 ```
 
 See `references/eir-api.md` for full API documentation.

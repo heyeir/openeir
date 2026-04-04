@@ -25,18 +25,18 @@ WORKSPACE = Path(__file__).resolve().parent.parent.parent
 DATA = WORKSPACE / "data"
 TRANSLATED_DIR = DATA / "translated"
 POSTED_DIR = DATA / "posted_translations"
-CONFIG_PATH = Path.home() / ".openclaw" / "skills" / "eir" / "config.json"
+from eir_config import load_config as _load_eir_config, get_api_url, get_api_key
 
-EIR_API = "https://api.heyeir.com/api/oc"
 REQUEST_INTERVAL = 0.5
 TIMEOUT = 60
 
 
 def load_config():
-    if not CONFIG_PATH.exists():
-        print("❌ Config not found: %s" % CONFIG_PATH, file=sys.stderr)
+    config = _load_eir_config()
+    if not config.get("apiKey"):
+        print("❌ Config not found. Set EIR_API_KEY env var or create config/eir.json", file=sys.stderr)
         sys.exit(1)
-    return json.loads(CONFIG_PATH.read_text())
+    return config
 
 
 def api_request(method, url, data=None, api_key=""):
@@ -93,7 +93,7 @@ def post_translation(translated_file, api_key, dry_run=False):
     
     # PATCH /content/:id/locale/:lang (not POST .../translation which is 404)
     time.sleep(REQUEST_INTERVAL)
-    url = "%s/content/%s/locale/%s" % (EIR_API, source_content_id, lang)
+    url = "%s/content/%s/locale/%s" % (get_api_url() + "/api/oc", source_content_id, lang)
     status, resp = api_request("PATCH", url, payload, api_key)
     
     if status not in (200, 201):

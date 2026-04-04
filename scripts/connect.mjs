@@ -9,7 +9,14 @@ import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const CONFIG_PATH = path.join(__dirname, '..', 'config.json')
-const BASE_URL = 'https://api.heyeir.com/api'
+const BASE_URL = process.env.EIR_API_URL
+
+if (!BASE_URL) {
+  console.error('Error: EIR_API_URL environment variable not set')
+  console.error('Set it to your Eir API base URL (e.g., https://api.heyeir.com)')
+  process.exit(1)
+}
+const API_BASE = BASE_URL + '/api'
 
 const code = process.argv[2]
 if (!code) {
@@ -19,7 +26,7 @@ if (!code) {
 }
 
 try {
-  const res = await fetch(`${BASE_URL}/oc/connect`, {
+  const res = await fetch(`${API_BASE}/oc/connect`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code: code.replace('-', '').toUpperCase() }),

@@ -1,8 +1,10 @@
 {
   "mode": "standalone",
   "max_items_per_day": 10,
-  "local_storage": "workspace/eir/",
+  "local_storage": "data/",
   
+  "api_url": null,
+
   "search": {
     "providers": ["tavily", "brave"],
     "searxng_url": null,

@@ -1,5 +1,7 @@
 # Eir API Reference
 
+> **Base URL**: Configure via `EIR_API_URL` environment variable. All endpoints are under `/api/oc/`.
+
 ## Concepts: Language Settings
 
 | Field | Purpose | Example |
@@ -35,10 +37,6 @@ Returns current interests + behavior data for Agent to make sync decisions.
     {
       "slug": "ai-agents",
       "label": "AI 智能体",
-      "labels": { "zh": ["AI 智能体"], "en": ["AI agents"] },
-      "description": "...",
-      "keywords": ["agent", "autonomous"],
-      "search_hints": ["AI agent framework"],
       "strength": 0.8,
       "heat": 45,
       "decay_type": "ongoing",
@@ -94,15 +92,21 @@ Returns current interests + behavior data for Agent to make sync decisions.
 }
 ```
 
+**Topic fields** (from user interest profile — no dictionary join):
+
+| Field | Description |
+|-------|-------------|
+| `slug` | Topic identifier |
+| `label` | Display label |
+| `strength` | Topic strength (0-1) |
+| `heat` | Recent activity score |
+| `decay_type` | `event` / `ongoing` / `evergreen` |
+| `engagement` | 7d click/push stats |
+| `sources` | How the topic was discovered |
+
+> Note: `description`, `keywords`, `search_hints` are NOT returned here. They appear in `GET /oc/content` directives (joined from global dictionary).
+
 **Topic Metadata Sources** (priority order):
-
-| Field | Source | Fallback |
-|-------|--------|----------|
-| `description` | Global `interest_topics` dictionary | null |
-| `keywords` | Global `interest_topics` dictionary | [] |
-| `search_hints` | Global `interest_topics` dictionary | [] |
-
-**Group Fields** (personalized):
 
 | Field | Purpose |
 |-------|---------|
@@ -249,6 +253,7 @@ Returns curation directives for today's content collection.
       "note": "Discovery item"
     }
   ],
+  "pool": [],
   "engagement_summary": {
     "overall_health": 0.85,
     "trend": "stable",
@@ -353,6 +358,19 @@ Push generated content to Eir.
 }
 ```
 
+**Response:**
+```json
+{
+  "accepted": 1,
+  "rejected": 0,
+  "results": [
+    { "status": "accepted", "id": "ci_u_abc123_1711234567_x3k2", "slug": "mcp-protocol-2-0", "content_url": "https://..." }
+  ]
+}
+```
+
+Possible `status` values: `accepted`, `skipped` (duplicate source_url), `error`.
+
 ---
 
 ## Sync Workflow
@@ -441,7 +459,7 @@ Rotate API key without re-pairing. Old key stays valid for 60s grace period.
 
 **Response:**
 ```json
-{ "apiKey": "eir_oc_new_xxx", "prevKeyExpiresAt": 1712345678000 }
+{ "apiKey": "eir_oc_new_xxx", "rotatedAt": "2026-04-03T07:50:00Z", "prevKeyExpiresAt": 1712345678000 }
 ```
 
 ### POST /oc/profile
@@ -517,7 +535,7 @@ Read back a single content item.
   "locales": { "en": { "l1": {}, "l2": {} }, "zh": { "l1": {}, "l2": {} } },
   "dot": {},
   "sources": [...],
-  "content_url": "https://www.heyeir.com/en/content/anthropic-trust-tiers-x3k2",
+  "content_url": "https://your-eir-instance.com/en/content/anthropic-trust-tiers-x3k2",
   "createdAt": "2026-04-03T10:00:00Z",
   "updated_at": "2026-04-03T12:00:00Z"
 }
