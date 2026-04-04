@@ -15,54 +15,119 @@ metadata:
 
 Curates personalized content based on your interests.
 
-## Agent Behavior
+## Agent Setup Flow
 
-### Step 1: Observe context (don't ask yet)
+When user says "set up daily news" or similar, follow this conversational flow. **Ask before doing** — explain what you're about to do and wait for confirmation.
 
-Before asking anything, check what you already know:
+### Step 1: Check existing setup
 
-1. **Language**: User just spoke to you — use that language
-2. **Interests**: 
-   - Check MEMORY.md for recorded interests/preferences
-   - Recall recent conversations — what topics came up?
-   - Look at workspace files — what projects are they working on?
-3. **Timezone**: Check system timezone or infer from conversation context
-
-### Step 2: Propose based on what you know
-
-If you found interests:
-```
-"Based on our previous conversations, you seem interested in AI Agents and Rust.
-I can send you daily updates on these topics — want to add anything else?"
+First, check if already configured:
+```bash
+python3 scripts/setup.py --check
 ```
 
-If interests unclear:
-```
-"What kind of content do you want me to curate? Tech, product, industry news?"
+If already set up, skip to [Step 4: Test run](#step-4-test-run).
+
+### Step 2: Explain the two modes
+
+**Ask user which mode they want:**
+
+> "I can set up daily content curation in two ways:
+> 
+> **Option A: Standalone** — Simple RSS aggregation
+> • Reads tech news from RSS feeds
+> • Delivers summaries directly here
+> • No account needed, works immediately
+> 
+> **Option B: Eir** — Full AI-powered curation (requires heyeir.com account)
+> • Learns your interests from conversations
+> • Personalized content with deep-dive analysis
+> • Reads in the Eir app with beautiful formatting
+> 
+> Which would you prefer?"
+
+### Step 3: Run setup wizard (with user)
+
+**Say:**
+> "I'll run the setup wizard now. It will ask about:
+> • Where to store your config (default: ~/.openclaw/skills/eir/)
+> • Your timezone and preferred language
+> • When you want content delivered
+> 
+> Ready?"
+
+**Wait for confirmation, then run:**
+```bash
+python3 scripts/setup.py
 ```
 
-### Step 3: Confirm schedule
+**Guide user through each prompt** — if they seem unsure, suggest defaults:
+- Workspace: "Just press Enter for the default location"
+- Mode: "You already chose [standalone/eir]"
+- Language: "I'll use Chinese based on our conversation"
+- Timezone: "I'll detect from your system"
 
-Only ask what you don't know:
-```
-"What time works best for daily updates?"
+### Step 4: Propose cron schedule
+
+**After setup completes, propose a schedule:**
+
+> "Setup complete! Now for the delivery schedule.
+> 
+> I recommend:
+> • **Morning briefing**: 8:00 AM daily
+> • **Frequency**: Once per day (adjustable)
+> • **Timezone**: Asia/Shanghai
+> 
+> Does that work? Or would you prefer a different time?"
+
+**If user confirms, set up cron:**
+```bash
+openclaw cron add --name "eir-daily" --cron "0 8 * * *" --tz "Asia/Shanghai" --message "Run daily curation"
 ```
 
-Or propose a default:
-```
-"I'll send updates at 8am by default — OK?"
+**If user wants different time:**
+> "What time would you prefer? (e.g., 7am, 9:30am, evening 8pm)"
+
+**Convert their answer to cron:**
+- "7am" → `0 7 * * *`
+- "9:30am" → `30 9 * * *`
+- "evening" → `0 20 * * *`
+
+**Always confirm before creating:**
+> "I'll set it for 9:30 AM daily. Confirm?"
+
+### Step 5: Test run
+
+**Say:**
+> "Let me fetch today's preview so you can see what it looks like. One moment..."
+
+**Run:**
+```bash
+python3 scripts/standalone/curate.py
 ```
 
-### Step 4: Setup + Test
+**Format and present:**
+> "Here's what today's curation looks like:
+> 
+> • **Claude 4 Released** (Anthropic Blog)
+>   200K context window, native tool use...
+>   https://...
+> 
+> • **Agent Evaluation Checklist** (LangChain)
+>   Practical checklist for eval design...
+>   https://...
+> 
+> This is the format you'll receive daily. Look good?"
 
-1. Configure interests in `config/eir.json` (or set env vars)
-2. Run `python3 scripts/standalone/curate.py`
-3. **Process the output**:
-   - Rank by relevance to user interests (most relevant first)
-   - Translate/rewrite in user's language
-   - Format as: **[Title](url)** (Source) — Summary
-4. Show to user for approval
-5. If approved, set up cron
+**If user says yes:**
+> "Perfect! You're all set. You'll receive your first update tomorrow at [time].
+> 
+> To change anything later, just ask me to 'update news settings'.
+> To pause: 'pause daily news'
+> To get a preview anytime: 'show me today's news'"
+
+**If user wants changes:**
+> "What would you like to adjust? The topics, sources, or delivery time?"
 
 ### Output format
 
@@ -83,73 +148,119 @@ See `references/quality-criteria.md`:
 
 ### Example flow
 
+---
+
+## Example Conversation
+
+### Scenario 1: First-time setup
+
 ```
-User: "Set up daily news for me"
+User: "Can you set up daily news for me?"
 
-Agent: [checks MEMORY.md — sees "OpenClaw dev", "AI Agent"]
-       [detects user language]
+Agent: "I can set up daily content curation in two ways:
 
-"Based on your recent conversations about AI Agents and dev tools, 
-I'll curate content on those topics. Daily at 8am work for you?"
+**Option A: Standalone** — Simple RSS aggregation
+• Reads tech news from RSS feeds  
+• Delivers summaries directly here
+• No account needed
 
-User: "Yeah, 8am is fine"
+**Option B: Eir** — Full AI-powered curation  
+• Learns your interests from conversations
+• Personalized content with deep-dive analysis
+• Reads in the Eir app
 
-Agent: [runs curate.py, shows preview]
+Which would you prefer?"
+
+User: "Option A sounds good"
+
+Agent: "Great! I'll run the setup wizard. It will ask about workspace location, 
+timezone, and schedule. Ready?"
+
+User: "Sure"
+
+Agent: [runs setup.py, guides through prompts]
+"Setup complete! Now for the schedule — I recommend 8:00 AM daily. 
+Does that work, or would you prefer a different time?"
+
+User: "8am is fine"
+
+Agent: [creates cron job]
+"Done! Let me fetch a preview of what you'll receive..."
+
+Agent: [runs curate.py, shows sample]
 "Here's today's preview:
-• Claude 4.6 Jailbroken — Public jailbreak method on GitHub
+• Claude 4.6 Jailbroken — Public jailbreak on GitHub
 • ctx: Agentic Development Environment — New AI dev environment
 
-Look good? I'll set up the daily schedule."
+This is the format you'll get daily. Look good?"
 
 User: "Looks good"
 
-Agent: [sets up cron]
-"Done. You'll get updates every day at 8am."
+Agent: "Perfect! You'll receive your first update tomorrow at 8am. 
+To change anything, just say 'update news settings'."
+```
+
+### Scenario 2: User wants to change time
+
+```
+User: "Can you move my news to 9am?"
+
+Agent: "Sure, I'll update your schedule from 8am to 9am. Confirm?"
+
+User: "Yes"
+
+Agent: [updates cron job]
+"Done! Your daily news will now arrive at 9:00 AM."
+```
+
+### Scenario 3: User wants to pause
+
+```
+User: "Pause my daily news"
+
+Agent: "I'll pause your daily curation. You can resume anytime by saying 
+'resume daily news'. Confirm?"
+
+User: "Yes"
+
+Agent: [disables cron job]
+"Paused. Your settings are saved — just say 'resume daily news' when you want it back."
 ```
 
 ---
 
-## Quick Start
+## Quick Reference (For Agent)
 
-### Step 1: Install Dependencies
+### Commands
 
-```bash
-pip install sentence-transformers numpy tzlocal
-```
+| Task | Command |
+|------|---------|
+| Check setup | `python3 scripts/setup.py --check` |
+| Run setup wizard | `python3 scripts/setup.py` |
+| Test curation | `python3 scripts/standalone/curate.py` |
+| Add cron | `openclaw cron add --name "eir-daily" --cron "0 8 * * *" --tz "Asia/Shanghai" --message "..."` |
+| List cron | `openclaw cron list` |
+| Disable cron | `openclaw cron edit <id> --enabled=false` |
 
-### Step 2: Run Setup Wizard
+### Cron Schedule Examples
 
-```bash
-python3 scripts/setup.py
-```
+| User says | Cron expression |
+|-----------|-----------------|
+| "8am" | `0 8 * * *` |
+| "9:30am" | `30 9 * * *` |
+| "evening 8pm" | `0 20 * * *` |
+| "midnight" | `0 0 * * *` |
+| "weekends only" | `0 9 * * 6,7` |
 
-This interactive wizard will:
-- **Choose your workspace** (default: `~/.openclaw/skills/eir/`)
-- **Select mode**: Standalone (simple) or Eir (full AI curation)
-- **Configure preferences**: language, timezone, delivery schedule
-- **Set up Eir connection** (if Eir mode selected)
+### Mode Differences
 
-### Mode Selection
-
-**Standalone Mode** — Simple RSS curation
-- Reads RSS feeds + optional web search
-- Delivers content directly via OpenClaw
-- No account needed
-
-**Eir Mode** — Full AI-powered curation
-- Personalized content from heyeir.com
-- Automatic interest learning
-- Requires free Eir account
-
-### Step 3: Verify & Test
-
-```bash
-# Check setup
-python3 scripts/setup.py --check
-
-# Test run
-python3 scripts/standalone/curate.py
-```
+| Feature | Standalone | Eir |
+|---------|-----------|-----|
+| Account needed | No | Yes (free) |
+| Interest learning | Manual | Automatic |
+| Content source | RSS + search | RSS + search + API |
+| Delivery | OpenClaw chat | OpenClaw + Eir app |
+| Personalization | Basic | Advanced |
 
 ---
 
