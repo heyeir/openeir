@@ -256,8 +256,26 @@ openclaw cron add --name "daily-curate" --cron "17 8 * * *" --tz "$YOUR_TZ" \
 
 ### Eir (Full Pipeline)
 
-The pipeline has 6 stages. RSS and search only index title+snippet (fast, no crawl).
+The pipeline has 7 stages. RSS and search only index title+snippet (fast, no crawl).
 `content_curator` merges all candidates, picks hot topics, and crawls full text only for top matches.
+`daily_plan` also runs `pool_pruner` at startup to clean stale/used pool entries.
+
+#### Pipeline scripts
+
+| Script | Role |
+|--------|------|
+| `interest_extractor.py` | Sync interests with Eir API + local topic enrichment |
+| `daily_plan.py` | Daily plan: RSS config + API directives + enrichment → `daily_plan.json`. Runs `pool_pruner` first. |
+| `rss_crawler.py` | RSS fetch → title+snippet embedding → topic matching |
+| `search_harvest.py` | Web search via Search Gateway → title+snippet embedding → topic matching |
+| `content_curator.py` | Merge RSS+search candidates, rank by score+freshness, crawl full text for top picks → `curation_result.json` |
+| `generate_dispatcher.py` | Composite scoring to select topics → spawn subagent for content generation |
+| `post_content.py` | Read generated JSON → POST L1 + PATCH L2 to Eir API |
+| `deliver.py` | Save content locally + send notifications; in Eir mode also calls `post_content.py` |
+| `pool_pruner.py` | Clean expired/used/orphan pool entries from `topic_matches.json` |
+| `title_dedup.py` | L1 semantic dedup (cosine ≥ 0.82) |
+| `embed.py` | EmbeddingGemma-300M wrapper (encode, cosine, meta) |
+| `cache_manager.py` | Article embed cache + snippet storage |
 
 ```bash
 # 0. Interest enrichment (once/day)
@@ -282,9 +300,9 @@ openclaw cron add --name "content-curator" --cron "23 6,14,20 * * *" --tz "$YOUR
 
 # 5. Content generation + post (3x/day)
 openclaw cron add --name "eir-generate" --cron "53 6,14,20 * * *" --tz "$YOUR_TZ" --timeout 900 \
-  --message "Run generate_dispatcher.py, then for each task spawn a subagent to generate content, then run post_content.py"
+  --message "Run generate_dispatcher.py, then for each task spawn a subagent to generate content, then run deliver.py"
 
-# 6. Whisper extraction (daily)
+# 6. Whisper extraction (daily, optional)
 openclaw cron add --name "eir-whisper" --cron "23 22 * * *" --tz "$YOUR_TZ" \
   --message "cd $WORKSPACE && python3 scripts/pipeline/whisper_extract.py"
 ```
@@ -297,6 +315,8 @@ openclaw cron add --name "eir-whisper" --cron "23 22 * * *" --tz "$YOUR_TZ" \
 | RSS fetch fails | Verify URL with `curl -s <url> \| head`. Some sites block bots. |
 | Duplicates appearing | Delete `data/seen.json` to reset dedup cache. |
 | Wrong language | Set `"language": "en"` or `"zh"` in config. |
+| Pool saturated (topic skipped) | Pool has ≥10 active articles. Wait for generation to consume them, or run `pool_pruner.py` to clean stale entries. |
+| Pool empty after pruning | Check RSS/search are running and `source_freshness_floor` isn't too aggressive for the topic's `freshness` setting. |
 
 ## Eir mode (optional)
 
@@ -313,4 +333,32 @@ Setup: Get pairing code from Eir Settings → Connect OpenClaw, then:
 node scripts/connect.mjs <pairing-code>
 ```
 
+For Eir mode, change `mode` to `"eir"` in `config/settings.json`:
+
+```json
+{
+  "mode": "eir",
+  "search": {
+    "providers": ["searxng"],
+    "searxng_url": "http://localhost:8888",
+    "crawl4ai_url": "http://localhost:11235"
+  }
+}
+```
+
 See `references/eir-api.md` for full API documentation.
+
+### Infrastructure (self-hosted search & crawl)
+
+The Eir pipeline can use local services instead of Tavily/Brave for better coverage and no API rate limits:
+
+| Service | Purpose | Default URL |
+|---------|---------|-------------|
+| [SearXNG](https://github.com/searxng/searxng) | Meta-search (Google + Bing + Brave in one query) | `http://localhost:8888` |
+| [Crawl4AI](https://github.com/unclecode/crawl4ai) | Full-article extraction as clean markdown | `http://localhost:11235` |
+| Search Gateway | Thin wrapper over SearXNG with engine routing | `http://localhost:8899` |
+| [EmbeddingGemma-300M](https://huggingface.co/google/embeddinggemma-300m) | Semantic dedup & topic matching (256d, CPU-friendly) | Local Python |
+
+All are **optional** — standalone mode uses Tavily/Brave instead.
+
+For detailed installation and configuration, see `references/infrastructure-setup.md`.
