@@ -109,40 +109,60 @@ Agent: [sets up cron]
 
 ---
 
-## Quick Start (New Users)
+## Quick Start
 
-### Option 1: Guided Setup (Recommended)
-
-Run the interactive setup wizard:
+### Step 1: Install Dependencies
 
 ```bash
-cd /path/to/eir-daily-content-curator
+pip install sentence-transformers numpy tzlocal
+```
+
+### Step 2: Run Setup Wizard
+
+```bash
 python3 scripts/setup.py
 ```
 
-This will:
-1. ✓ Create config directories
-2. ✓ Check Eir connection status
-3. ✓ Guide you through pairing (if needed)
-4. ✓ Configure language, timezone, and preferences
-5. ✓ Verify infrastructure services
-6. ✓ Set up cron schedules
+This interactive wizard will:
+- **Choose your workspace** (default: `~/.openclaw/skills/eir/`)
+- **Select mode**: Standalone (simple) or Eir (full AI curation)
+- **Configure preferences**: language, timezone, delivery schedule
+- **Set up Eir connection** (if Eir mode selected)
 
-### Option 2: Manual Setup
+### Mode Selection
 
-If you prefer to configure manually, follow the steps below.
+**Standalone Mode** — Simple RSS curation
+- Reads RSS feeds + optional web search
+- Delivers content directly via OpenClaw
+- No account needed
+
+**Eir Mode** — Full AI-powered curation
+- Personalized content from heyeir.com
+- Automatic interest learning
+- Requires free Eir account
+
+### Step 3: Verify & Test
+
+```bash
+# Check setup
+python3 scripts/setup.py --check
+
+# Test run
+python3 scripts/standalone/curate.py
+```
 
 ---
 
-## Technical Setup
+## Manual Setup (Advanced)
+
+If you prefer to configure manually instead of using the wizard:
 
 ### Prerequisites
 
-- **Python 3.10+** with `sentence-transformers`, `numpy`
-- **Node.js 18+** (for connection scripts)
-- **Optional infrastructure**: SearXNG, Crawl4AI, Search Gateway (see `references/infrastructure-setup.md`)
+- **Python 3.10+** with `sentence-transformers`, `numpy`, `tzlocal`
+- **Node.js 18+** (for Eir connection)
+- **Optional**: SearXNG, Crawl4AI, Search Gateway (see `references/infrastructure-setup.md`)
 
-Install Python dependencies:
 ```bash
 pip install sentence-transformers numpy tzlocal
 ```
