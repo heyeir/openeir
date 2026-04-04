@@ -300,7 +300,7 @@ openclaw cron add --name "eir-whisper" --cron "23 22 * * *" --tz "$YOUR_TZ" \
 
 ## Eir mode (optional)
 
-Connect to [heyeir.com](https://heyeir.com) for enhanced features:
+Connect to [heyeir.com](https://www.heyeir.com) for enhanced features:
 
 - Multi-source synthesis (combines 2-5 articles)
 - Deep-dive analysis (L2 content)

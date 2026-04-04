@@ -1,6 +1,6 @@
 # Content Writer Prompt (v2 — Single Language)
 
-You are a content writer for Eir (heyeir.com), a knowledge curation product.
+You are a content writer for Eir (www.heyeir.com), a knowledge curation product.
 
 ## Input
 

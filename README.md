@@ -1,8 +1,26 @@
-# OpenEir
+# OpenEir 📰
 
-Open-source AI content curation skill for [OpenClaw](https://github.com/openclaw/openclaw).
+> AI reads the internet so you can think about what matters.
 
-Curates personalized content based on your interests — learns from conversations, searches RSS + web, delivers summaries.
+Learns your interests from conversations. Searches 40+ curated sources daily. Delivers a briefing that respects your time.
+
+Built as an [OpenClaw](https://github.com/openclaw/openclaw) skill. Part of the [Eir](https://www.heyeir.com) ecosystem.
+
+## Why
+
+You're drowning in information. RSS is dead. Twitter is chaos. Google News doesn't know you.
+
+OpenEir watches curated sources — from Techmeme to arXiv to Hacker News — learns what you actually care about from your conversations, and delivers a daily briefing with only the things worth your attention.
+
+No algorithms optimizing for clicks. No infinite scroll. Just signal.
+
+## What you get
+
+- 🎯 **Interest-aware** — Learns from your conversations, not your clicks
+- 📡 **40+ sources** — RSS + web search (Tavily/Brave), S/A quality-rated
+- 🔍 **Quality filtering** — Source ratings, dedup, relevance scoring
+- 🌐 **Bilingual** — Multi-language translation support
+- ✨ **Eir integration** — Optional connection to [heyeir.com](https://www.heyeir.com) for enhanced reading
 
 ## Quick Start
 
@@ -16,14 +34,6 @@ git clone https://github.com/heyeir/openeir.git
 ```
 
 Then tell your agent: *"Set up daily news for me"*
-
-## Features
-
-- **Interest-aware**: Learns topics from your conversations
-- **Multi-source**: RSS feeds + web search (Tavily/Brave)
-- **Quality filtering**: Source ratings, dedup, relevance scoring
-- **Bilingual**: Multi-language translation support
-- **Eir integration** (optional): Connect to [heyeir.com](https://heyeir.com) for enhanced reading experience
 
 ## Configuration
 
@@ -40,7 +50,7 @@ export BRAVE_API_KEY="BSA..."      # fallback
 Connect to an Eir instance for interest tracking and content delivery:
 ```bash
 export EIR_API_URL="https://api.heyeir.com"  # or your own instance
-node skills/eir-daily-content-curator/scripts/connect.mjs <PAIRING_CODE>       # saves API key to config/eir.json
+node skills/eir-daily-content-curator/scripts/connect.mjs <PAIRING_CODE>
 ```
 
 ### All environment variables
@@ -53,6 +63,19 @@ node skills/eir-daily-content-curator/scripts/connect.mjs <PAIRING_CODE>       #
 | `TAVILY_API_KEY` | No | Tavily search API key (recommended) |
 | `BRAVE_API_KEY` | No | Brave search API key (fallback) |
 
+## How it works
+
+```
+Interests → Daily Plan → RSS Crawl → Web Search → Curate → Generate → Deliver
+```
+
+1. **Interest Sync** — Extracts topics from your conversations and memory
+2. **Daily Plan** — Decides which sources to check and what to search
+3. **Harvest** — Crawls RSS feeds + runs targeted web searches
+4. **Curate** — Scores, deduplicates, ranks by relevance to *your* interests
+5. **Generate** — Writes concise summaries in your language
+6. **Deliver** — Sends your daily briefing at your preferred time
+
 ## Documentation
 
 - [SKILL.md](skills/eir-daily-content-curator/SKILL.md) — Agent behavior & setup guide
@@ -61,13 +84,9 @@ node skills/eir-daily-content-curator/scripts/connect.mjs <PAIRING_CODE>       #
 - [config/sources.json](skills/eir-daily-content-curator/config/sources.json) — Default RSS sources
 - [config/settings.json](skills/eir-daily-content-curator/config/settings.json) — Pipeline settings
 
-## Pipeline
+## Contributing
 
-```
-Interest Sync → Daily Plan → RSS Crawl → Search Harvest → Content Curation → Generate & Post
-```
-
-See [SKILL.md](SKILL.md) for full pipeline architecture and cron setup.
+PRs welcome — especially new content sources, language support, and quality improvements. See [SKILL.md](skills/eir-daily-content-curator/SKILL.md) for architecture details.
 
 ## License
 
