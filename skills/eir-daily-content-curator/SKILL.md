@@ -61,11 +61,19 @@ If already set up, skip to [Step 4: Test run](#step-4-test-run).
 python3 scripts/setup.py
 ```
 
-**Guide user through each prompt** — if they seem unsure, suggest defaults:
-- Workspace: "Just press Enter for the default location"
-- Mode: "You already chose [standalone/eir]"
-- Language: "I'll use Chinese based on our conversation"
-- Timezone: "I'll detect from your system"
+**Guide user through each prompt** — follow this rule:
+
+| Setting | Source | Agent Action |
+|---------|--------|--------------|
+| **Language** | Auto-detect from conversation | "I'll use Chinese based on our conversation" |
+| **Timezone** | Auto-detect from system | "I'll use Asia/Shanghai (detected from your system)" |
+| **Workspace** | Default `~/.openclaw/skills/eir/` | "Press Enter for default, or specify a different path" |
+| **Mode** | User already chose in Step 2 | Pre-fill their choice |
+| **Search API key** | **Must ask** | "Enable web search? Requires Tavily/Brave API key" |
+| **Infrastructure** | **Must ask** | "Have you set up SearXNG/Crawl4AI? (optional, see docs)" |
+| **Schedule** | **Must ask** | "What time for daily delivery?" |
+
+**Never assume for:** API keys, infrastructure setup, schedule preferences.
 
 ### Step 4: Propose cron schedule
 
