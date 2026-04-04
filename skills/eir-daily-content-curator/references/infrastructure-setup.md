@@ -310,7 +310,8 @@ After setting up the services, update `config/settings.json`:
   "search": {
     "providers": ["searxng"],
     "searxng_url": "http://localhost:8888",
-    "crawl4ai_url": "http://localhost:11235"
+    "crawl4ai_url": "http://localhost:11235",
+    "search_gateway_url": "http://localhost:8899"
   }
 }
 ```

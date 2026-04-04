@@ -8,7 +8,8 @@
   "search": {
     "providers": ["tavily", "brave"],
     "searxng_url": null,
-    "crawl4ai_url": null
+    "crawl4ai_url": null,
+    "search_gateway_url": null
   },
   
   "rss_sources": "config/sources.json",
