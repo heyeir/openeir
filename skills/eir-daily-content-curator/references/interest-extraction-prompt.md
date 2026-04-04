@@ -57,8 +57,8 @@ Interest labels are stored and may be processed by third-party services.
 - Public figures: Elon Musk, Sam Altman (in news context)
 - Open source projects: Linux, Node.js, LangChain
 - Public events: WWDC, Google I/O, CES
-- Cities/regions: 上海, 北京, San Francisco, Tokyo (general level)
-- Famous institutions: 清华, 北大, MIT, Stanford, Harvard (newsworthy)
+- Cities/regions: Shanghai, Beijing, San Francisco, Tokyo (general level)
+- Famous institutions: MIT, Stanford, Harvard, Tsinghua, Peking University (newsworthy)
 
 **❌ Private/Personally-identifiable (NEVER include)**:
 - User's employer or clients (unless Fortune 500 / globally famous)
@@ -81,15 +81,15 @@ Ask: **"Would a random person on the internet recognize this?"**
 
 | User context | → Interest label | Why |
 |--------------|------------------|-----|
-| "微软的 AI 新闻" | → "微软 AI" ✅ | Public company, OK |
-| "Apple Vision Pro 发布" | → "Apple Vision Pro" ✅ | Public product |
-| "OpenAI 的 GPT-5" | → "GPT-5" 或 "OpenAI" ✅ | Public |
-| "Acme Corp 的提案" | → "商业提案写作" | Private client |
-| "我们公司的 OKR" | → "OKR 方法论" | Private employer |
-| "Eir 产品设计" | → "产品设计" | User's own project |
-| "LangChain 集成" | → "LangChain" ✅ | Public OSS |
-| "给 John 的报告" | → "报告写作" | Private person |
-| "Sam Altman 的演讲" | → "Sam Altman" 或 "AI 行业动态" ✅ | Public figure |
+| "Microsoft AI news" | → "Microsoft AI" ✅ | Public company, OK |
+| "Apple Vision Pro launch" | → "Apple Vision Pro" ✅ | Public product |
+| "OpenAI's GPT-5" | → "GPT-5" or "OpenAI" ✅ | Public |
+| "Acme Corp proposal" | → "Business proposals" | Private client |
+| "Our company OKRs" | → "OKR methodology" | Private employer |
+| "Eir product design" | → "Product design" | User's own project |
+| "LangChain integration" | → "LangChain" ✅ | Public OSS |
+| "Report for John" | → "Report writing" | Private person |
+| "Sam Altman's talk" | → "Sam Altman" or "AI industry" ✅ | Public figure |
 
 ### Reason field
 Also keep reason strings generic — don't leak private context there either.
@@ -197,7 +197,7 @@ conversations:
     {
       "op": "add",
       "slug": "ai-alignment",
-      "label": "AI 对齐",
+      "label": "AI Alignment",
       "decay_type": "ongoing",
       "reason": "Discussed AI alignment concerns in depth"
     },
@@ -211,7 +211,7 @@ conversations:
     {
       "op": "add",
       "slug": "content-curation",
-      "label": "内容策展",
+      "label": "Content Curation",
       "decay_type": "ongoing",
       "reason": "Actively working on content curation design"
     },
@@ -228,6 +228,6 @@ conversations:
 
 Note how:
 - "Acme AI" startup → not mentioned, interest is just "AI agents" (already exists)
-- "Eir content curation" → generalized to "内容策展"
+- "Eir content curation" → generalized to "Content Curation"
 - "Acme dashboard" → excluded entirely (task, not interest)
 - Reasons don't mention company names

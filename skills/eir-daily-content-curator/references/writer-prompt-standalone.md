@@ -60,8 +60,8 @@ Write a JSON file to `output_path`:
 **Output:**
 ```json
 {
-  "title": "Claude 4 发布：200K 上下文窗口与原生工具调用",
-  "summary": "Anthropic 发布 Claude 4，支持 200K 上下文窗口、增强推理能力和原生工具使用。新模型已在 claude.ai 和 API 上线。",
+  "title": "Claude 4 Released: 200K Context Window and Native Tool Use",
+  "summary": "Anthropic releases Claude 4 with 200K context window, enhanced reasoning, and native tool use. Available on claude.ai and API.",
   "source": {
     "name": "Anthropic Blog",
     "url": "https://anthropic.com/blog/claude-4",

@@ -31,7 +31,7 @@ This document explains how Eir calculates interest strength, engagement health, 
 
 ## Core Metrics (Server-Calculated)
 
-### Strength (长期兴趣强度)
+### Strength
 
 **What it represents**: How much the user cares about this topic over time.
 
@@ -50,7 +50,7 @@ strength = min(1.0, base_strength + (occurrences * 0.05))
 | **ongoing** (e.g., "AI safety") | Slow: 95% at 7d, 85% at 30d |
 | **evergreen** (e.g., "productivity") | Minimal: 98% at 7d, 90% at 60d |
 
-### Engagement Health (参与度健康值)
+### Engagement Health
 
 **What it represents**: Is the user still interested in topics we're pushing?
 
@@ -70,28 +70,24 @@ baseline_rate = user's average engagement rate over 30 days
 | 0.5 - 0.8 | Declining engagement | Add more explore content |
 | < 0.5 | User interests may have shifted | Pause focus, emphasize explore/seed |
 
-### Heat (短期活跃度)
+### Heat
 
-**What it represents**: Recent activity level for this topic.
+**What it represents**: Recent activity level for this topic. Driven purely by user behavior, not time decay.
 
-**Range**: 0 - 100
+**Range**: 0+ (no upper limit — scales with activity volume)
 
 ```
-heat = sum(event_weights) * recency_multiplier
+heat = sum(event_weights)
 
 Event weights:
-- click: 5
-- view (>30s): 3
 - view (<30s): 1
+- view (>30s): 2
+- click: 1
 - bookmark: 10
 - share: 15
-
-recency_multiplier:
-- last 24h: 1.0
-- 24-48h: 0.5
-- 48-72h: 0.25
-- 72h+: 0.1
 ```
+
+Heat resets on a rolling window (last 7 days). No time-based decay — heat drops when behavior stops, not when time passes.
 
 ## Curation Logic
 
