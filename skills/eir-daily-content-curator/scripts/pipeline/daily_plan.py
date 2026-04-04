@@ -451,10 +451,15 @@ def main():
         print("\n[dry-run] Would write to %s" % DAILY_PLAN_FILE)
         return
 
-    # Write
+    # Write plan
     DAILY_PLAN_FILE.parent.mkdir(parents=True, exist_ok=True)
     DAILY_PLAN_FILE.write_text(json.dumps(plan, indent=2, ensure_ascii=False))
     print("\n✅ Written to %s" % DAILY_PLAN_FILE)
+
+    # Write used_source_urls.json so dispatcher can exclude them
+    used_urls_file = DATA_DIR / "used_source_urls.json"
+    used_urls_file.write_text(json.dumps(sorted(used_urls), ensure_ascii=False))
+    print("  💾 Wrote %d used source URLs to %s" % (len(used_urls), used_urls_file.name))
 
 
 if __name__ == "__main__":

@@ -146,7 +146,7 @@ class TitleDedup:
             results.append((is_dup, best_meta, best_score))
         return results
 
-    def record(self, title: str, slug: str = "", content_id: str = "", source_urls: Optional[List[str]] = None):
+    def record(self, title: str, slug: str = "", content_id: str = "", source_urls: Optional[List[str]] = None, lang: str = ""):
         """Record a successfully pushed title."""
         # Check if already recorded (by content_id or exact title)
         for m in self._meta:
@@ -160,6 +160,7 @@ class TitleDedup:
             "slug": slug,
             "content_id": content_id,
             "source_urls": source_urls or [],
+            "lang": lang,
             "pushed_at": datetime.utcnow().isoformat() + "Z",
         }
 

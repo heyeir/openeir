@@ -80,7 +80,7 @@ def load_config() -> dict:
         CONFIG_DIR / "eir.json",
         SKILL_DIR / "config" / "eir.json",
     ]:
-        if path.exists():
+        if str(path) and path.is_file():
             try:
                 return json.loads(path.read_text())
             except (json.JSONDecodeError, KeyError):
