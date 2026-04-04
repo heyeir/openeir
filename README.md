@@ -16,11 +16,11 @@ No algorithms optimizing for clicks. No infinite scroll. Just signal.
 
 ## What you get
 
-- 🎯 **Interest-aware** — Learns from your conversations, not your clicks
-- 📡 **40+ sources** — RSS + web search (Tavily/Brave), S/A quality-rated
-- 🔍 **Quality filtering** — Source ratings, dedup, relevance scoring
-- 🌐 **Bilingual** — Multi-language translation support
-- ✨ **[Eir integration](https://www.heyeir.com)** — Connect for a beautiful reading canvas, Whisper journaling (capture and share your sparks of insight), enhanced local search (SearXNG + Crawl4AI), and adaptive interest tracking — all while your data stays yours
+- 🎯 **Interest-aware** — Learns what you care about from conversations, not clicks or likes
+- 📡 **40+ curated sources + local search** — RSS, Tavily, Brave, or run your own with [SearXNG](https://github.com/searxng/searxng) + [Crawl4AI](https://github.com/unclecode/crawl4ai) for full privacy
+- 🔍 **Smart curation** — Source quality ratings, semantic dedup, relevance scoring — only things worth your attention get through
+- 🌐 **Bilingual** — Read in your language, sourced from the world
+- ✨ **[Eir](https://www.heyeir.com)** — Optional. Adds a visual reading canvas, interest visualization, Whisper journaling (capture and share your sparks of insight), and content history — your data stays yours
 
 ## Quick Start
 
