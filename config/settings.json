@@ -1,0 +1,26 @@
+{
+  "mode": "standalone",
+  "max_items_per_day": 10,
+  "local_storage": "workspace/eir/",
+  
+  "search": {
+    "providers": ["tavily", "brave"],
+    "searxng_url": null,
+    "crawl4ai_url": null
+  },
+  
+  "rss_sources": "config/sources.json",
+  
+  "cron": {
+    "schedule": "0 8 * * *",
+    "timezone": "UTC"
+  },
+  
+  "eir": {
+    "api_key": null,
+    "bilingual": false,
+    "sync_interests": true,
+    "post_content": true,
+    "extract_whispers": true
+  }
+}
