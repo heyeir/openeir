@@ -27,15 +27,15 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-# scripts/pipeline/post_content.py → parent.parent.parent = skill root
-WORKSPACE = Path(__file__).resolve().parent.parent.parent
-DATA = WORKSPACE / "data"
+sys.path.insert(0, str(Path(__file__).parent))
+from eir_config import WORKSPACE, DATA_DIR, load_config as _load_eir_config, get_api_url, get_api_key
+
+DATA = DATA_DIR
 GENERATED_DIR = DATA / "generated"
 POSTED_DIR = DATA / "posted"
 BACKUP_DIR = DATA / "backup"
 PUSHED_TITLES_FILE = DATA / "pushed_titles.json"
 TRANSLATE_TASKS_DIR = DATA / "translate_tasks"
-from eir_config import load_config as _load_eir_config, get_api_url, get_api_key
 
 # Rate limiting
 REQUEST_INTERVAL = 0.5  # seconds between requests

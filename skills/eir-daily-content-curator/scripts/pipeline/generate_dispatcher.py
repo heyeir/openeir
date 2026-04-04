@@ -16,9 +16,11 @@ import os
 import sys
 from datetime import datetime, timezone, timedelta
 
-# scripts/pipeline/generate_dispatcher.py → go 3 levels up to skill root
-WORKSPACE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATA = os.path.join(WORKSPACE, "data")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from eir_config import SKILL_DIR, WORKSPACE as _WS, DATA_DIR as _DATA_DIR
+
+WORKSPACE = str(_WS)
+DATA = str(_DATA_DIR)
 TASKS_DIR = os.path.join(DATA, "generate_tasks")
 GENERATED_DIR = os.path.join(DATA, "generated")
 MANIFEST_PATH = os.path.join(DATA, "generate_manifest.json")

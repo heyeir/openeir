@@ -16,11 +16,16 @@ import os
 import hashlib
 import time
 import glob
+import sys
 import requests
+from pathlib import Path
 
-CRAWL4AI_URL = "http://localhost:11235"
-SNIPPETS_DIR = "data/snippets"
-TOPIC_MATCHES = "data/topic_matches.json"
+sys.path.insert(0, str(Path(__file__).parent))
+from eir_config import DATA_DIR, load_settings
+
+CRAWL4AI_URL = load_settings().get("search", {}).get("crawl4ai_url", "http://localhost:11235")
+SNIPPETS_DIR = str(DATA_DIR / "snippets")
+TOPIC_MATCHES = str(DATA_DIR / "topic_matches.json")
 TIMEOUT = 30
 MIN_CONTENT_LEN = 500
 

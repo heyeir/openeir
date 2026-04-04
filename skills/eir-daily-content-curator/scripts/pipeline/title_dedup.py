@@ -43,8 +43,8 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent))
 from embed import EmbeddingService
+from eir_config import DATA_DIR
 
-DATA_DIR = Path(os.environ.get("EIR_DATA_DIR", Path(__file__).parent.parent / "data"))
 TITLES_META = DATA_DIR / "pushed_titles.json"
 TITLES_NPZ = DATA_DIR / "pushed_titles.npz"
 

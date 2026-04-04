@@ -25,8 +25,11 @@ from datetime import datetime, timedelta
 sys.path.insert(0, str(Path(__file__).parent))
 from embed import EmbeddingService
 from cache_manager import ArticleEmbedCache, SNIPPETS_DIR, DATA_DIR
+from eir_config import SKILL_DIR, CONFIG_DIR
 
-SOURCES_FILE = Path(__file__).parent / "sources.json"
+# Sources: check workspace config first, then skill default
+SOURCES_FILE = CONFIG_DIR / "sources.json"
+SKILL_SOURCES_FILE = SKILL_DIR / "config" / "sources.json"
 MAX_ITEMS_PER_FEED = 10
 
 TIER_INTERVAL_HOURS = {"S": 4, "A": 8, "B": 24}
@@ -34,11 +37,13 @@ FEED_STATE_FILE = DATA_DIR / "feed_state.json"
 
 
 def load_sources():
-    if not SOURCES_FILE.exists():
-        alt = Path.home() / ".openclaw" / "workspace-content" / "scripts" / "sources.json"
-        if alt.exists():
-            return json.loads(alt.read_text()).get("rss", [])
-        return []
+    for path in [SOURCES_FILE, SKILL_SOURCES_FILE]:
+        if path.exists():
+            try:
+                return json.loads(path.read_text()).get("rss", [])
+            except (json.JSONDecodeError, KeyError):
+                continue
+    return []
     return json.loads(SOURCES_FILE.read_text()).get("rss", [])
 
 

@@ -29,18 +29,17 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 # === Config ===
-WORKSPACE = Path(__file__).resolve().parent.parent.parent
-CONFIG_DIR = WORKSPACE / "config"
-REFERENCES_DIR = WORKSPACE / "references"
-DATA_DIR = WORKSPACE / "data"
+sys.path.insert(0, str(Path(__file__).parent))
+from eir_config import (
+    SKILL_DIR, WORKSPACE, CONFIG_DIR, DATA_DIR,
+    load_config as _load_eir_config, get_api_url, get_api_key,
+)
+
+REFERENCES_DIR = SKILL_DIR / "references"
 INTERESTS_FILE = CONFIG_DIR / "interests.json"
 SETTINGS_FILE = CONFIG_DIR / "settings.json"
 EIR_CONFIG = CONFIG_DIR / "eir.json"
 TOPIC_ENRICHMENTS_FILE = DATA_DIR / "topic_enrichments.json"
-
-# Import shared config
-sys.path.insert(0, str(Path(__file__).parent))
-from eir_config import load_config as _load_eir_config, get_api_url, get_api_key
 
 # Decay settings
 DECAY_HALF_LIFE_DAYS = 14  # Strength halves every 14 days without signals

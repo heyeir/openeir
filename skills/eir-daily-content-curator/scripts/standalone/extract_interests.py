@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Extract interests from OpenClaw conversation logs.
-Updates ~/.openclaw/curator/config.json with discovered topics.
+Updates workspace config/settings.json with discovered topics.
 """
 
 import json
@@ -14,8 +14,11 @@ import re
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
-CONFIG_DIR = Path.home() / ".openclaw" / "curator"
-CONFIG_FILE = CONFIG_DIR / "config.json"
+# Use shared workspace resolution from pipeline
+sys.path.insert(0, str(Path(__file__).parent.parent / "pipeline"))
+from eir_config import CONFIG_DIR, DATA_DIR
+
+CONFIG_FILE = CONFIG_DIR / "settings.json"
 OPENCLAW_DIR = Path.home() / ".openclaw"
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
