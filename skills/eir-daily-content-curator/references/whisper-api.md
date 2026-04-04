@@ -149,35 +149,38 @@ Content-Type: application/json
 ```json
 {
   "ok": true,
-  "id": "whisper_u_xxx_1712345678_abcd",
+  "id": "x7k2m9p4_en",
   "whisper": {
-    "id": "whisper_u_xxx_1712345678_abcd",
+    "id": "x7k2m9p4_en",
+    "contentGroup": "x7k2m9p4",
+    "lang": "en",
     "userId": "u_xxx",
-    "type": "whisper",
     "dot": { "hook": "...", "category": "whisper", "color_hint": "amber" },
     "l1": { ... },
     "l2": { ... },
-    "createdAt": 1712345678000
+    "created_at": "2026-04-03T10:00:00Z"
   }
 }
 ```
 
 **Notes**:
-- Creates whisper in `whispers` container (no TTL)
-- Syncs to `content_items` for Z0/Z1/Z2 display
+- Creates whisper in `whispers_v2` container (no TTL)
+- ID format: `{8-char contentGroup}_{lang}` (e.g., `x7k2m9p4_en`)
+- Whispers are NOT duplicated into content_items (v2 uses separate containers)
 - Clears `whisperCandidate` flag on source conversation if `conversationId` provided
 
 ---
 
 ## Data Model
 
-### WhisperItem (Primary Storage)
+### WhisperItem (Primary Storage — `whispers_v2`)
 
 ```typescript
 interface WhisperItem {
-  id: string                    // "whisper_{userId}_{timestamp}_{rand}"
+  id: string                    // "{contentGroup}_{lang}" e.g. "x7k2m9p4_en"
+  contentGroup: string          // 8-char short ID
+  lang: string                  // language code
   userId: string                // partition key
-  type: 'whisper'
   
   // L0 Dot
   dot: {
@@ -212,28 +215,10 @@ interface WhisperItem {
   }
   source: 'openclaw'
   visibility: 'private'
-  createdAt: number
-  updatedAt: number
-}
-```
-
-### content_items Sync
-
-Whispers are also written to `content_items` for feed display:
-
-```typescript
-{
-  id: string,                    // same as whisper.id
-  userId: string,
-  type: 'whisper',
-  dot: { hook, category: 'whisper', color_hint: 'amber' },
-  l1: { title, summary, via: ['OpenClaw'] },
-  l2: { ... },
-  date: string,                  // YYYY-MM-DD
-  createdAt: string,             // ISO 8601
-  publish_time: string,          // ISO 8601
-  position: { x, y },
-  ttl: -1,                       // no TTL
+  date: string                  // YYYY-MM-DD
+  created_at: string            // ISO 8601
+  updated_at: string            // ISO 8601
+  ttl: -1                       // no expiration
 }
 ```
 
@@ -242,13 +227,16 @@ Whispers are also written to `content_items` for feed display:
 ## Cosmos DB Containers
 
 ```
-Container: whispers
+Container: whispers_v2
   Partition Key: /userId
   TTL: -1 (no expiration)
 
-Container: content_items (existing, reused)
-  Type 'whisper' records added for display
+Container: short_ids
+  Partition Key: /id
+  TTL: -1 (permanent, ensures IDs are never reused)
 ```
+
+Note: Whispers are no longer synced to content_items. The `whispers_v2` container is the single source of truth.
 
 ---
 
