@@ -20,7 +20,7 @@ No algorithms optimizing for clicks. No infinite scroll. Just signal.
 - 📡 **40+ sources** — RSS + web search (Tavily/Brave), S/A quality-rated
 - 🔍 **Quality filtering** — Source ratings, dedup, relevance scoring
 - 🌐 **Bilingual** — Multi-language translation support
-- ✨ **Eir integration** — Optional connection to [heyeir.com](https://www.heyeir.com) for enhanced reading
+- ✨ **[Eir integration](https://www.heyeir.com)** — Connect for a beautiful reading canvas, Whisper journaling (capture and share your sparks of insight), enhanced local search (SearXNG + Crawl4AI), and adaptive interest tracking — all while your data stays yours
 
 ## Quick Start
 
