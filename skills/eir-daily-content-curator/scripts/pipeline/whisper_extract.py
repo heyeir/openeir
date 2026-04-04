@@ -38,52 +38,25 @@ def now_iso() -> str:
 
 
 def call_llm(prompt: str) -> Dict:
-    """Call LLM via configured endpoint from eir_config."""
-    try:
-        from eir_config import get_model_config
-        config = get_model_config()
-        
-        endpoint = config.get("endpoint")
-        api_key = config.get("api_key")
-        model = config.get("model", "default")
-        
-        if not endpoint:
-            return {"error": "No LLM endpoint configured"}
-        
-        payload = json.dumps({
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.7
-        }).encode()
-        
-        headers = {"Content-Type": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
-        
-        req = urllib.request.Request(
-            endpoint, data=payload, headers=headers, method="POST"
-        )
-        
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            result = json.loads(resp.read())
-            content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-            # Parse JSON from content (LLM returns JSON in content, not response_format)
-            try:
-                return json.loads(content)
-            except json.JSONDecodeError:
-                # Try to extract JSON from markdown code blocks
-                json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', content)
-                if json_match:
-                    return json.loads(json_match.group(1))
-                # Try to find JSON object directly
-                json_match = re.search(r'\{[\s\S]*\}', content)
-                if json_match:
-                    return json.loads(json_match.group(0))
-                return {"error": f"Failed to parse LLM response: {content[:200]}"}
-                
-    except Exception as e:
-        print(f"    ⚠️ LLM call failed: {e}")
-        return {"error": str(e)}
+    """Call LLM via OpenClaw's configured model.
+    
+    This function should be called from within an OpenClaw agent context,
+    where the model is already configured. For standalone usage, the caller
+    must provide LLM access through OpenClaw's agent system.
+    
+    When running as an OpenClaw skill, use the agent's built-in LLM instead
+    of calling this function directly.
+    """
+    # NOTE: This is a placeholder. In OpenClaw agent context, use:
+    # - agent.generate() or similar OpenClaw API
+    # - Or spawn a sub-agent with the prompt
+    # 
+    # For now, we raise an error to indicate this should not be called directly
+    # from standalone Python. The skill should be invoked via OpenClaw agent.
+    raise NotImplementedError(
+        "LLM calls should be made through OpenClaw agent, not directly. "
+        "Run this skill via OpenClaw agent to use the configured model."
+    )
 
 
 def fetch_conversations(since: Optional[str] = None, limit: int = 50) -> List[Dict]:

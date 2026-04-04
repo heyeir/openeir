@@ -102,36 +102,3 @@ def get_api_key() -> str:
             "No API key found. Set EIR_API_KEY env var or create config/eir.json"
         )
     return key
-
-
-def get_model_config() -> dict:
-    """Load LLM model configuration for content generation.
-    
-    Resolution order:
-      1. EIR_MODEL_ENDPOINT env var
-      2. model.endpoint in settings.json
-      3. Fallback to EIR_API_URL (same as API endpoint)
-    """
-    settings = load_settings()
-    
-    endpoint = os.environ.get("EIR_MODEL_ENDPOINT")
-    api_key = os.environ.get("EIR_MODEL_API_KEY")
-    model = os.environ.get("EIR_MODEL_NAME", "default")
-    
-    if not endpoint:
-        # Try settings.json
-        model_config = settings.get("model", {})
-        endpoint = model_config.get("endpoint")
-        api_key = api_key or model_config.get("apiKey")
-        model = model_config.get("model", model)
-    
-    if not endpoint:
-        # Fallback to API endpoint
-        endpoint = get_api_url()
-        api_key = get_api_key()
-    
-    return {
-        "endpoint": endpoint,
-        "api_key": api_key,
-        "model": model
-    }
