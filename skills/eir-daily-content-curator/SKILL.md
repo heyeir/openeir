@@ -67,11 +67,11 @@ Or propose a default:
 ### Output format
 
 ```
-• **[Claude 4 发布](https://anthropic.com/...)** (Anthropic Blog)
-  200K 上下文窗口，原生工具调用，增强推理能力。
+• **[Claude 4 Released](https://anthropic.com/...)** (Anthropic Blog)
+  200K context window, native tool use, enhanced reasoning.
 
 • **[Agent Evaluation Checklist](https://blog.langchain.com/...)** (LangChain)
-  Agent 评估实用清单：错误分析、数据集构建、评分器设计。
+  Practical agent eval checklist: error analysis, dataset construction, scorer design.
 ```
 
 ### Quality rules
@@ -118,14 +118,14 @@ Create `config/eir.json` in your skill directory (or set `EIR_CONFIG` env var to
 ```json
 {
   "interests": ["AI", "product design", "developer tools"],
-  "language": "zh",
+  "language": "en",
   "max_items": 5,
   "sources": []
 }
 ```
 
 **interests**: Topics you care about. Will be enriched from conversation analysis.
-**language**: `zh` or `en`. Auto-detected from your OpenClaw conversations if omitted.
+**language**: `en` or `zh`. Auto-detected from your OpenClaw conversations if omitted.
 **max_items**: Items per curation cycle.
 **sources**: RSS feeds (optional). If empty, uses web search only.
 
@@ -136,7 +136,7 @@ Edit `config/eir.json` to add feeds:
 ```json
 {
   "interests": ["AI", "product design"],
-  "language": "zh",
+  "language": "en",
   "max_items": 5,
   "sources": [
     {"name": "Hacker News", "url": "https://hnrss.org/frontpage", "type": "rss"},
@@ -173,8 +173,8 @@ Output goes to stdout as JSON. Agent should format and send via `message` tool.
 ```json
 [
   {
-    "title": "Claude 4 发布：200K 上下文窗口",
-    "summary": "Anthropic 发布新一代模型，支持更长上下文和工具使用。",
+    "title": "Claude 4 Released: 200K Context Window",
+    "summary": "Anthropic releases next-gen model with longer context and tool use support.",
     "url": "https://anthropic.com/news/claude-4",
     "source": "Anthropic Blog",
     "published": "2026-04-03T10:00:00Z"
@@ -262,7 +262,7 @@ The pipeline has 6 stages. RSS and search only index title+snippet (fast, no cra
 ```bash
 # 0. Interest enrichment (once/day)
 openclaw cron add --name "eir-enrich" --cron "53 3 * * *" --tz "$YOUR_TZ" \
-  --message "cd $WORKSPACE && python3 scripts/pipeline/interest_extractor.py --enrich-only"
+  --message "cd $WORKSPACE && python3 scripts/pipeline/interest_extractor.py --pull --decay"
 
 # 1. Daily plan (once/day)
 openclaw cron add --name "eir-plan" --cron "23 4 * * *" --tz "$YOUR_TZ" \
@@ -296,7 +296,7 @@ openclaw cron add --name "eir-whisper" --cron "23 22 * * *" --tz "$YOUR_TZ" \
 | No items generated | Check `config/eir.json` has interests. Add RSS sources. |
 | RSS fetch fails | Verify URL with `curl -s <url> \| head`. Some sites block bots. |
 | Duplicates appearing | Delete `data/seen.json` to reset dedup cache. |
-| Wrong language | Set `"language": "zh"` or `"en"` in config. |
+| Wrong language | Set `"language": "en"` or `"zh"` in config. |
 
 ## Eir mode (optional)
 

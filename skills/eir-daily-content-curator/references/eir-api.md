@@ -36,7 +36,7 @@ Returns current interests + behavior data for Agent to make sync decisions.
   "topics": [
     {
       "slug": "ai-agents",
-      "label": "AI 智能体",
+      "label": "AI Agents",
       "strength": 0.8,
       "heat": 45,
       "decay_type": "ongoing",
@@ -54,9 +54,9 @@ Returns current interests + behavior data for Agent to make sync decisions.
   ],
   "groups": [
     {
-      "name": "AI & 机器学习",
-      "label": "AI & 机器学习",
-      "description": "我在构建 AI Agent 产品，关注架构决策和安全模式",
+      "name": "AI & Machine Learning",
+      "label": "AI & Machine Learning",
+      "description": "Building AI Agent products, focused on architecture decisions and safety patterns",
       "inferredNeeds": ["MCP integration", "safety patterns"],
       "topics": ["ai-agents", "llm-reasoning", "mcp-protocol"],
       "strength": 0.75,
@@ -124,7 +124,7 @@ Execute interest operations (add/merge/delete/boost/demote).
     {
       "op": "add",
       "slug": "mcp-protocol",
-      "label": "MCP 协议",
+      "label": "MCP Protocol",
       "decay_type": "event",
       "reason": "User discussed MCP 2.0 release with strong interest"
     },
@@ -207,7 +207,7 @@ Returns curation directives for today's content collection.
     {
       "type": "track",
       "slug": "mcp-protocol",
-      "topic": "MCP 协议",
+      "topic": "MCP Protocol",
       "description": "Model Context Protocol for AI agents",
       "keywords": ["MCP", "model context protocol"],
       "search_hints": ["MCP 2.0", "Anthropic MCP"],
@@ -223,7 +223,7 @@ Returns curation directives for today's content collection.
     {
       "type": "focus",
       "slug": "ai-agents",
-      "topic": "AI 智能体",
+      "topic": "AI Agents",
       "description": "AI agent frameworks and autonomous systems",
       "keywords": ["agent", "autonomous", "LLM"],
       "search_hints": ["AI agent framework", "multi-agent"],
@@ -246,7 +246,7 @@ Returns curation directives for today's content collection.
     {
       "type": "seed",
       "slug": "spatial-computing",
-      "topic": "空间计算",
+      "topic": "Spatial Computing",
       "strength": 0.2,
       "score": 0.18,
       "quality_threshold": 0.8,
@@ -334,14 +334,14 @@ Push generated content to Eir.
       "topicSlug": "mcp-protocol",
       "source_lang": "en",
       "dot": {
-        "hook": "MCP 2.0 发布",
+        "hook": "MCP 2.0 Released",
         "category": "focus",
         "color_hint": "blue"
       },
       "l1": {
-        "title": "MCP 协议 v2.0：多模型协同的基础设施",
-        "summary": "Anthropic 发布 MCP 2.0...",
-        "bullets": ["多模型上下文共享", "四级权限系统"],
+        "title": "MCP Protocol v2.0: Infrastructure for Multi-Model Collaboration",
+        "summary": "Anthropic releases MCP 2.0...",
+        "bullets": ["Multi-model context sharing", "Four-tier permission system"],
         "via": ["Anthropic Blog", "The Verge"]
       },
       "l2": {
@@ -548,7 +548,7 @@ Add or update a language version. Deep merges l1/l2 with existing data.
 **Request:**
 ```json
 {
-  "l1": { "title": "中文标题", "summary": "..." },
+  "l1": { "title": "Translated Title", "summary": "..." },
   "l2": { "content": "...", "bullets": [...] }
 }
 ```
