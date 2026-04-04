@@ -2,4 +2,4 @@ __pycache__/
 *.pyc
 .env*
 workspace/
-data/
+skills/eir-daily-content-curator/data/

@@ -11,7 +11,8 @@ Curates personalized content based on your interests — learns from conversatio
 openclaw skill install heyeir/openeir
 
 # Or clone directly
-git clone https://github.com/heyeir/openeir.git ~/.openclaw/skills/eir-daily-content-curator
+git clone https://github.com/heyeir/openeir.git
+# Skill is at openeir/skills/eir-daily-content-curator/
 ```
 
 Then tell your agent: *"Set up daily news for me"*
@@ -39,7 +40,7 @@ export BRAVE_API_KEY="BSA..."      # fallback
 Connect to an Eir instance for interest tracking and content delivery:
 ```bash
 export EIR_API_URL="https://api.heyeir.com"  # or your own instance
-node scripts/connect.mjs <PAIRING_CODE>       # saves API key to config/eir.json
+node skills/eir-daily-content-curator/scripts/connect.mjs <PAIRING_CODE>       # saves API key to config/eir.json
 ```
 
 ### All environment variables
@@ -54,11 +55,11 @@ node scripts/connect.mjs <PAIRING_CODE>       # saves API key to config/eir.json
 
 ## Documentation
 
-- [SKILL.md](SKILL.md) — Agent behavior & setup guide
-- [references/eir-api.md](references/eir-api.md) — Full API reference (Eir mode)
-- [references/quality-criteria.md](references/quality-criteria.md) — Content quality rules
-- [config/sources.json](config/sources.json) — Default RSS sources
-- [config/settings.json](config/settings.json) — Pipeline settings
+- [SKILL.md](skills/eir-daily-content-curator/SKILL.md) — Agent behavior & setup guide
+- [references/eir-api.md](skills/eir-daily-content-curator/references/eir-api.md) — Full API reference (Eir mode)
+- [references/quality-criteria.md](skills/eir-daily-content-curator/references/quality-criteria.md) — Content quality rules
+- [config/sources.json](skills/eir-daily-content-curator/config/sources.json) — Default RSS sources
+- [config/settings.json](skills/eir-daily-content-curator/config/settings.json) — Pipeline settings
 
 ## Pipeline
 
