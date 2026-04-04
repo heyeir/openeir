@@ -8,13 +8,17 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const CONFIG_PATH = path.join(__dirname, '..', 'config', 'eir.json')
-const BASE_URL = process.env.EIR_API_URL
+const CONFIG_DIR = path.join(__dirname, '..', 'config')
+const CONFIG_PATH = path.join(CONFIG_DIR, 'eir.json')
 
-if (!BASE_URL) {
-  console.error('Error: EIR_API_URL environment variable not set')
-  console.error('Set it to your Eir API base URL (e.g., https://api.heyeir.com)')
-  process.exit(1)
+// Default to production API if not set
+const BASE_URL = process.env.EIR_API_URL || 'https://api.heyeir.com'
+
+// Ensure config directory exists
+try {
+  fs.mkdirSync(CONFIG_DIR, { recursive: true })
+} catch (err) {
+  console.error(`Warning: Could not create config directory: ${err.message}`)
 }
 const API_BASE = BASE_URL + '/api'
 

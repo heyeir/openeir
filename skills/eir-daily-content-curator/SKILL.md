@@ -109,43 +109,115 @@ Agent: [sets up cron]
 
 ---
 
+## Quick Start (New Users)
+
+### Option 1: Guided Setup (Recommended)
+
+Run the interactive setup wizard:
+
+```bash
+cd /path/to/eir-daily-content-curator
+python3 scripts/setup.py
+```
+
+This will:
+1. ✓ Create config directories
+2. ✓ Check Eir connection status
+3. ✓ Guide you through pairing (if needed)
+4. ✓ Configure language, timezone, and preferences
+5. ✓ Verify infrastructure services
+6. ✓ Set up cron schedules
+
+### Option 2: Manual Setup
+
+If you prefer to configure manually, follow the steps below.
+
+---
+
 ## Technical Setup
 
-### Step 1: Initialize config
+### Prerequisites
 
-Create `config/eir.json` in your skill directory (or set `EIR_CONFIG` env var to a custom path):
+- **Python 3.10+** with `sentence-transformers`, `numpy`
+- **Node.js 18+** (for connection scripts)
+- **Optional infrastructure**: SearXNG, Crawl4AI, Search Gateway (see `references/infrastructure-setup.md`)
+
+Install Python dependencies:
+```bash
+pip install sentence-transformers numpy tzlocal
+```
+
+### Step 1: Choose Your Mode
+
+**Standalone Mode** — Simple RSS aggregation, no Eir account needed
+- Uses local RSS feeds + optional web search (Tavily/Brave APIs)
+- Content delivered directly to you via OpenClaw
+
+**Eir Mode** — Full AI curation with heyeir.com
+- Personalized content based on your interest profile
+- Multi-source synthesis and deep-dive analysis
+- Beautiful reading experience in the Eir app
+
+### Step 2a: Standalone Setup
+
+Create `config/settings.json`:
 
 ```json
 {
-  "interests": ["AI", "product design", "developer tools"],
-  "language": "en",
-  "max_items": 5,
-  "sources": []
+  "mode": "standalone",
+  "max_items_per_day": 5,
+  "search": {
+    "providers": ["tavily"],
+    "tavily_api_key": "your-key-here"
+  },
+  "cron": {
+    "schedule": "0 8 * * *",
+    "timezone": "Asia/Shanghai"
+  }
 }
 ```
 
-**interests**: Topics you care about. Will be enriched from conversation analysis.
-**language**: `en` or `zh`. Auto-detected from your OpenClaw conversations if omitted.
-**max_items**: Items per curation cycle.
-**sources**: RSS feeds (optional). If empty, uses web search only.
+Get a Tavily API key: https://tavily.com (free tier available)
 
-### Step 2: Add RSS sources (optional)
+### Step 2b: Eir Setup
 
-Edit `config/eir.json` to add feeds:
+1. **Get a pairing code** from Eir app → Settings → Connect OpenClaw
 
-```json
-{
-  "interests": ["AI", "product design"],
-  "language": "en",
-  "max_items": 5,
-  "sources": [
-    {"name": "Hacker News", "url": "https://hnrss.org/frontpage", "type": "rss"},
-    {"name": "TechCrunch AI", "url": "https://techcrunch.com/category/artificial-intelligence/feed/", "type": "rss"}
-  ]
-}
+2. **Connect your account**:
+   ```bash
+   node scripts/connect.mjs ABCD-1234
+   ```
+   This creates `config/eir.json` with your API credentials.
+
+3. **Configure settings**:
+   ```bash
+   python3 scripts/setup.py  # Interactive
+   # or manually edit config/settings.json
+   ```
+
+   Key settings for Eir mode:
+   ```json
+   {
+     "mode": "eir",
+     "eir": {
+       "bilingual": false,
+       "primary_language": "zh"
+     }
+   }
+   ```
+
+### Step 3: Verify Setup
+
+```bash
+# Check configuration
+python3 scripts/setup.py --check
+
+# Test standalone curation
+python3 scripts/standalone/curate.py
+
+# Test Eir connection (if in eir mode)
+python3 scripts/pipeline/interest_extractor.py --stats
 ```
-
-Find RSS feeds: most blogs have `/feed`, `/rss`, or `/atom.xml`. Use `curl -s <url> | head` to verify.
 
 ## Run curation
 

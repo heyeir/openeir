@@ -393,6 +393,13 @@ def main():
     interests = load_interests()
     api_key = load_eir_api_key()
     
+    # Auto-detect mode mismatch
+    if api_key and mode == "standalone":
+        print("⚠️  Detected Eir connection (config/eir.json exists) but mode is 'standalone'")
+        print("    Run: python3 scripts/setup.py  # to switch to eir mode")
+        print("    Or manually edit config/settings.json: mode = 'eir'")
+        print()
+    
     print(f"🎯 Interest Manager ({mode} mode)")
     
     if args.stats:
