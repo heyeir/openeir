@@ -22,8 +22,8 @@ Then tell your agent: *"Set up daily news for me"*
 - **Interest-aware**: Learns topics from your conversations
 - **Multi-source**: RSS feeds + web search (Tavily/Brave)
 - **Quality filtering**: Source ratings, dedup, relevance scoring
-- **Bilingual**: Generate content in zh/en with translation support
-- **Eir integration** (optional): Connect to [heyeir.com](https://heyeir.com) for enhanced reading experience with deep-dive analysis
+- **Bilingual**: Multi-language translation support
+- **Eir integration** (optional): Connect to [heyeir.com](https://heyeir.com) for enhanced reading experience
 
 ## Configuration
 
