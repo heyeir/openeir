@@ -18,11 +18,13 @@ import re
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 
-SCRIPT_DIR = Path(__file__).parent.parent.parent  # skill root
-CONFIG_DIR = Path.home() / ".openclaw" / "curator"
-USER_CONFIG = CONFIG_DIR / "config.json"
-SEEN_FILE = CONFIG_DIR / "seen.json"
-SKILL_SOURCES = SCRIPT_DIR / "config" / "sources.json"
+# Use shared workspace resolution from pipeline
+sys.path.insert(0, str(Path(__file__).parent.parent / "pipeline"))
+from eir_config import SKILL_DIR, WORKSPACE, CONFIG_DIR, DATA_DIR
+
+USER_CONFIG = CONFIG_DIR / "settings.json"
+SEEN_FILE = DATA_DIR / "seen.json"
+SKILL_SOURCES = SKILL_DIR / "config" / "sources.json"
 
 # ─── Interest → Source Mapping ────────────────────────────────────────────────
 
@@ -57,14 +59,18 @@ DEFAULT_SOURCES = ["Techmeme", "Hacker News (best)"]
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def load_user_config() -> Dict[str, Any]:
-    """Load user config or create default."""
+    """Load user config from workspace settings.json."""
     default = {"interests": [], "language": "zh", "max_items": 5}
     if not USER_CONFIG.exists():
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        USER_CONFIG.write_text(json.dumps(default, indent=2, ensure_ascii=False))
         return default
     try:
-        return json.loads(USER_CONFIG.read_text())
+        settings = json.loads(USER_CONFIG.read_text())
+        # Map settings.json fields to standalone config format
+        return {
+            "interests": settings.get("interests", []),
+            "language": settings.get("language", "zh"),
+            "max_items": settings.get("max_items_per_day", 5),
+        }
     except:
         return default
 
@@ -103,7 +109,7 @@ def save_seen(urls: Set[str]):
             existing[url] = now
     cutoff = (datetime.now() - timedelta(days=7)).isoformat()
     pruned = {url: ts for url, ts in existing.items() if ts > cutoff}
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     SEEN_FILE.write_text(json.dumps(pruned, indent=2))
 
 def strip_html(text: str) -> str:

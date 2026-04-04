@@ -3,7 +3,7 @@
 Embedding-enhanced cache for eir-daily-curator pipeline.
 Manages topic embeddings, article embeddings, and dual dedup.
 
-All cache files live under DATA_DIR (~/.openclaw/workspace-content/data/).
+All cache files live under DATA_DIR (resolved by eir_config.resolve_workspace()).
 
 Cache files and TTLs:
   context_cache.json   — Eir directives + topic embeddings      | overwritten each sync
@@ -28,10 +28,10 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent))
 from embed import EmbeddingService, MODEL_META
+from eir_config import WORKSPACE, DATA_DIR
 
-# All data lives here — single canonical location
-DATA_DIR = Path.home() / ".openclaw" / "workspace-content" / "data"
-FEEDBACK_DIR = Path.home() / ".openclaw" / "workspace-content" / "eir-feedback"
+# Feedback dir lives alongside data in workspace
+FEEDBACK_DIR = WORKSPACE / "eir-feedback"
 
 # Cache file paths
 CONTEXT_CACHE = DATA_DIR / "context_cache.json"

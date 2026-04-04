@@ -38,7 +38,9 @@ TOPIC_MATCHES_FILE = DATA_DIR / "topic_matches.json"
 PUSHED_TITLES_FILE = DATA_DIR / "pushed_titles.json"
 CURATION_RESULT_FILE = DATA_DIR / "curation_result.json"
 
-CRAWL4AI_URL = "http://localhost:11235"
+from eir_config import load_settings as _load_settings
+_search_cfg = _load_settings().get("search", {})
+CRAWL4AI_URL = _search_cfg.get("crawl4ai_url", "http://localhost:11235")
 CRAWL_TIMEOUT = 25
 MAX_SNIPPET_CHARS = 3000
 

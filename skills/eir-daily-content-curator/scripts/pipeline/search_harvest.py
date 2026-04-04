@@ -40,7 +40,11 @@ HARVEST_STATS_FILE = DATA_DIR / "harvest_stats.json"
 SOURCE_CACHE_FILE = DATA_DIR / "source_cache.json"
 PUSHED_TITLES_FILE = DATA_DIR / "pushed_titles.json"
 
-SEARCH_GATEWAY = "http://localhost:8899"
+from eir_config import load_config, get_api_url, get_api_key, load_settings as _load_settings
+
+_settings = _load_settings()
+_search_cfg = _settings.get("search", {})
+SEARCH_GATEWAY = _search_cfg.get("search_gateway_url", "http://localhost:8899")
 SEARCH_TIMEOUT = 10  # seconds per search query
 MAX_SEARCH_RESULTS = 8  # per query
 MAX_INDEX_PER_TOPIC = 8  # max URLs to index per topic (no crawl)
@@ -54,7 +58,7 @@ POOL_SUFFICIENT = {
 }
 POOL_SATURATED = 10
 
-from eir_config import load_config, get_api_url, get_api_key
+# eir_config already imported above
 
 # Eir API (only used in degraded mode)
 

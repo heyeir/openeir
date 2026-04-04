@@ -20,12 +20,12 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-# scripts/pipeline/post_translation.py → parent.parent.parent = skill root
-WORKSPACE = Path(__file__).resolve().parent.parent.parent
-DATA = WORKSPACE / "data"
+sys.path.insert(0, str(Path(__file__).parent))
+from eir_config import DATA_DIR, load_config as _load_eir_config, get_api_url, get_api_key
+
+DATA = DATA_DIR
 TRANSLATED_DIR = DATA / "translated"
 POSTED_DIR = DATA / "posted_translations"
-from eir_config import load_config as _load_eir_config, get_api_url, get_api_key
 
 REQUEST_INTERVAL = 0.5
 TIMEOUT = 60

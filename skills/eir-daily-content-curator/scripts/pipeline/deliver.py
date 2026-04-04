@@ -24,32 +24,29 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-WORKSPACE = Path(__file__).parent.parent.parent
-DATA_DIR = WORKSPACE / "data"
+sys.path.insert(0, str(Path(__file__).parent))
+from eir_config import SKILL_DIR, WORKSPACE, CONFIG_DIR, DATA_DIR, load_settings
+
 GENERATED_DIR = DATA_DIR / "generated"
 DELIVERED_DIR = DATA_DIR / "delivered"
-CONFIG_DIR = WORKSPACE / "config"
 SETTINGS_FILE = CONFIG_DIR / "settings.json"
 
-# OpenClaw workspace
-OPENCLAW_WORKSPACE = Path.home() / ".openclaw" / "workspace"
 
-
-def load_settings() -> dict:
-    if SETTINGS_FILE.exists():
-        return json.loads(SETTINGS_FILE.read_text())
-    return {"mode": "standalone", "local_storage": "workspace/eir/"}
+def _load_settings() -> dict:
+    """Local wrapper — prefer the shared load_settings from eir_config."""
+    return load_settings() or {"mode": "standalone"}
 
 
 def get_local_storage_path(settings: dict) -> Path:
-    """Get the local storage path, creating if needed."""
-    storage = settings.get("local_storage", "workspace/eir/")
+    """Get the local storage path, creating if needed.
     
-    # If it starts with "workspace/", use OpenClaw workspace
-    if storage.startswith("workspace/"):
-        path = OPENCLAW_WORKSPACE / storage.replace("workspace/", "")
+    Defaults to <workspace>/data/delivered.
+    """
+    storage = settings.get("local_storage", "")
+    if storage:
+        path = Path(storage).expanduser()
     else:
-        path = Path(storage)
+        path = DELIVERED_DIR
     
     path.mkdir(parents=True, exist_ok=True)
     return path
@@ -239,8 +236,8 @@ def main():
         print("\n  Running Eir post_content...")
         try:
             subprocess.run(
-                ["python3", str(WORKSPACE / "scripts" / "pipeline" / "post_content.py")],
-                cwd=WORKSPACE,
+                ["python3", str(SKILL_DIR / "scripts" / "pipeline" / "post_content.py")],
+                cwd=SKILL_DIR,
                 check=True
             )
         except Exception as e:
