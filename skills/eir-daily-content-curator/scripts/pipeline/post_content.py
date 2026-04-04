@@ -2,7 +2,7 @@
 """
 Post Content — reads generated content JSON files and POSTs to Eir API.
 
-API v2: each language version is a separate item with top-level l1/l2.
+API: each language version is a separate item with top-level l1/l2.
 ID format: {8-char contentGroup}_{lang} (e.g. a3k9m2x7_en).
 
 API flow:
@@ -227,7 +227,7 @@ def post_content(generated_file, api_key, dry_run=False, dedup=None, bilingual=F
                 except Exception:
                     pass
     
-    # Build API payload (v2 format: top-level l1/l2 per lang)
+    # Build API payload: top-level l1/l2 per lang
     item = {
         "lang": lang,
         "dot": content.get("dot", {}),
@@ -253,7 +253,7 @@ def post_content(generated_file, api_key, dry_run=False, dedup=None, bilingual=F
         return {"slug": slug, "title": title, "lang": lang, "status": "error",
                 "reason": "POST failed: %d %s" % (status, resp)}
     
-    # v2 response: {accepted: N, rejected: N, results: [{status, id, contentGroup, ...}]}
+    # Response: {accepted: N, rejected: N, results: [{status, id, contentGroup, ...}]}
     results = resp.get("results", [])
     if not results or results[0].get("status") != "accepted":
         reason = results[0].get("reason", resp.get("error", "unknown")) if results else "empty results"
@@ -320,7 +320,7 @@ def queue_translation(content_id, source_lang, target_lang, content):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Post generated content to Eir API (v2 short IDs)")
+    parser = argparse.ArgumentParser(description="Post generated content to Eir API")
     parser.add_argument("--file", help="Post a single file")
     parser.add_argument("--dry-run", action="store_true", help="Preview without posting")
     parser.add_argument("--bilingual", action="store_true", help="Queue translation tasks")

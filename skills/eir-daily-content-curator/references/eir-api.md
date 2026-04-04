@@ -663,7 +663,7 @@ Read back a single content item.
 
 ### PATCH /oc/content/:id/locale/:lang
 
-Add or update a language version. In v2, this creates or updates the `{contentGroup}_{lang}` document directly.
+Add or update a language version. This creates or updates the `{contentGroup}_{lang}` document directly.
 
 **Request:**
 ```json
@@ -697,7 +697,7 @@ Add or update a language version. In v2, this creates or updates the `{contentGr
 
 ## Data Architecture
 
-### Cosmos DB Containers (v2)
+### Cosmos DB Containers
 
 | Container | Partition Key | Purpose | TTL |
 |-----------|---------------|---------|-----|

@@ -166,7 +166,6 @@ Content-Type: application/json
 **Notes**:
 - Creates whisper in `whispers_v2` container (no TTL)
 - ID format: `{8-char contentGroup}_{lang}` (e.g., `x7k2m9p4_en`)
-- Whispers are NOT duplicated into content_items (v2 uses separate containers)
 - Clears `whisperCandidate` flag on source conversation if `conversationId` provided
 
 ---
@@ -235,8 +234,6 @@ Container: short_ids
   Partition Key: /id
   TTL: -1 (permanent, ensures IDs are never reused)
 ```
-
-Note: Whispers are no longer synced to content_items. The `whispers_v2` container is the single source of truth.
 
 ---
 
