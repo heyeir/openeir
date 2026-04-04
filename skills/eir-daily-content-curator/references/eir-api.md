@@ -332,7 +332,7 @@ Push generated content to Eir.
     {
       "slug": "mcp-protocol-2-0",
       "topicSlug": "mcp-protocol",
-      "source_lang": "en",
+      "lang": "en",
       "dot": {
         "hook": "MCP 2.0 Released",
         "category": "focus",
@@ -358,16 +358,33 @@ Push generated content to Eir.
 }
 ```
 
+**Key fields**:
+- `lang` (required): Language code ("en", "zh"). Each language version is a separate document.
+- `l1`, `l2` are **top-level** per item (NOT nested in `locales{}`).
+- For bilingual content, push two separate items with the same `slug`/`topicSlug` but different `lang`.
+- `locales{}` format is still accepted for backward compatibility but deprecated.
+
 **Response:**
 ```json
 {
   "accepted": 1,
   "rejected": 0,
   "results": [
-    { "status": "accepted", "id": "ci_u_abc123_1711234567_x3k2", "slug": "mcp-protocol-2-0", "content_url": "https://..." }
+    {
+      "status": "accepted",
+      "id": "a3k9m2x7_en",
+      "contentGroup": "a3k9m2x7",
+      "slug": "mcp-protocol-2-0",
+      "langs": ["en"]
+    }
   ]
 }
 ```
+
+**ID Format**: `{8-char contentGroup}_{lang}` (e.g., `a3k9m2x7_en`).
+
+- `contentGroup`: 8-char base64url, globally unique, registered in `short_ids` container.
+- All language versions of the same article share the same `contentGroup`.
 
 Possible `status` values: `accepted`, `skipped` (duplicate source_url), `error`.
 
@@ -419,8 +436,9 @@ Possible `status` values: `accepted`, `skipped` (duplicate source_url), `error`.
 │     → Diversity enforcement across types                        │
 │                                                                 │
 │  6. POST /oc/content                                            │
-│     → Push generated items (in primary_language)                │
-│     ← If bilingual, PATCH /oc/content/:id/locale/:lang          │
+│     → Push generated items (each lang as separate item)          │
+│     → For bilingual: push 2 items with same slug, different lang │
+│     → Optionally use PATCH /oc/content/:id/locale/:lang          │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -629,23 +647,23 @@ Read back a single content item.
 **Response:**
 ```json
 {
-  "id": "ci_u_abc123_1711234567_x3k2",
+  "id": "a3k9m2x7_en",
+  "contentGroup": "a3k9m2x7",
+  "lang": "en",
   "slug": "anthropic-trust-tiers",
   "topicSlug": "ai-agents",
-  "source_lang": "en",
-  "available_langs": ["en", "zh"],
-  "locales": { "en": { "l1": {}, "l2": {} }, "zh": { "l1": {}, "l2": {} } },
   "dot": {},
+  "l1": {},
+  "l2": {},
   "sources": [...],
-  "content_url": "https://your-eir-instance.com/en/content/anthropic-trust-tiers-x3k2",
-  "createdAt": "2026-04-03T10:00:00Z",
+  "created_at": "2026-04-03T10:00:00Z",
   "updated_at": "2026-04-03T12:00:00Z"
 }
 ```
 
 ### PATCH /oc/content/:id/locale/:lang
 
-Add or update a language version. Deep merges l1/l2 with existing data.
+Add or update a language version. In v2, this creates or updates the `{contentGroup}_{lang}` document directly.
 
 **Request:**
 ```json
@@ -678,6 +696,27 @@ Add or update a language version. Deep merges l1/l2 with existing data.
 ---
 
 ## Data Architecture
+
+### Cosmos DB Containers (v2)
+
+| Container | Partition Key | Purpose | TTL |
+|-----------|---------------|---------|-----|
+| `content_items_v2` | `/userId` | Content (one doc per language) | 30d |
+| `whispers_v2` | `/userId` | Whisper items | - |
+| `shared_content_v2` | `/id` | Shared content snapshots | - |
+| `short_ids` | `/id` | ID registry (uniqueness) | - |
+| `id_mapping` | `/id` | Old→new ID mapping | 90d |
+
+### Content ID Format
+
+```
+{contentGroup}_{lang}     e.g. a3k9m2x7_en
+```
+
+- `contentGroup`: 8-char base64url, globally unique
+- `lang`: language code (en, zh)
+- Each language version is an independent document
+- All language versions share the same `contentGroup`
 
 ### Global vs Personal Data
 

@@ -2,12 +2,12 @@
 """
 Post Content — reads generated content JSON files and POSTs to Eir API.
 
-API is v1: uses {items: [...]} wrapper with locales.{lang} nesting.
-Translation uses PATCH /content/:id/locale/:lang.
+API v2: each language version is a separate item with top-level l1/l2.
+ID format: {8-char contentGroup}_{lang} (e.g. a3k9m2x7_en).
 
 API flow:
-  1. POST /api/oc/content {items: [{dot, l1, l2, locales, sources, ...}]}
-  2. (optional) PATCH /api/oc/content/:id/locale/:lang → add translation
+  1. POST /api/oc/content {items: [{lang, dot, l1, l2, sources, ...}]}
+  2. For bilingual: POST both lang versions in the same request
 
 Usage:
   python3 scripts/pipeline/post_content.py                     # post all pending
@@ -227,19 +227,14 @@ def post_content(generated_file, api_key, dry_run=False, dedup=None, bilingual=F
                 except Exception:
                     pass
     
-    # Build API payload (v1 format: {items: [{...}]} with locales nesting)
+    # Build API payload (v2 format: top-level l1/l2 per lang)
     item = {
+        "lang": lang,
         "dot": content.get("dot", {}),
-        "source_lang": content.get("source_lang", "en"),
+        "slug": content.get("slug", slug),
         "topicSlug": content.get("topic_slug", content.get("topicSlug", slug)),
         "l1": content.get("l1", {}),
         "l2": content.get("l2", {}),
-        "locales": {
-            lang: {
-                "l1": content.get("l1", {}),
-                "l2": content.get("l2", {}),
-            }
-        },
         "sources": sources,
     }
     # Include optional fields
@@ -258,7 +253,7 @@ def post_content(generated_file, api_key, dry_run=False, dedup=None, bilingual=F
         return {"slug": slug, "title": title, "lang": lang, "status": "error",
                 "reason": "POST failed: %d %s" % (status, resp)}
     
-    # v1 response: {accepted: N, rejected: N, results: [{status, id, ...}]}
+    # v2 response: {accepted: N, rejected: N, results: [{status, id, contentGroup, ...}]}
     results = resp.get("results", [])
     if not results or results[0].get("status") != "accepted":
         reason = results[0].get("reason", resp.get("error", "unknown")) if results else "empty results"
@@ -266,7 +261,8 @@ def post_content(generated_file, api_key, dry_run=False, dedup=None, bilingual=F
                 "reason": "POST rejected: %s" % reason}
     
     content_id = results[0].get("id", "") if results else resp.get("id", "")
-    print("    POST %s (%s) ok → %s" % (slug, lang, content_id))
+    content_group = results[0].get("contentGroup", "") if results else ""
+    print("    POST %s (%s) ok → %s (group: %s)" % (slug, lang, content_id, content_group))
     
     # Move to posted dir
     POSTED_DIR.mkdir(parents=True, exist_ok=True)
@@ -324,7 +320,7 @@ def queue_translation(content_id, source_lang, target_lang, content):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Post generated content to Eir API (v2)")
+    parser = argparse.ArgumentParser(description="Post generated content to Eir API (v2 short IDs)")
     parser.add_argument("--file", help="Post a single file")
     parser.add_argument("--dry-run", action="store_true", help="Preview without posting")
     parser.add_argument("--bilingual", action="store_true", help="Queue translation tasks")
