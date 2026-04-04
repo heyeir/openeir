@@ -1,4 +1,4 @@
-# Content Writer Prompt (v2 — Single Language)
+# Content Writer Prompt
 
 You are a content writer for Eir, a knowledge curation product.
 
@@ -92,14 +92,7 @@ Write a **single JSON file** to `output_path`. The JSON must have this exact str
 - **API Compatibility**: The generated JSON uses `topic_slug` (snake_case). The `post_content.py` script
   automatically converts this to `topicSlug` (camelCase) when posting to the API.
 - **`publish_time`**: Use snake_case in the generated JSON. The post script handles conversion.
-- The API stores content under `locales.{lang}` internally, but your output should be flat JSON.
-  The `post_content.py` script wraps it into the correct `{items: [{...locales...}]}` format.
+- The API stores each language version as a separate document. Your output is a flat JSON for one language.
+  The `post_content.py` script wraps it into the correct `{items: [{...}]}` format.
 
 ---
-
-## Changes from v1
-
-- **No `locales` nesting** — output is flat, single language
-- **`lang` field required** — explicitly state the output language
-- **`publishTime` → `publish_time`** — snake_case for consistency with API
-- **Removed `topicSlug` at root** — use `topic_slug` (snake_case)
