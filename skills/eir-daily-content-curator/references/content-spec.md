@@ -176,6 +176,65 @@ These fields are set by the public content pipeline (`POST /pc/content`). Privat
 | `freshness` | string | `"daily"` | `"breaking"` \| `"daily"` \| `"evergreen"` |
 | `categories` | string[] | `[]` | Coarse topic categories e.g. `["ai", "tech"]` |
 | `canonicalUrl` | string | null | Primary source URL for dedup |
+| `embedding` | number[] | null | 256d vector from EmbeddingGemma-300M (see below) |
+| `embeddingModel` | string | null | Always `"embedding-gemma-300m"` when embedding is set |
+| `embeddingDim` | number | null | Always `256` when embedding is set |
+
+---
+
+## Embedding Specification
+
+All embeddings in the Eir system **MUST** use the same model and dimension for cosine similarity to work.
+
+### Model
+
+| Property | Value |
+|----------|-------|
+| Model | **google/embeddinggemma-300m** (300M params, Gemma 3 derived) |
+| HuggingFace ID | `google/embeddinggemma-300m` |
+| Full dimension | 768d |
+| **Truncated dimension** | **256d** (Matryoshka) |
+| Max tokens | 2048 |
+
+### Method: Matryoshka Representation Learning
+
+1. Encode text at full 768d (no normalization)
+2. Truncate to first 256 dimensions
+3. L2 normalize after truncation
+
+```python
+from sentence_transformers import SentenceTransformer
+import numpy as np
+
+model = SentenceTransformer('google/embeddinggemma-300m')
+
+def embed(texts):
+    full_embs = model.encode(texts, normalize_embeddings=False)
+    truncated = full_embs[:, :256].copy()
+    norms = np.linalg.norm(truncated, axis=1, keepdims=True)
+    return (truncated / np.maximum(norms, 1e-12)).astype(np.float32)
+```
+
+### Where embeddings are used
+
+| Container | Field | Model | Dimension |
+|-----------|-------|-------|-----------|
+| `interest_topics` | `embedding` | embedding-gemma-300m | 256 |
+| `user_interests` | `userEmbedding` | weighted mean of topic embeddings | 256 |
+| `content_items` | `embedding` | embedding-gemma-300m | 256 |
+
+### API Validation
+
+`POST /pc/content` validates embedding:
+- Must be exactly 256d (error: `embedding must be 256d (EmbeddingGemma-300M Matryoshka), got Xd`)
+- Must contain only numbers
+
+### Pipeline Integration
+
+Content pipeline (`post_content.py`) should:
+1. After generating content, extract text: `l1.title + l1.summary + l2.content`
+2. Call `embed.py` to generate 256d embedding
+3. Include `embedding` in POST body
 
 ---
 
