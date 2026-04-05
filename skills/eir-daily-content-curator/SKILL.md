@@ -403,4 +403,6 @@ python3 scripts/pipeline/whisper_extract.py --dry-run
 | User says | Cron expression |
 |-----------|-----------------|
 | "8am" | `0 8 * * *` |
-| "9:30am" | `30 9
+| "9:30am" | `30 9 * * *` |
+| "8pm" | `0 20 * * *` |
+| "twice daily" | `0 8,20 * * *` |

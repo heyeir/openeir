@@ -12,6 +12,10 @@ Usage:
   python3 scripts/pipeline/whisper_extract.py --max 3      # max whispers per run
 """
 
+# NOTE: This script provides API helpers for fetching/posting whispers.
+# The actual LLM analysis is done by the OpenClaw agent using the prompt
+# in references/whisper-api.md.
+
 import argparse
 import json
 import os
@@ -35,28 +39,6 @@ WHISPER_CANDIDATE_LIMIT = 10
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def call_llm(prompt: str) -> Dict:
-    """Call LLM via OpenClaw's configured model.
-    
-    This function should be called from within an OpenClaw agent context,
-    where the model is already configured. For standalone usage, the caller
-    must provide LLM access through OpenClaw's agent system.
-    
-    When running as an OpenClaw skill, use the agent's built-in LLM instead
-    of calling this function directly.
-    """
-    # NOTE: This is a placeholder. In OpenClaw agent context, use:
-    # - agent.generate() or similar OpenClaw API
-    # - Or spawn a sub-agent with the prompt
-    # 
-    # For now, we raise an error to indicate this should not be called directly
-    # from standalone Python. The skill should be invoked via OpenClaw agent.
-    raise NotImplementedError(
-        "LLM calls should be made through OpenClaw agent, not directly. "
-        "Run this skill via OpenClaw agent to use the configured model."
-    )
 
 
 def fetch_conversations(since: Optional[str] = None, limit: int = 50) -> List[Dict]:
@@ -152,10 +134,7 @@ If YES: return {{
 Conversation:
 {conv_text}'''
     
-    result = call_llm(prompt)
-    if result.get("error") or not result.get("whisper"):
-        return None
-    return result.get("analysis")
+    sys.exit("Error: whisper_extract.py must be run through an OpenClaw agent. The agent provides LLM analysis.")
 
 
 def generate_whisper(conv: Dict, analysis: Dict) -> Optional[Dict]:
@@ -197,11 +176,7 @@ Output JSON:
   }}
 }}'''
     
-    result = call_llm(prompt)
-    if result.get("error"):
-        return None
-    
-    # Build complete whisper structure
+    sys.exit("Error: whisper_extract.py must be run through an OpenClaw agent. The agent provides LLM analysis.")
     whisper = {
         "dot": result.get("dot", {"hook": "..."}),
         "l1": {
