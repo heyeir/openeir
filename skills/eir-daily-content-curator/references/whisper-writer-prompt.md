@@ -13,7 +13,7 @@ Write a **single JSON object** with this exact structure:
 ```json
 {
   "dot": {
-    "hook": "≤10 chars"
+    "hook": "≤10 CJK chars or ≤6 English words"
   },
   "l1": {
     "title": "Core tension, one sentence",
@@ -84,7 +84,7 @@ If fewer than 2 criteria are met, return:
 
 ### Hook (`dot.hook`)
 
-10. **≤10 characters** (recommended) — the hook appears as a label on the canvas dot. API allows up to 100 chars but shorter is better.
+10. **≤10 CJK chars or ≤6 English words** (recommended) — the hook appears as a label on the canvas dot. API allows up to 100 chars but shorter is better.
 11. Pick the **sharpest single phrase** from the conversation — the moment of highest tension or deepest insight.
 12. Can use the user's original words if they fit. Can use symbols (≠, ×, →, ?, !).
 13. Can mix languages if the conversation does (e.g., a Chinese phrase that captures the moment).
@@ -134,7 +134,7 @@ Whisper-specific constraints:
 
 | Field | Constraint |
 |-------|-----------|
-| `dot.hook` | **≤10 chars** (recommended, API allows up to 100). Shorter is better. |
+| `dot.hook` | **≤10 CJK chars or ≤6 English words** (recommended, API allows up to 100). Shorter is better. |
 | `dot.category` | Always `"whisper"` (auto-set by API) |
 | `dot.color_hint` | Always `"amber"` (auto-set by API) |
 | `l1.summary` | 80-120 words. Tighter than curated content (50-80). |

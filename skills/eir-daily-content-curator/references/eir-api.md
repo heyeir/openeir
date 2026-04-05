@@ -533,7 +533,7 @@ Create a single whisper from extracted conversation insight.
 ```json
 {
   "dot": {
-    "hook": "≤10 character hook"
+    "hook": "≤10 CJK chars or ≤6 English words"
   },
   "l1": {
     "title": "Core tension description",

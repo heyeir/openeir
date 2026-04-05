@@ -101,7 +101,7 @@ Content-Type: application/json
 ```json
 {
   "dot": {
-    "hook": "≤10 character hook"
+    "hook": "≤10 CJK chars or ≤6 English words"
   },
   "l1": {
     "title": "Core tension description",
@@ -130,7 +130,7 @@ Content-Type: application/json
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `dot.hook` | string | Yes | ≤10 chars recommended (API allows up to 100). |
+| `dot.hook` | string | Yes | ≤10 CJK chars / ≤6 EN words recommended (API allows up to 100). |
 | `l1.title` | string | Yes | Core tension, one sentence |
 | `l1.summary` | string | Yes | 80-120 word summary |
 | `l1.participants` | string | Yes | Fixed `"user+eir"` |
@@ -183,7 +183,7 @@ interface WhisperItem {
   
   // L0 Dot
   dot: {
-    hook: string                // ≤10 chars recommended (API allows up to 100)
+    hook: string                // ≤10 CJK chars / ≤6 EN words recommended (API allows up to 100)
     category: 'whisper'
     color_hint: 'amber'
   }

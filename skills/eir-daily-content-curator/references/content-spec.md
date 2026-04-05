@@ -101,7 +101,7 @@ Whispers share the same dot/l1/l2 structure but with different field semantics:
 |-------|--------------|-------|
 | `dot.category` | Always `"whisper"` | Server overrides to whisper |
 | `dot.color_hint` | Always `"amber"` | Server overrides to amber |
-| `dot.hook` | ≤10 chars | Same as content recommended limit |
+| `dot.hook` | ≤10 CJK chars / ≤6 EN words | Same as content recommended limit |
 | `l1.participants` | `"user+eir"` | Server defaults if omitted |
 | `l1.via` | `["OpenClaw"]` | Server defaults if omitted |
 | `l2.tension` | Required | "X vs Y" format |
