@@ -187,7 +187,18 @@ Execute interest operations (add/merge/delete/boost/demote).
   "profile_snapshot": {
     "topic_count": 12,
     "top_topics": ["ai-agents", "mcp-protocol", "react"],
-    "last_sync": "2026-04-03T07:50:00Z"
+    "last_sync": "2026-04-03T07:50:00Z",
+    "embedding_updated": true,
+    "embedding_meta": {
+      "version": 2,
+      "model": "EmbeddingGemma-300M",
+      "dim": 256,
+      "topicsUsed": 8,
+      "topicsTotal": 12,
+      "skippedDimMismatch": 0,
+      "skippedNoEmbedding": 4,
+      "updatedAt": 1775311200000
+    }
   }
 }
 ```
@@ -624,7 +635,11 @@ User curation context snapshot (daily sync). Returns interests, preferences, and
   "interests": {
     "topics": { "ai-agents": { "strength": 0.8, "heat": 45 } },
     "groups": [...],
-    "userEmbedding": [0.12, -0.34, ...]
+    "userEmbedding": [0.12, -0.34, ...],
+    "embeddingMeta": {
+      "version": 2, "model": "EmbeddingGemma-300M", "dim": 256,
+      "topicsUsed": 8, "topicsTotal": 12, "updatedAt": 1775311200000
+    }
   },
   "preferences": {
     "locale": "zh",
@@ -741,6 +756,8 @@ Add or update a language version. This creates or updates the `{contentGroup}_{l
 | `interest_topics` | Global dictionary | Universal definitions: labels, description (generic), keywords |
 | `user_interests.topics` | Per-user | Strength, heat, sources, engagement history |
 | `user_interests.groups` | Per-user | **Personalized** description, inferredNeeds |
+| `user_interests.userEmbedding` | Per-user | 256d vector, weighted mean of topic embeddings |
+| `user_interests.embeddingMeta` | Per-user | version, model, dim, topicsUsed, skipped counts |
 
 ### Embedding Text Construction
 
@@ -755,3 +772,50 @@ This ensures:
 - New users get generic matching from global dictionary
 - Active users get personalized matching from their groups
 - Pipeline `enrich_topics()` handles missing data locally
+
+### User Embedding
+
+The server computes `userEmbedding` as the **weighted average** of all active topic embeddings, normalized to unit length.
+
+**When it's recomputed:**
+- After `POST /oc/interests/sync` (OC agent updates interests)
+- After `POST /oc/interests/extract` (conversation interest extraction)
+- After `POST /interests/fre` (first-run experience onboarding)
+
+**Algorithm:**
+1. Collect all active topics (not dismissed, strength > 0)
+2. For each topic, look up embedding from `interest_topics` dictionary
+3. **Dimension validation**: skip topics with `embedding.length ≠ EMBEDDING_DIM` (256)
+4. Skip topics without embedding (custom user topics not in dictionary)
+5. Weighted mean: `Σ(embedding × strength) / Σ(strength)`
+6. L2 normalize the result
+
+**Fallback rules:**
+- If some topics lack embeddings → compute with available ones
+- If ALL topics lack embeddings → keep existing `userEmbedding` unchanged
+- If model/dim changes → old-dim embeddings are skipped, new ones used when available
+
+**Stored fields:**
+```json
+{
+  "userEmbedding": [0.12, -0.34, ...],    // 256d normalized vector
+  "embeddingMeta": {
+    "version": 2,                          // Bump when model changes
+    "model": "EmbeddingGemma-300M",        // Current embedding model
+    "dim": 256,                            // Vector dimension
+    "topicsUsed": 8,                       // Topics that contributed
+    "topicsTotal": 12,                     // Total active topics
+    "skippedDimMismatch": 0,               // Topics with wrong dim
+    "skippedNoEmbedding": 4,               // Topics without embedding
+    "updatedAt": 1775311200000             // Timestamp
+  },
+  "embeddingUpdatedAt": 1775311200000      // Legacy compat
+}
+```
+
+**Constants** (in `api/index.ts`):
+```typescript
+const EMBEDDING_MODEL = 'EmbeddingGemma-300M'
+const EMBEDDING_DIM = 256
+const EMBEDDING_VERSION = 2
+```
