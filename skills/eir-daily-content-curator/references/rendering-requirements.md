@@ -22,7 +22,7 @@
 | `title` | string | 15-40 CJK chars / 8-15 EN words | **200 chars** (API rejects) | Opinionated, not a headline. Must be in `lang`. |
 | `summary` | string | 50-80 words | — | 2-3 sentences. Advances beyond the title — don't repeat. |
 | `key_quote` | string | 1 sentence | — | Best direct quote from sources. Use `""` if none. |
-| `via` | **string[]** | — | — | **Must be an array.** Auto-derived from `sources[].name` — writer should NOT set this manually. `post_content.py` populates it. |
+| `via` | **string[]** | — | — | **Must be an array.** Auto-derived from `sources[].name`. Pipeline (`post_content.py`) populates it; API also falls back to `sources[].name` if empty. Writer should NOT set this. |
 | `bullets` | string[] | 3-4 items | 10 items (API rejects) | Each: ≤20 CJK chars / ≤50 EN chars. Don't repeat summary. |
 
 ### l2 (depth — expanded view)
@@ -67,10 +67,10 @@
 | **Purpose** | Machine: dedup, provenance, linking | Human: display attribution on card |
 | **Contains** | Full metadata (url, title, name) | Just the names |
 | **Type** | `Array<{url, title, name}>` | `string[]` |
-| **Set by** | Writer (required) | `post_content.py` (auto-derived) |
+| **Set by** | Writer (required) | `post_content.py` (auto-derived); API also falls back to `sources[].name` if empty |
 | **Example** | `[{url: "...", name: "MIT Tech Review"}, {url: "...", name: "ArXiv"}]` | `["MIT Tech Review", "ArXiv"]` |
 
-**Writers only need to set `sources[]`.** The pipeline auto-populates `via` from `sources[].name`. If the writer includes `via` it will be overwritten.
+**Writers only need to set `sources[]`.** The pipeline auto-populates `via` from `sources[].name`; the API also falls back to `sources[].name` if `via` is empty. If the writer includes `via` it will be overwritten.
 
 ---
 

@@ -228,12 +228,16 @@ def post_content(generated_file, api_key, dry_run=False, dedup=None, bilingual=F
                     pass
     
     # Build API payload: top-level l1/l2 per lang
+    l1 = content.get("l1", {})
+    # Auto-populate l1.via from sources[].name (pipeline is the canonical source)
+    if not l1.get("via") and sources:
+        l1["via"] = [s["name"] for s in sources if s.get("name")]
     item = {
         "lang": lang,
         "dot": content.get("dot", {}),
         "slug": content.get("slug", slug),
         "topicSlug": content.get("topic_slug", content.get("topicSlug", slug)),
-        "l1": content.get("l1", {}),
+        "l1": l1,
         "l2": content.get("l2", {}),
         "sources": sources,
     }
