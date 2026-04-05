@@ -21,7 +21,7 @@ Write a **single JSON file** to `output_path`. The JSON must have this exact str
   "content_url_slug": "<SEO-friendly English slug, 3-8 words hyphenated, all lowercase>",
   "topic_slug": "<slug from task>",
   "dot": {
-    "hook": "<≤10 chars (CJK) or ≤6 COMPLETE English words, in output_lang. NEVER truncate mid-word.>",
+    "hook": "<≤10 chars (CJK) or ≤6 English words, in output_lang>",
     "category": "<choose: focus | attention | seed>",
     "color_hint": "<color_hint from task>"
   },

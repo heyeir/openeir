@@ -130,7 +130,7 @@ Content-Type: application/json
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `dot.hook` | string | Yes | ≤10 chars recommended (API allows up to 100). Never truncate mid-word. |
+| `dot.hook` | string | Yes | ≤10 chars recommended (API allows up to 100). |
 | `l1.title` | string | Yes | Core tension, one sentence |
 | `l1.summary` | string | Yes | 80-120 word summary |
 | `l1.participants` | string | Yes | Fixed `"user+eir"` |

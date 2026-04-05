@@ -11,7 +11,7 @@
 
 | Field | Type | Recommended | Hard Limit | Notes |
 |-------|------|-------------|------------|-------|
-| `hook` | string | ≤10 CJK chars / ≤6 EN COMPLETE words | **100 chars** (API rejects) | Creates curiosity gap. No hype words ("Breaking", "Exciting"). **Never truncate mid-word.** Rendered as single-line label on the dot. |
+| `hook` | string | ≤10 CJK chars / ≤6 EN words | **100 chars** (API rejects) | Creates curiosity gap. No hype words ("Breaking", "Exciting"). Rendered as single-line label on the dot. |
 | `category` | enum | — | `focus` \| `attention` \| `seed` \| `whisper` | Determines dot visual style. Whispers always use `whisper`. |
 | `color_hint` | enum | — | `blue` \| `gold` \| `amber` \| `cyan` \| `green` \| `purple` \| `red` | Whispers always use `amber`. |
 
