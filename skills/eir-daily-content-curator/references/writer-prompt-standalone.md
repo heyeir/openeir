@@ -35,7 +35,7 @@ Write a JSON file to `output_path`:
 3. **Never invent facts**: Only summarize what's in the snippet.
 4. **Language**: Match the language of the source content. If unclear, use English.
 5. **No opinions**: Save commentary for Eir mode. Just the facts here.
-6. **Publish time**: Copy from input if available, otherwise null.
+6. **Publish time**: Copy from input if available, otherwise `""`.
 
 ## Anti-patterns
 
