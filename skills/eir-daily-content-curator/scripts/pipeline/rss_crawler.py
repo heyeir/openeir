@@ -107,6 +107,55 @@ def fetch_rss(url):
     return items
 
 
+def _load_topic_embeddings(svc):
+    """Pre-compute topic embeddings for pre-filter. Returns (embeddings, threshold) or (None, 0)."""
+    try:
+        from search_harvest import load_daily_plan, DIRECTIVES_FILE, directives_to_topics
+        from search_harvest import TOPIC_MATCH_THRESHOLD
+
+        daily_plan = load_daily_plan()
+        if daily_plan:
+            topics = daily_plan.get("topics", [])
+        elif DIRECTIVES_FILE.exists():
+            data = json.loads(DIRECTIVES_FILE.read_text())
+            topics = directives_to_topics(data)
+        else:
+            return None, 0
+
+        # Only match tracked + focus (same as _update_topic_matches)
+        RSS_MATCH_TYPES = {"track", "tracked", "focus"}
+        topics = [t for t in topics if t.get("type", "") in RSS_MATCH_TYPES]
+        if not topics:
+            return None, 0
+
+        topic_texts = []
+        for t in topics:
+            txt = t.get("embedding_text", "").strip()
+            if not txt:
+                txt = f"{t.get('topic', '')} {t.get('description', '')} {' '.join(t.get('keywords', [])[:8])}"
+            topic_texts.append(txt)
+
+        topic_embs = svc.embed_queries(topic_texts)
+        # Use a looser threshold for pre-filter (catch more, let dispatcher decide)
+        prefilter_threshold = max(TOPIC_MATCH_THRESHOLD - 0.08, 0.35)
+        return topic_embs, prefilter_threshold
+    except Exception as e:
+        print(f"⚠️ Topic pre-filter init failed: {e}", file=sys.stderr)
+        return None, 0
+
+
+def _passes_prefilter(emb, topic_embs, threshold):
+    """Check if article embedding matches any topic above threshold."""
+    if topic_embs is None:
+        return True  # No pre-filter available, pass everything
+    import numpy as np
+    for t_emb in topic_embs:
+        score = float(np.dot(emb, t_emb) / (np.linalg.norm(emb) * np.linalg.norm(t_emb) + 1e-9))
+        if score >= threshold:
+            return True
+    return False
+
+
 def run_crawl(tier_filter=None, dry_run=False, max_time=0):
     """Fetch RSS feeds, embed title+summary only. No full-text crawl."""
     crawl_start = time.time()
@@ -119,8 +168,16 @@ def run_crawl(tier_filter=None, dry_run=False, max_time=0):
     svc = EmbeddingService()
     cache = ArticleEmbedCache(svc)
 
+    # Pre-compute topic embeddings for relevance filtering
+    topic_embs, prefilter_threshold = _load_topic_embeddings(svc)
+    if topic_embs is not None:
+        print(f"🎯 Pre-filter active: {len(topic_embs)} topics, threshold={prefilter_threshold:.2f}")
+    else:
+        print("⚠️ Pre-filter unavailable, storing all articles")
+
     total_new = 0
     total_dup = 0
+    total_filtered = 0
 
     for feed in sources:
         tier = feed.get("rating", "B")
@@ -137,6 +194,7 @@ def run_crawl(tier_filter=None, dry_run=False, max_time=0):
         print(f"\n📡 {name} (tier {tier})")
         items = fetch_rss(feed["url"])
         print(f"  Fetched {len(items)} items")
+        prev_filtered = total_filtered
 
         if dry_run:
             for it in items[:3]:
@@ -158,6 +216,11 @@ def run_crawl(tier_filter=None, dry_run=False, max_time=0):
             is_dup, reason = cache.check_duplicate(it["url"], emb)
             if is_dup:
                 total_dup += 1
+                continue
+
+            # Pre-filter: skip articles that don't match any topic
+            if not _passes_prefilter(emb, topic_embs, prefilter_threshold):
+                total_filtered += 1
                 continue
 
             cache.add_article(it["url"], it["title"], emb, extra={
@@ -189,7 +252,7 @@ def run_crawl(tier_filter=None, dry_run=False, max_time=0):
             new_count += 1
             total_new += 1
 
-        print(f"  New: {new_count}, Dup: {len(items) - new_count}")
+        print(f"  New: {new_count}, Dup: {len(items) - new_count - (total_filtered - prev_filtered)}, Filtered: {total_filtered - prev_filtered}")
         state[feed["url"]] = {
             "last_crawl": datetime.utcnow().isoformat() + "Z",
             "last_items": len(items),
@@ -204,6 +267,7 @@ def run_crawl(tier_filter=None, dry_run=False, max_time=0):
 
     elapsed = time.time() - crawl_start
     print(f"\n✅ RSS done in {elapsed:.0f}s — {total_new} new, {total_dup} dup, "
+          f"{total_filtered} filtered (irrelevant), "
           f"cache: {cache.stats()['total_articles']} articles")
 
 
@@ -223,6 +287,11 @@ def _update_topic_matches(svc, cache):
             topics = directives_to_topics(data)
         else:
             topics = []
+
+        # RSS only matches broad tier-1/2 topics (tracked + focus).
+        # Niche topics (explore, seed) rely on targeted search results.
+        RSS_MATCH_TYPES = {"track", "tracked", "focus"}
+        topics = [t for t in topics if t.get("type", "") in RSS_MATCH_TYPES]
 
         if not topics or len(cache.embeddings) == 0:
             return

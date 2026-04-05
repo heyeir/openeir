@@ -309,16 +309,63 @@ Agent: [disables cron job]
 ### Commands
 
 | Task | Command |
-|------|---------|
+|------|---------|  
 | Check setup | `python3 scripts/setup.py --check` |
 | Set workspace | `python3 scripts/setup.py --set-workspace <path>` |
 | Init with settings | `python3 scripts/setup.py --init --settings '<json>'` |
 | Show workspace | `python3 scripts/setup.py --show-workspace` |
 | Test curation | `python3 scripts/standalone/curate.py` |
+| Cache health | `python3 scripts/pipeline/cache_cleanup.py --stats` |
+| Cache cleanup | `python3 scripts/pipeline/cache_cleanup.py` |
+| Markdown clean | `python3 scripts/pipeline/markdown_cleaner.py` |
 | Add cron | `openclaw cron add --name "eir-daily" --cron "0 8 * * *" --tz "Asia/Shanghai" --message "..."` |
 | List cron | `openclaw cron list` |
 | Disable cron | `openclaw cron edit <id> --enabled=false` |
 | Extract whispers | Run via OpenClaw agent (see below) |
+
+### RSS Sources — Relevance Matters
+
+The pipeline pre-filters RSS articles against your topics before storing them. Articles that don't match any of your interests are discarded immediately — no embedding stored, no snippet crawled.
+
+**This means your RSS sources should align with your interests.**
+
+- ✅ **Good**: Sources that frequently cover your tracked topics (AI, design, etc.)
+- ⚠️ **Review**: General news aggregators (HN, Lobsters) — high volume, low match rate (~5%). Consider lowering their tier.
+- ❌ **Waste**: Sources with zero overlap (e.g., automotive news when you have no automotive topics). Remove or wait until you add matching interests.
+
+**Check your source ROI:**
+```bash
+python3 scripts/pipeline/cache_cleanup.py --stats
+```
+
+This shows match rate per source. Sources with <10% match rate are candidates for removal or tier downgrade.
+
+**Adding sources that match your interests:**
+- Find RSS feeds for blogs, newsletters, or publications you follow
+- Add them to `config/sources.json` under the `"rss"` key
+- Set `rating` to S (4h), A (8h), or B (24h) based on update frequency
+
+```json
+{
+  "name": "Your Favorite Blog",
+  "url": "https://example.com/feed.xml",
+  "rating": "A",
+  "lang": "en"
+}
+```
+
+### Cache Health & TTL
+
+The pipeline manages content freshness automatically:
+
+| Content type | TTL | Rationale |
+|---|---|---|
+| Unmatched articles | 48h | Give topic matching 2 cycles to check, then discard |
+| Matched articles | 7d | Available for content generation |
+| Published source URLs | 30d | Kept for dedup |
+| Orphan snippets | Immediate | No parent article, safe to remove |
+
+Cleanup runs daily at 03:00 via cron. Manual run: `python3 scripts/pipeline/cache_cleanup.py`
 
 ### Whisper Extraction
 

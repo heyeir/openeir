@@ -142,13 +142,19 @@ def main():
 
         result = crawl_url(item["url"])
         if result and len(result.get("content", "")) >= 200:
+            # Clean markdown before storing
+            from markdown_cleaner import clean_markdown
+            raw_content = result["content"]
+            cleaned_content = clean_markdown(raw_content)
+
             # Update snippet
             d = item["data"]
-            d["markdown"] = result["content"]
-            d["content"] = result["content"][:8000]
+            d["markdown"] = raw_content
+            d["content"] = cleaned_content[:8000]
             if result.get("title"):
                 d["title"] = result["title"]
             d["crawl_status"] = "ok"
+            d["content_cleaned"] = True
             d["crawled_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
             with open(item["path"], "w") as f:
                 json.dump(d, f, ensure_ascii=False, indent=2)
