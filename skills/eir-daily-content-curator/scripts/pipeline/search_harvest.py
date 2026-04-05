@@ -244,7 +244,8 @@ def search_gateway(query, engine="general", limit=MAX_SEARCH_RESULTS):
         with urllib.request.urlopen(req, timeout=SEARCH_TIMEOUT) as resp:
             data = json.loads(resp.read())
         results = data.get("results", [])
-        return [{"url": r["url"], "title": r.get("title", ""), "snippet": r.get("snippet", "")}
+        return [{"url": r["url"], "title": r.get("title", ""), "snippet": r.get("snippet", r.get("content", "")),
+                 "published_date": r.get("publishedDate", "")}
                 for r in results if r.get("url")]
     except Exception as e:
         print("  ⚠️ Search Gateway failed for '%s': %s" % (query, e), file=sys.stderr)
@@ -397,6 +398,9 @@ def harvest_topic(topic, svc, cache, used_urls, existing_matches, completed_quer
         stats["search_results"] += len(results)
         stats["queries_completed"].append(query_key)
 
+        # Track query yield for rotation
+        query_new_count = 0
+
         for r in results:
             url = r["url"]
             if url in used_urls:
@@ -408,7 +412,34 @@ def harvest_topic(topic, svc, cache, used_urls, existing_matches, completed_quer
                 continue
             if any(x in url.lower() for x in [".pdf", ".zip", ".mp4", "youtube.com/watch", "twitter.com", "x.com"]):
                 continue
-            new_urls.append({"url": url, "title": r.get("title", ""), "snippet": r.get("snippet", ""), "query": query})
+
+            # Freshness filter: skip results with known-stale publish dates
+            pub_date = r.get("published_date", "")
+            if pub_date:
+                try:
+                    from dateutil import parser as dateparser
+                    pub_dt = dateparser.parse(pub_date)
+                    if pub_dt:
+                        age_days = (datetime.now(pub_dt.tzinfo or timezone.utc) - pub_dt).days
+                        if age_days > 14:
+                            continue  # Skip articles older than 14 days
+                except Exception:
+                    pass  # Can't parse date, let it through
+
+            # Title/snippet quality filter: skip if too short or clearly garbage
+            title = r.get("title", "")
+            snippet = r.get("snippet", "")
+            if len(title) < 10 or (len(snippet) < 30 and not title):
+                continue
+
+            new_urls.append({"url": url, "title": title, "snippet": snippet,
+                            "query": query, "published_date": pub_date})
+            query_new_count += 1
+
+        # Mark query yield for rotation decisions
+        stats.setdefault("query_yields", {})[query_key] = query_new_count
+        if query_new_count == 0:
+            print("    ⚠️ Query yielded 0 new results")
 
     # Deduplicate URLs
     seen = set()  # type: Set[str]
@@ -424,6 +455,13 @@ def harvest_topic(topic, svc, cache, used_urls, existing_matches, completed_quer
         return stats
 
     # Embed title+snippet (no crawl) and add to cache
+    # Pre-compute topic embedding for relevance check
+    topic_text = topic.get("embedding_text", "").strip()
+    if not topic_text:
+        topic_text = "%s %s %s" % (topic.get("topic", ""), topic.get("description", ""),
+                                    " ".join(topic.get("keywords", [])[:8]))
+    topic_embedding = svc.embed_queries([topic_text])[0] if topic_text else None
+
     for item in new_urls:
         url = item["url"]
         title = item.get("title", "")
@@ -436,6 +474,16 @@ def harvest_topic(topic, svc, cache, used_urls, existing_matches, completed_quer
         if is_dup:
             stats["duplicates_l1"] += 1
             continue
+
+        # Topic relevance check: skip if embedding doesn't match this topic
+        if topic_embedding is not None:
+            import numpy as np
+            score = float(np.dot(embedding, topic_embedding) /
+                         (np.linalg.norm(embedding) * np.linalg.norm(topic_embedding) + 1e-9))
+            if score < TOPIC_MATCH_THRESHOLD - 0.05:  # slightly looser than strict matching
+                stats.setdefault("filtered_irrelevant", 0)
+                stats["filtered_irrelevant"] += 1
+                continue
 
         cache.add_article(url, title, embedding, extra={
             "source_name": urllib.parse.urlparse(url).netloc,
@@ -616,7 +664,8 @@ def main():
             "last_harvest": datetime.utcnow().isoformat() + "Z",
             "last_new_count": topic_stats["new_articles"],
             "last_skipped": topic_stats.get("skipped_reason"),
-
+            "last_filtered_irrelevant": topic_stats.get("filtered_irrelevant", 0),
+            "query_yields": topic_stats.get("query_yields", {}),
         }
 
         run_stats["topics_processed"] += 1

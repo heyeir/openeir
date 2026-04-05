@@ -165,6 +165,8 @@ def directives_to_queries(d, enrichment=None):
     hints = d.get("search_hints") or {}
     suggested = hints.get("suggested_queries") or []
     keywords = d.get("keywords") or []
+    topic_name = d.get("topic") or d.get("name") or ""
+    description = d.get("description") or ""
 
     # Merge enriched queries if API has none
     if not suggested and enrichment:
@@ -194,6 +196,26 @@ def directives_to_queries(d, enrichment=None):
             "engine": "china" if has_zh else "general",
             "freshness": d.get("freshness", "7d"),
         })
+
+    # Ensure every topic gets at least 2 queries by generating from name/description
+    if len(queries) < 2 and topic_name:
+        has_zh = any(u'\u4e00' <= c <= u'\u9fff' for c in topic_name)
+        engine = "china" if has_zh else "general"
+        # Query 1: topic name + recent
+        queries.append({
+            "q": f"{topic_name} latest research 2026" if not has_zh else f"{topic_name} 最新进展 2026",
+            "engine": engine,
+            "freshness": "7d",
+        })
+        # Query 2: topic name + description keywords
+        if description and len(queries) < 3:
+            desc_words = description.split()[:6]
+            desc_query = " ".join(desc_words)
+            queries.append({
+                "q": desc_query,
+                "engine": engine,
+                "freshness": "7d",
+            })
 
     return queries
 
