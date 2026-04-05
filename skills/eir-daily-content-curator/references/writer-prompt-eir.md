@@ -18,7 +18,6 @@ Write a **single JSON file** to `output_path`. The JSON must have this exact str
 {
   "slug": "<from task>",
   "lang": "<output_lang>",
-  "source_lang": "<dominant language of source_articles: 'en' or 'zh'>",
   "content_url_slug": "<SEO-friendly English slug, 3-8 words hyphenated, all lowercase>",
   "topic_slug": "<slug from task>",
   "dot": {
@@ -31,14 +30,13 @@ Write a **single JSON file** to `output_path`. The JSON must have this exact str
       "url": "https://...",
       "title": "Article Title",
       "name": "Source Name",
-      "publish_time": "<from source_articles[].published, or null if missing>"
+      "publish_time": "<from source_articles[].published, or empty string if missing>"
     }
   ],
   "l1": {
     "title": "<opinionated title in output_lang>",
     "summary": "<2-3 sentences in output_lang, 50-80 words>",
     "key_quote": "<most insightful direct quote from source, or empty string>",
-    "via": ["Source Name 1"],
     "bullets": ["<≤20 zh chars or ≤50 en chars>", "...", "..."]
   },
   "l2": {
@@ -58,41 +56,47 @@ Write a **single JSON file** to `output_path`. The JSON must have this exact str
 
 ### Language
 1. **ALL text fields must be in `output_lang`.** This includes `dot.hook`, `l1.title`, `l1.summary`, `l1.bullets`, `l2.content`, `l2.bullets`, `l2.context`, `l2.eir_take`, `l2.related_topics`. No exceptions.
-2. **`source_lang`** = the language of the source articles you read. Determine from `source_articles[].lang`. If mixed, use the dominant language. This is independent of output_lang.
-3. **NEVER mix languages** in a single field. Technical terms and proper nouns (e.g. "GPT-4", "Transformer", "LLM", "Obsidian") may remain in their original form.
-4. **`related_topics`** must be human-readable phrases in `output_lang`. NOT English slugs, NOT code-style identifiers.
+2. **NEVER mix languages** in a single field. Technical terms and proper nouns (e.g. "GPT-4", "Transformer", "LLM", "Obsidian") may remain in their original form.
+3. **`related_topics`** must be human-readable phrases in `output_lang`. NOT English slugs, NOT code-style identifiers.
    - ✅ zh example: `["digital sovereignty", "AI ethics", "open-source safety"]` (written in Chinese when output_lang=zh)
    - ✅ en example: `["digital sovereignty", "AI ethics", "open-source safety"]`
    - ❌ `["dark-forest-theory", "ai-platform-power"]` — these are slugs, not topics
 
 ### Content Quality
-5. **Never set any field to null.** Use `""` for empty strings, `[]` for empty arrays.
-6. Every bullet fact in `l2.bullets` must have supporting detail in `l2.content`. Minimum 3 bullets, maximum 5.
-7. `l1.bullets`: 3-4 items, each ≤20 Chinese chars / ≤50 English chars. Don't repeat `summary`.
-8. `dot.hook`: ≤10 chars (CJK) / ≤6 English words. Create a curiosity gap. Avoid cheap hype words like "Breaking", "Exciting", "Game-changing".
-9. `via`: use `source_name` from source articles.
-10. `sources`: copy `url`, `title`, `source_name` from each source article. Add `publish_time` from `source_articles[].published`. Every source used must appear here.
-11. `key_quote`: pick the most insightful direct quote from the sources, or `""` if no good quote.
-12. `content_url_slug`: SEO-friendly English slug, 3-8 words hyphenated, all lowercase, unique per item. No dates, no source names.
-13. Be opinionated and curated — this is NOT a news summary, it's a knowledge signal.
-14. `eir_take` is **PUBLIC** (visible on share pages). Do NOT include user-specific info.
+4. **Never set any field to null.** Use `""` for empty strings, `[]` for empty arrays.
+5. Every bullet fact in `l2.bullets` must have supporting detail in `l2.content`. Minimum 3 bullets, maximum 5.
+6. `l1.bullets`: 3-4 items, each ≤20 Chinese chars / ≤50 English chars. Don't repeat `summary`.
+7. `dot.hook`: ≤10 chars (CJK) / ≤6 English words. Create a curiosity gap. Avoid cheap hype words like "Breaking", "Exciting", "Game-changing".
+8. **Do NOT set `l1.via`** — the pipeline auto-generates it from `sources[].name`.
+9. `sources`: copy `url`, `title`, `source_name` → `name` from each source article. Add `publish_time` from `source_articles[].published`. Use `""` if missing. Every source used must appear here.
+10. `key_quote`: pick the most insightful direct quote from the sources, or `""` if no good quote.
+11. `content_url_slug`: SEO-friendly English slug, 3-8 words hyphenated, all lowercase, unique per item. No dates, no source names.
+12. Be opinionated and curated — this is NOT a news summary, it's a knowledge signal.
+13. `eir_take` is **PUBLIC** (visible on share pages). Do NOT include user-specific info.
 
 ### Content Style
-15. Tone: "a smart friend you trust" — not a news anchor, not an encyclopedia.
-16. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly". Apply equivalent rules for non-English output.
-17. Source attribution goes in structured fields (`via[]`, `sources[]`), NEVER inline in prose as `[Source: XX]`.
-18. `l2.content`: Start from where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
-19. `l2.context`: Be specific and reader-facing. Wrong: "This reveals a growing trend." Right: "If you're building agents today, your eval pipeline probably can't catch these failure modes."
+14. Tone: "a smart friend you trust" — not a news anchor, not an encyclopedia.
+15. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly". Apply equivalent rules for non-English output.
+16. Source attribution goes in structured fields (`sources[]`), NEVER inline in prose as `[Source: XX]`.
+17. `l2.content`: Start from where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
+18. `l2.context`: Be specific and reader-facing. Wrong: "This reveals a growing trend." Right: "If you're building agents today, your eval pipeline probably can't catch these failure modes."
 
 ### Output
-20. Only output the JSON file. No other files, no API calls, no extra commentary.
+19. Only output the JSON file. No other files, no API calls, no extra commentary.
+
+## Field Constraints
+
+For full field types, recommended limits, and hard limits, see **`references/rendering-requirements.md`**.
 
 ## Notes
 
+- **`source_lang` is deprecated** — do not include it in output. `lang` (= `output_lang`) is the only language field.
+- **`l1.via` is auto-generated** — the pipeline populates it from `sources[].name`. Do not set it.
 - **API Compatibility**: The generated JSON uses `topic_slug` (snake_case). The `post_content.py` script
   automatically converts this to `topicSlug` (camelCase) when posting to the API.
-- **`publish_time`**: Use snake_case in the generated JSON. The post script handles conversion.
-- The API stores each language version as a separate document. Your output is a flat JSON for one language.
-  The `post_content.py` script wraps it into the correct `{items: [{...}]}` format.
+- **`publish_time`**: Use snake_case in the generated JSON. Use `""` if missing (never null).
+- The API stores each language version as a separate document with ID `{contentGroup}_{lang}`.
+  Your output is a flat JSON for one language. The `post_content.py` script wraps it into the
+  correct `{items: [{...}]}` format.
 
 ---
