@@ -11,7 +11,7 @@
 
 | Field | Type | Recommended | Hard Limit | Notes |
 |-------|------|-------------|------------|-------|
-| `hook` | string | ≤10 CJK chars / ≤8 EN words | **50 chars** (API rejects) | Creates curiosity gap. No hype words ("Breaking", "Exciting"). Rendered as single-line label on the dot. |
+| `hook` | string | ≤10 CJK chars / ≤6 EN COMPLETE words | **100 chars** (API rejects) | Creates curiosity gap. No hype words ("Breaking", "Exciting"). **Never truncate mid-word.** Rendered as single-line label on the dot. |
 | `category` | enum | — | `focus` \| `attention` \| `seed` \| `whisper` | Determines dot visual style. Whispers always use `whisper`. |
 | `color_hint` | enum | — | `blue` \| `gold` \| `amber` \| `cyan` \| `green` \| `purple` \| `red` | Whispers always use `amber`. |
 
@@ -48,7 +48,7 @@
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
-| `lang` | `"zh"` \| `"en"` | **Yes** | Language of this document's content. Determines which `{contentGroup}_{lang}` document is created. Not locale, not source language — the language the content is written in. |
+| `lang` | `"zh"` \| `"en"` | **Yes** | **Required.** Language of this document's content. Determines which `{contentGroup}_{lang}` document is created. Not locale, not source language — the language the content is written in. API rejects if missing. API also validates that hook text matches declared lang (CJK check). |
 | `slug` | string | No | Human-readable identifier. Falls back to `contentGroup` if omitted. |
 | `topicSlug` | string | No | Links content to a user interest topic for cooldown tracking. |
 | `dot` | object | **Yes** | See dot section above. |
@@ -128,7 +128,7 @@ Whispers share the same dot/l1/l2 structure but with different field semantics:
 ### API rejects (400 error)
 
 - `dot` missing or not an object
-- `dot.hook` empty or >50 chars
+- `dot.hook` empty or >100 chars
 - `dot.category` not in allowed enum
 - `dot.color_hint` not in allowed enum
 - `l1` missing or not an object
@@ -137,7 +137,9 @@ Whispers share the same dot/l1/l2 structure but with different field semantics:
 - `l1.bullets` present but not an array, or >10 items
 - `sources[].url` missing or not a valid URL
 - `sources` >10 items per content item
-- `lang` present but not `"zh"` or `"en"`
+- `lang` missing, or not `"zh"` or `"en"`
+- `lang` is `"en"` but hook contains CJK characters (language mismatch)
+- `lang` is `"zh"` but hook contains no CJK characters (language mismatch)
 - `items` empty, not an array, or >20 items
 
 ### API skips (returned as `status: "skipped"`)
@@ -148,7 +150,7 @@ Whispers share the same dot/l1/l2 structure but with different field semantics:
 
 - `l1.title` missing → don't POST, file is broken
 - `l2.content` <300 chars → quality too low
-- `dot.hook` >20 chars → trim or regenerate (API allows up to 50 but rendering may truncate)
+- `dot.hook` >50 chars → consider shortening (API allows up to 100 but shorter hooks render better)
 
 ---
 
