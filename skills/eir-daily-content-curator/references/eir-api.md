@@ -193,10 +193,13 @@ Execute interest operations (add/merge/delete/boost/demote).
       "version": 2,
       "model": "EmbeddingGemma-300M",
       "dim": 256,
-      "topicsUsed": 8,
-      "topicsTotal": 12,
+      "strategy": "group-weighted",
+      "groupsUsed": 18,
+      "groupsTotal": 23,
+      "topicsWithEmbedding": 55,
+      "topicsTotal": 70,
       "skippedDimMismatch": 0,
-      "skippedNoEmbedding": 4,
+      "skippedNoEmbedding": 15,
       "updatedAt": 1775311200000
     }
   }
@@ -856,3 +859,176 @@ const EMBEDDING_MODEL = 'EmbeddingGemma-300M'
 const EMBEDDING_DIM = 256
 const EMBEDDING_VERSION = 2
 ```
+
+---
+
+## Embedding Contract
+
+> **Single source of truth for all embedding data in this system.**
+
+Every embedding — whether for topics, users, or content — MUST use the same model and dimension.
+
+### Accepted Embedding Format
+
+When sending embeddings to any API endpoint, use the structured format:
+
+```json
+{
+  "embedding": {
+    "vector": [0.12, -0.34, ...],
+    "model": "EmbeddingGemma-300M",
+    "dim": 256
+  }
+}
+```
+
+Legacy format (raw array) is also accepted where noted — the server validates dimension:
+
+```json
+{
+  "embedding": [0.12, -0.34, ...]   // Must be exactly 256d
+}
+```
+
+**Not sending an embedding is always valid.** The server computes user embeddings from the topic dictionary.
+
+### Validation Rules (Server-Enforced)
+
+| Check | Behavior on Mismatch |
+|-------|---------------------|
+| `model !== 'EmbeddingGemma-300M'` | **Reject** (400 error) |
+| `dim !== 256` | **Reject** (400 error) |
+| `vector.length !== 256` | **Reject** (400 error) |
+| `vector` contains NaN/Infinity | **Reject** (400 error) |
+| `embedding` field omitted/null | **Accept** (no embedding stored) |
+
+### Where Validation Applies
+
+| Endpoint | Embedding Source | Validation |
+|----------|-----------------|------------|
+| `POST /oc/content` | Pipeline embeds article text | ✅ model/dim enforced |
+| `POST /pc/content` | Pipeline embeds article text | ✅ model/dim enforced |
+| `POST /admin/interest-topics/backfill` | Pipeline embeds topic text | ✅ dim enforced (legacy + structured) |
+| `POST /oc/interests/sync` | N/A — server computes from dictionary | N/A (no embedding input) |
+| `POST /oc/interests/extract` | N/A — server computes from dictionary | N/A (no embedding input) |
+| `POST /interests/fre` | N/A — server computes from dictionary | N/A (no embedding input) |
+
+### Storage Schema
+
+**Content items** (when embedding is provided):
+```json
+{
+  "embedding": [0.12, -0.34, ...],
+  "embeddingModel": "EmbeddingGemma-300M",
+  "embeddingDim": 256
+}
+```
+
+**Interest topics** (dictionary):
+```json
+{
+  "embedding": [0.12, -0.34, ...],
+  "embDim": 256,
+  "embeddingAt": 1774827625822
+}
+```
+
+**User profile** (computed by server):
+```json
+{
+  "userEmbedding": [0.12, -0.34, ...],
+  "embeddingMeta": { "version": 2, "model": "EmbeddingGemma-300M", "dim": 256, "strategy": "group-weighted", ... }
+}
+```
+
+---
+
+## Interest Extraction → Sync Data Flow
+
+Complete data flow for how user interests are discovered, synced, and turned into embeddings.
+
+### Step 1: Extract Interests from Conversations
+
+**Who**: Eir agent (LLM)
+**When**: After each user conversation or periodically
+**How**: Analyze conversation content using interest extraction prompt
+
+**Input needed from server** (`GET /oc/interests/context`):
+```json
+{
+  "topics": {
+    "ai-agents": { "strength": 0.8, "heat": 0.6, "sources": ["eir_chat"], "label": "AI Agents" },
+    "react": { "strength": 0.5, "heat": 0.2, "sources": ["fre_selection"], "label": "React" }
+  },
+  "interestGroups": [...],
+  "suggestions": [
+    { "type": "demote", "slug": "web-development", "reason": "Low engagement 14d" }
+  ]
+}
+```
+
+**Agent outputs**: A list of operations (see Step 2).
+
+### Step 2: Sync Operations to Server
+
+**Who**: Eir agent calls `POST /oc/interests/sync`
+**What agent sends**:
+
+```json
+{
+  "operations": [
+    {
+      "op": "add",
+      "slug": "mcp-protocol",
+      "label": "MCP Protocol",
+      "labelZh": "MCP 协议",
+      "decay_type": "event",
+      "reason": "User discussed MCP 2.0 release"
+    },
+    {
+      "op": "boost",
+      "slug": "ai-agents",
+      "reason": "Continued deep discussion"
+    },
+    {
+      "op": "demote",
+      "slug": "web-development",
+      "reason": "Confirmed system suggestion — no engagement"
+    }
+  ]
+}
+```
+
+**What agent does NOT send**:
+- ❌ Embeddings (server computes from topic dictionary)
+- ❌ Strength values (server calculates based on operation type)
+- ❌ Heat values (server calculates from engagement data)
+
+### Step 3: Server Processes Operations
+
+For each operation:
+1. Apply to `profile.topics` (add/merge/delete/boost/demote)
+2. Update `lastUpdatedAt`
+3. **Recompute user embedding** (group-weighted algorithm):
+   - Looks up each topic's embedding from `interest_topics` dictionary
+   - Groups topics by `interestGroups`, computes group-level weighted mean
+   - L2 normalizes the result
+4. Returns response with `embedding_updated: true/false` + `embedding_meta`
+
+### Step 4: Embedding Propagation
+
+After sync, the updated `userEmbedding` is used by:
+- **Content recommendation**: cosine similarity between `userEmbedding` and `content.embedding`
+- **Curation directives**: `GET /oc/curation` uses embedding to rank focus topics
+- **Search dedup**: Pipeline uses embedding distance to avoid duplicate content
+
+### What the Agent Needs to Know
+
+| Concern | Answer |
+|---------|--------|
+| Do I compute embeddings? | **No.** Server handles all embedding computation. |
+| Do I send embeddings with interest sync? | **No.** Just send operations (add/boost/merge/etc). |
+| What model is used? | **EmbeddingGemma-300M**, 256d Matryoshka. You don't need to know this for interest sync. |
+| When do I send embeddings? | **Only with content** (`POST /oc/content`, `POST /pc/content`). Pipeline embeds article text before pushing. |
+| What if a topic I add has no embedding in the dictionary? | Server skips it for embedding computation. The topic still works for keyword/category matching. |
+| What format for content embeddings? | `{ vector: [...], model: 'EmbeddingGemma-300M', dim: 256 }` or raw `number[256]`. |
