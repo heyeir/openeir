@@ -80,7 +80,10 @@ python3 scripts/setup.py --set-workspace ~/.openclaw/workspace/eir
 | **Language** | "Content language? Chinese (zh) or English (en)?" | Auto-detect from conversation |
 | **Max items/day** | "How many items per day? Recommend 5-10" | 5 |
 | **Search** | "Enable web search? Requires API key (Tavily/Brave) or local SearXNG" | None |
-| **Infrastructure** | "Have you set up SearXNG + Crawl4AI? (local search & crawl services, optional)" | No |
+
+**Advanced (optional):**
+
+> **Local search infrastructure**: If you want to run your own search and crawl services instead of using Tavily/Brave APIs, see `references/infrastructure-setup.md`. Most users don't need this.
 
 **For Standalone mode, ask about search:**
 
@@ -305,6 +308,17 @@ Agent: [disables cron job]
 ---
 
 ## Quick Reference (For Agent)
+
+### Version Check (required before every pipeline run)
+
+Before running any pipeline step, check version compatibility:
+
+1. Read `schema_version` and `min_skill_version` from the `GET /oc/curation` response
+2. Compare `schema_version` against `supported_schema_versions` in `config/settings.json`
+3. Compare `min_skill_version` against `skill_version` in `config/settings.json`
+4. If either doesn't match: **stop** and tell the user:
+   > "Your openeir skill is outdated. Run: `openclaw skill update openeir`"
+5. If both match: proceed with the pipeline
 
 ### Commands
 

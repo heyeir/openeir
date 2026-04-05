@@ -1,6 +1,6 @@
-# Eir Rendering & Content Requirements
+# Eir Content Specification
 
-> Single source of truth for all content field constraints.
+> Single source of truth for all content field constraints and quality criteria.
 > Used by: writer prompts, post_content.py validation, API validation, front-end rendering.
 
 ---
@@ -161,3 +161,37 @@ Both use the same ID scheme:
 - `contentGroup`: 8-char base64url, globally unique, registered in `short_ids` container
 - All language versions of the same item share the `contentGroup`
 - Content stored in `content_items_v2`, whispers in `whispers_v2`
+
+---
+
+## Content Quality Criteria
+## Required Checks
+
+1. **Factual accuracy** — All data points must be traceable to source material. Never fabricate.
+2. **Has an angle** — Not a flat news recap. Must have a point of view grounded in facts.
+3. **Specific** — Includes numbers, names, mechanisms, examples. No vague generalities.
+4. **Non-repetitive** — L1 and L2 don't repeat the same information. Each layer advances the narrative.
+
+## Quality Signals
+
+### High quality
+- Source has exclusive data or research findings
+- Topic has a controversial or unexpected angle
+- Source rated S or A
+- Content highly relevant to user's interests
+
+### Low quality (do not push)
+- Pure press-release content ("Company X launches Product Y")
+- Opinion pieces with no concrete information
+- Clickbait headlines with thin substance
+- Highly similar to recently pushed content
+
+## Source Ratings
+
+See `source-ratings.json`.
+
+| Rating | Description | Weight |
+|--------|-------------|--------|
+| S | Deep original work, primary data | 1.0 |
+| A | Quality publications, known authors | 0.8 |
+| B | General tech media | 0.6 |

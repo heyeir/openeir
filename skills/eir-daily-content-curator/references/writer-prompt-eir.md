@@ -63,7 +63,7 @@ Write a **single JSON file** to `output_path`. The JSON must have this exact str
 
 ### Content Quality
 
-> **Field types, limits, and null handling** → see `references/rendering-requirements.md` (single source of truth).
+> **Field types, limits, and null handling** → see `references/content-spec.md` (single source of truth).
 
 4. **Do NOT set `l1.via`** — the pipeline auto-generates it from `sources[].name`.
 5. `sources`: copy `url`, `title`, `source_name` → `name` from each source article. Add `publish_time` from `source_articles[].published`. Use `""` if missing (never null). Every source used must appear here.
@@ -84,7 +84,7 @@ Write a **single JSON file** to `output_path`. The JSON must have this exact str
 
 ## Field Constraints
 
-For full field types, recommended limits, and hard limits, see **`references/rendering-requirements.md`**.
+For full field types, recommended limits, and hard limits, see **`references/content-spec.md`**.
 
 ## Notes
 

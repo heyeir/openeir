@@ -1,5 +1,7 @@
 {
   "mode": "standalone",
+  "skill_version": "1.0.0",
+  "supported_schema_versions": ["2"],
   "max_items_per_day": 10,
   "local_storage": "data/",
   
