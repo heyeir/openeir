@@ -304,7 +304,7 @@ def write_task_file(candidate, dry_run=False):
 def main():
     parser = argparse.ArgumentParser(description="Generate Dispatcher")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be generated")
-    parser.add_argument("--max-topics", type=int, default=3, help="Max topics to generate")
+    parser.add_argument("--max-topics", type=int, default=6, help="Max topics to generate (default 6)")
     args = parser.parse_args()
 
     # Load data
@@ -315,6 +315,11 @@ def main():
     # Load used source URLs (from API-side dedup)
     used_source_urls_list = load_json(os.path.join(DATA, "used_source_urls.json"), [])
     used_source_urls = set(used_source_urls_list) if isinstance(used_source_urls_list, list) else set()
+    # Fallback: read from daily_plan.json used_urls (written by daily_plan.py)
+    if not used_source_urls:
+        plan_used = plan.get("used_urls", [])
+        if plan_used:
+            used_source_urls.update(plan_used)
     # Also add from pushed_titles
     for p in pushed:
         for u in p.get("source_urls", []):
