@@ -775,41 +775,58 @@ This ensures:
 
 ### User Embedding
 
-The server computes `userEmbedding` as the **weighted average** of all active topic embeddings, normalized to unit length.
+The server computes `userEmbedding` at the **interest group level**, not flat topic level. This reduces noise from low-engagement FRE-seeded topics.
 
 **When it's recomputed:**
 - After `POST /oc/interests/sync` (OC agent updates interests)
 - After `POST /oc/interests/extract` (conversation interest extraction)
 - After `POST /interests/fre` (first-run experience onboarding)
 
-**Algorithm:**
-1. Collect all active topics (not dismissed, strength > 0)
-2. For each topic, look up embedding from `interest_topics` dictionary
-3. **Dimension validation**: skip topics with `embedding.length ≠ EMBEDDING_DIM` (256)
-4. Skip topics without embedding (custom user topics not in dictionary)
-5. Weighted mean: `Σ(embedding × strength) / Σ(strength)`
-6. L2 normalize the result
+**Algorithm (group-weighted):**
+1. Build group → topic slug mapping from `interestGroups`
+2. Ungrouped active topics become singleton "groups"
+3. Batch-load all needed topic embeddings from `interest_topics` dictionary
+4. For each group:
+   - Group embedding = **mean** of its topics' embeddings
+   - Group weight = `max(topic.strength)` × interaction multiplier:
+     - **Interacted** (sources include user_explicit / eir_chat / openclaw / explore_click): `1.0×`
+     - **FRE-only** (only fre_selection, no interaction): `0.3×`
+5. Skip groups where no topic has a valid embedding
+6. User embedding = **weighted mean** of group embeddings, L2 normalized
+
+**Dimension validation**: skip topics with `embedding.length ≠ EMBEDDING_DIM` (256)
 
 **Fallback rules:**
-- If some topics lack embeddings → compute with available ones
-- If ALL topics lack embeddings → keep existing `userEmbedding` unchanged
-- If model/dim changes → old-dim embeddings are skipped, new ones used when available
+- If some groups lack embeddings → compute with available ones
+- If ALL groups lack embeddings → keep existing `userEmbedding` unchanged
+- If model/dim changes → old-dim embeddings skipped, new ones used when available
+
+**Example** (admin profile):
+```
+22 groups used / 29 total
+63 topics with embedding / 80 total
+Interacted weight: 9.75 (81.1%)
+FRE-only weight:   2.26 (18.9%)
+```
 
 **Stored fields:**
 ```json
 {
-  "userEmbedding": [0.12, -0.34, ...],    // 256d normalized vector
+  "userEmbedding": [0.12, -0.34, ...],
   "embeddingMeta": {
-    "version": 2,                          // Bump when model changes
-    "model": "EmbeddingGemma-300M",        // Current embedding model
-    "dim": 256,                            // Vector dimension
-    "topicsUsed": 8,                       // Topics that contributed
-    "topicsTotal": 12,                     // Total active topics
-    "skippedDimMismatch": 0,               // Topics with wrong dim
-    "skippedNoEmbedding": 4,               // Topics without embedding
-    "updatedAt": 1775311200000             // Timestamp
+    "version": 2,
+    "model": "EmbeddingGemma-300M",
+    "dim": 256,
+    "strategy": "group-weighted",
+    "groupsUsed": 22,
+    "groupsTotal": 29,
+    "topicsWithEmbedding": 63,
+    "topicsTotal": 80,
+    "skippedDimMismatch": 0,
+    "skippedNoEmbedding": 17,
+    "updatedAt": 1775311200000
   },
-  "embeddingUpdatedAt": 1775311200000      // Legacy compat
+  "embeddingUpdatedAt": 1775311200000
 }
 ```
 
