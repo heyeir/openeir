@@ -144,7 +144,7 @@ def _load_topic_embeddings(svc):
         return None, 0
 
 
-def _passes_prefilter(emb, topic_embs, threshold, svc):
+def _passes_prefilter(emb, topic_embs, threshold):
     """Check if article embedding matches any topic above threshold."""
     if topic_embs is None:
         return True  # No pre-filter available, pass everything
@@ -219,7 +219,7 @@ def run_crawl(tier_filter=None, dry_run=False, max_time=0):
                 continue
 
             # Pre-filter: skip articles that don't match any topic
-            if not _passes_prefilter(emb, topic_embs, prefilter_threshold, svc):
+            if not _passes_prefilter(emb, topic_embs, prefilter_threshold):
                 total_filtered += 1
                 continue
 

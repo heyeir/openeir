@@ -1,6 +1,6 @@
 ---
 name: eir-daily-content-curator
-description: "Daily AI news curation - learns interests from conversations, searches RSS + web, delivers summaries. Use when: 'set up daily news', 'curate content for me', 'what should I read today', 'personalized news briefing'."
+description: "Daily AI news curation — learns interests from conversations, searches RSS + web, delivers summaries. Use when: 'set up daily news', 'curate content for me', 'what should I read today', 'personalized news briefing'."
 metadata:
   {
     "openclaw":
@@ -18,7 +18,7 @@ Curates personalized content based on your interests.
 ## Agent Setup Flow
 
 
-When user says "set up daily news" or similar, follow this **step-by-step conversational flow**. **Ask before doing** - explain what you're about to do and wait for confirmation.
+When user says "set up daily news" or similar, follow this **step-by-step conversational flow**. **Ask before doing** — explain what you're about to do and wait for confirmation.
 
 ---
 
@@ -39,17 +39,17 @@ If already set up, show the current configuration and ask what they want to chan
 **Ask user which mode they want:**
 
 > "I can set up daily content curation in two modes:
->
-> **A. Standalone** - Simple RSS aggregation
+> 
+> **A. Standalone** — Simple RSS aggregation
 > • Reads tech news from RSS feeds
 > • Delivers summaries directly here
 > • No account needed, works immediately
->
-> **B. Eir** - Full AI-powered curation (requires heyeir.com account)
+> 
+> **B. Eir** — Full AI-powered curation (requires heyeir.com account)
 > • Learns your interests from conversations
 > • Personalized content with deep-dive analysis
 > • Reads in the Eir app with beautiful formatting
->
+> 
 > Which would you prefer?"
 
 **Wait for user response.** Do not proceed until they choose.
@@ -85,23 +85,23 @@ python3 scripts/setup.py --set-workspace ~/.openclaw/workspace/eir
 **For Standalone mode, ask about search:**
 
 > "Enable web search?
-> • **Yes** - Need Tavily or Brave API key (more comprehensive)
-> • **No** - RSS only (simpler, no API dependency)
->
+> • **Yes** — Need Tavily or Brave API key (more comprehensive)
+> • **No** — RSS only (simpler, no API dependency)
+> 
 > Your choice?"
 
 **If they choose search, ask for API key:**
 
 > "Which search service?
-> 1. Tavily (recommended, free tier sufficient) - https://tavily.com
-> 2. Brave Search - https://brave.com/search/api/
->
+> 1. Tavily (recommended, free tier sufficient) — https://tavily.com
+> 2. Brave Search — https://brave.com/search/api/
+> 
 > Provide API key or configure later?"
 
 **For Eir mode, ask about connection:**
 
 > "Need to connect Eir account. Open Eir app → Settings → Connect OpenClaw to get pairing code.
->
+> 
 > Have a pairing code?"
 
 **If yes, run connect:**
@@ -126,7 +126,7 @@ node scripts/connect.mjs <PAIRING_CODE>
 > • Max items/day: 5
 > • Search: Tavily (API key configured)
 > • Workspace: ~/.openclaw/workspace/eir/
->
+> 
 > Confirm create?"
 
 **Wait for confirmation, then run:**
@@ -142,11 +142,11 @@ python3 scripts/setup.py --init --settings '{"mode":"standalone","language":"zh"
 **After setup completes, propose a schedule and ask:**
 
 > "Setup complete! Now configure delivery schedule.
->
+> 
 > Recommend: 8:00 AM daily
 > • Frequency: Once per day
 > • Timezone: Asia/Shanghai
->
+> 
 > Does that work? Or what time would you prefer?"
 
 **If user confirms:**
@@ -185,15 +185,15 @@ python3 scripts/standalone/curate.py
 **Present results:**
 
 > "Today's preview:
->
+> 
 > • **Claude 4 Released** (Anthropic Blog)
 >   200K context window, native tool use...
 >   https://...
->
+> 
 > • **Agent Evaluation Checklist** (LangChain)
 >   Practical agent eval checklist...
 >   https://...
->
+> 
 > This format look good?"
 
 **If yes:**
@@ -228,8 +228,8 @@ User: "Set up daily news for me"
 
 Agent: "I can set up daily content curation in two modes:
 
-A. Standalone - Simple RSS aggregation, no account needed
-B. Eir - AI-powered personalization, requires heyeir.com account
+A. Standalone — Simple RSS aggregation, no account needed
+B. Eir — AI-powered personalization, requires heyeir.com account
 
 Which would you prefer?"
 
@@ -317,6 +317,7 @@ Agent: [disables cron job]
 | Test curation | `python3 scripts/standalone/curate.py` |
 | Cache health | `python3 scripts/pipeline/cache_cleanup.py --stats` |
 | Cache cleanup | `python3 scripts/pipeline/cache_cleanup.py` |
+| Markdown clean | `python3 scripts/pipeline/markdown_cleaner.py` |
 | Add cron | `openclaw cron add --name "eir-daily" --cron "0 8 * * *" --tz "Asia/Shanghai" --message "..."` |
 | List cron | `openclaw cron list` |
 | Disable cron | `openclaw cron edit <id> --enabled=false` |
@@ -368,7 +369,7 @@ Cleanup runs daily at 03:00 via cron. Manual run: `python3 scripts/pipeline/cach
 
 ### Whisper Extraction
 
-The `whisper_extract.py` script analyzes Eir conversations to find "Whisper moments" - genuine intellectual collisions worth preserving. It generates polished mini-essays (Whispers) that appear in the user's Eir feed.
+The `whisper_extract.py` script analyzes Eir conversations to find "Whisper moments" — genuine intellectual collisions worth preserving. It generates polished mini-essays (Whispers) that appear in the user's Eir feed.
 
 **How it works:**
 1. Fetches conversations marked as `whisperCandidate` from Eir API

@@ -12,7 +12,6 @@ Usage:
 
 import argparse
 import glob
-import hashlib
 import json
 import os
 import sys
@@ -140,6 +139,7 @@ def compute_stats():
     stats["removable_snippet_files"] = orphan_snippets + unmatched_snippets
     stats["removable_indices"] = removable_indices
     stats["removable_urls"] = removable_urls
+    stats["pushed_urls"] = pushed_urls
 
     return stats
 
