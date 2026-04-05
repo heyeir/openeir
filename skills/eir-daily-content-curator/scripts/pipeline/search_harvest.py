@@ -505,7 +505,7 @@ def harvest_topic(topic, svc, cache, used_urls, existing_matches, completed_quer
                 "source_name": urllib.parse.urlparse(url).netloc,
                 "source_rating": "B",
                 "lang": "en",
-                "published": "",
+                "published": item.get("published_date", ""),
                 "fetched_at": datetime.utcnow().isoformat() + "Z",
                 "harvest_topic": slug,
                 "search_query": item.get("query", ""),
