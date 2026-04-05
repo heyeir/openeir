@@ -363,6 +363,9 @@ Push generated content to Eir.
 - `l1`, `l2` are **top-level** per item (NOT nested in `locales{}`).
 - For bilingual content, push two separate items with the same `slug`/`topicSlug` but different `lang`.
 - `locales{}` format is still accepted for backward compatibility but deprecated.
+- `l1.via`: auto-derived from `sources[].name` by pipeline; API also falls back if empty.
+
+> **Field types, limits, and validation rules** → see `references/rendering-requirements.md`.
 
 **Response:**
 ```json

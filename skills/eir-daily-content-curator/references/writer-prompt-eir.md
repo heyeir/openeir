@@ -63,26 +63,25 @@ Write a **single JSON file** to `output_path`. The JSON must have this exact str
    - ❌ `["dark-forest-theory", "ai-platform-power"]` — these are slugs, not topics
 
 ### Content Quality
-4. **Never set any field to null.** Use `""` for empty strings, `[]` for empty arrays.
-5. Every bullet fact in `l2.bullets` must have supporting detail in `l2.content`. Minimum 3 bullets, maximum 5.
-6. `l1.bullets`: 3-4 items, each ≤20 Chinese chars / ≤50 English chars. Don't repeat `summary`.
-7. `dot.hook`: ≤10 chars (CJK) / ≤6 English words. Create a curiosity gap. Avoid cheap hype words like "Breaking", "Exciting", "Game-changing".
-8. **Do NOT set `l1.via`** — the pipeline auto-generates it from `sources[].name`.
-9. `sources`: copy `url`, `title`, `source_name` → `name` from each source article. Add `publish_time` from `source_articles[].published`. Use `""` if missing. Every source used must appear here.
-10. `key_quote`: pick the most insightful direct quote from the sources, or `""` if no good quote.
-11. `content_url_slug`: SEO-friendly English slug, 3-8 words hyphenated, all lowercase, unique per item. No dates, no source names.
-12. Be opinionated and curated — this is NOT a news summary, it's a knowledge signal.
-13. `eir_take` is **PUBLIC** (visible on share pages). Do NOT include user-specific info.
+
+> **Field types, limits, and null handling** → see `references/rendering-requirements.md` (single source of truth).
+
+4. **Do NOT set `l1.via`** — the pipeline auto-generates it from `sources[].name`.
+5. `sources`: copy `url`, `title`, `source_name` → `name` from each source article. Add `publish_time` from `source_articles[].published`. Use `""` if missing (never null). Every source used must appear here.
+6. `key_quote`: pick the most insightful direct quote from the sources, or `""` if no good quote.
+7. `content_url_slug`: SEO-friendly English slug, 3-8 words hyphenated, all lowercase, unique per item. No dates, no source names.
+8. Be opinionated and curated — this is NOT a news summary, it's a knowledge signal.
+9. `eir_take` is **PUBLIC** (visible on share pages). Do NOT include user-specific info.
 
 ### Content Style
-14. Tone: "a smart friend you trust" — not a news anchor, not an encyclopedia.
-15. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly". Apply equivalent rules for non-English output.
-16. Source attribution goes in structured fields (`sources[]`), NEVER inline in prose as `[Source: XX]`.
-17. `l2.content`: Start from where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
-18. `l2.context`: Be specific and reader-facing. Wrong: "This reveals a growing trend." Right: "If you're building agents today, your eval pipeline probably can't catch these failure modes."
+10. Tone: "a smart friend you trust" — not a news anchor, not an encyclopedia.
+11. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly". Apply equivalent rules for non-English output.
+12. Source attribution goes in structured fields (`sources[]`), NEVER inline in prose as `[Source: XX]`.
+13. `l2.content`: Start from where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
+14. `l2.context`: Be specific and reader-facing. Wrong: "This reveals a growing trend." Right: "If you're building agents today, your eval pipeline probably can't catch these failure modes."
 
 ### Output
-19. Only output the JSON file. No other files, no API calls, no extra commentary.
+15. Only output the JSON file. No other files, no API calls, no extra commentary.
 
 ## Field Constraints
 
