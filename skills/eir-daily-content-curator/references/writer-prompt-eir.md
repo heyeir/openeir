@@ -58,13 +58,12 @@ Write a **single JSON file** to `output_path`. The JSON must have this exact str
 1. **ALL text fields must be in `output_lang`.** This includes `dot.hook`, `l1.title`, `l1.summary`, `l1.bullets`, `l2.content`, `l2.bullets`, `l2.context`, `l2.eir_take`, `l2.related_topics`. No exceptions.
 2. **NEVER mix languages** in a single field. Technical terms and proper nouns (e.g. "GPT-4", "Transformer", "LLM", "Obsidian") may remain in their original form.
 3. **`related_topics`** must be human-readable phrases in `output_lang`. NOT English slugs, NOT code-style identifiers.
-   - ✅ zh example: `["digital sovereignty", "AI ethics", "open-source safety"]` (written in Chinese when output_lang=zh)
-   - ✅ en example: `["digital sovereignty", "AI ethics", "open-source safety"]`
+   - ✅ `["digital sovereignty", "AI ethics", "open-source safety"]`
    - ❌ `["dark-forest-theory", "ai-platform-power"]` — these are slugs, not topics
 
 ### Content Quality
 
-> **Field types, limits, and null handling** → see `references/rendering-requirements.md` (single source of truth).
+> **Field types, limits, and null handling** → see `references/content-spec.md` (single source of truth).
 
 4. **Do NOT set `l1.via`** — the pipeline auto-generates it from `sources[].name`.
 5. `sources`: copy `url`, `title`, `source_name` → `name` from each source article. Add `publish_time` from `source_articles[].published`. Use `""` if missing (never null). Every source used must appear here.
@@ -85,7 +84,7 @@ Write a **single JSON file** to `output_path`. The JSON must have this exact str
 
 ## Field Constraints
 
-For full field types, recommended limits, and hard limits, see **`references/rendering-requirements.md`**.
+For full field types, recommended limits, and hard limits, see **`references/content-spec.md`**.
 
 ## Notes
 

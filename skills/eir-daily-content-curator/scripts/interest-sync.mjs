@@ -103,13 +103,11 @@ async function main() {
     // For merge suggestions, need LLM to confirm — skip in script
   }
 
-  // 2b. TODO: Call LLM to analyze conversations and extract new interests
-  // This is where the Agent (LLM) part would go:
-  //
-  // const conversations = await getRecentConversations()
-  // const prompt = buildInterestExtractionPrompt(context, conversations)
-  // const llmResponse = await callLLM(prompt)
-  // operations.push(...llmResponse.operations)
+  // 2b. Interest extraction from conversations is done by the OpenClaw agent
+  // using the prompt in references/interest-extraction-prompt.md.
+  // This script only handles auto-confirming system suggestions (demote).
+  // For full interest sync, the agent reads the prompt template and calls
+  // the Eir API directly.
 
   // 3. Execute operations
   if (operations.length === 0) {

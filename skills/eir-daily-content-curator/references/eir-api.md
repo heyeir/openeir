@@ -104,7 +104,7 @@ Returns current interests + behavior data for Agent to make sync decisions.
 | `engagement` | 7d click/push stats |
 | `sources` | How the topic was discovered |
 
-> Note: `description`, `keywords`, `search_hints` are NOT returned here. They appear in `GET /oc/content` directives (joined from global dictionary).
+> Note: `description`, `keywords`, `search_hints` are NOT returned here. They appear in `GET /oc/curation` directives (joined from global dictionary).
 
 **Topic Metadata Sources** (priority order):
 
@@ -196,84 +196,53 @@ Execute interest operations (add/merge/delete/boost/demote).
 
 ## Curation APIs
 
-### GET /oc/content
+### GET /oc/curation
 
 Returns curation directives for today's content collection.
 
 **Response**:
 ```json
 {
-  "tracked": [
-    {
-      "type": "track",
-      "slug": "mcp-protocol",
-      "topic": "MCP Protocol",
-      "description": "Model Context Protocol for AI agents",
-      "keywords": ["MCP", "model context protocol"],
-      "search_hints": ["MCP 2.0", "Anthropic MCP"],
-      "strength": 0.9,
-      "engagement_health": 1.1,
-      "priority": "high",
-      "max_items": null,
-      "quality_threshold": 0.6,
-      "freshness": "24h"
-    }
-  ],
+  "user": {
+    "primary_language": "en",
+    "bilingual": false
+  },
+  "schema_version": "2",
+  "min_skill_version": "1.0.0",
   "directives": [
     {
       "type": "focus",
       "slug": "ai-agents",
       "topic": "AI Agents",
       "description": "AI agent frameworks and autonomous systems",
-      "keywords": ["agent", "autonomous", "LLM"],
+      "keywords": ["MCP", "model context protocol"],
       "search_hints": ["AI agent framework", "multi-agent"],
       "strength": 0.8,
-      "score": 0.85,
       "engagement_health": 0.9,
       "quality_threshold": 0.7,
       "freshness": "7d"
-    },
-    {
-      "type": "explore",
-      "slug": "rust-programming",
-      "topic": "Rust",
-      "strength": 0.75,
-      "score": 0.45,
-      "engagement_health": 0.4,
-      "quality_threshold": 0.6,
-      "note": "Demoted from focus due to low engagement"
-    },
-    {
-      "type": "seed",
-      "slug": "spatial-computing",
-      "topic": "Spatial Computing",
-      "strength": 0.2,
-      "score": 0.18,
-      "quality_threshold": 0.8,
-      "note": "Discovery item"
     }
   ],
-  "pool": [],
-  "engagement_summary": {
-    "overall_health": 0.85,
-    "trend": "stable",
-    "recent_rate": 0.53,
-    "recommendation": "maintain_current_mix"
-  },
   "budget": {
     "suggested_total": 6,
-    "tracked_allowance": "unlimited",
-    "focus_allowance": 3,
-    "explore_allowance": 2,
-    "seed_allowance": 1
+    "remaining_today": 5
   },
-  "content_prompt": "...",
   "exclude": {
     "disliked": ["crypto", "nft"]
-  },
-  "refresh_interval_hours": 4
+  }
 }
 ```
+
+**Top-level Fields**:
+
+| Field | Description |
+|-------|-------------|
+| `user` | User language preferences (`primary_language`, `bilingual`) |
+| `schema_version` | API response schema version. Agent must check compatibility before proceeding. |
+| `min_skill_version` | Minimum skill version required to process this response. |
+| `directives` | Array of curation directives with tier, topic metadata, and thresholds |
+| `budget` | Suggested item counts and remaining quota |
+| `exclude` | Topics/keywords to avoid |
 
 **Directive Metadata Sources**:
 
@@ -365,7 +334,7 @@ Push generated content to Eir.
 - `locales{}` format is still accepted for backward compatibility but deprecated.
 - `l1.via`: auto-derived from `sources[].name` by pipeline; API also falls back if empty.
 
-> **Field types, limits, and validation rules** → see `references/rendering-requirements.md`.
+> **Field types, limits, and validation rules** → see `references/content-spec.md`.
 
 **Response:**
 ```json
@@ -416,7 +385,7 @@ Possible `status` values: `accepted`, `skipped` (duplicate source_url), `error`.
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Content Curation                             │
 ├─────────────────────────────────────────────────────────────────┤
-│  1. GET /oc/content                                             │
+│  1. GET /oc/curation                                            │
 │     ← Get curation directives with engagement-aware tiers       │
 │     ← Includes description/keywords from global dictionary      │
 │                                                                 │
@@ -603,6 +572,8 @@ Update user interests via signals, long-term interests, or profile context.
 All fields optional. `signals` merges into interest profile topics. `long_term_interests` saves to user doc. `profile_update` saves as profile context.
 
 ### GET /oc/context
+
+**(Deprecated)** — Use `GET /oc/interests/context` for interest data. User preferences are available in `GET /oc/curation` response.
 
 User curation context snapshot (daily sync). Returns interests, preferences, and push limits.
 
