@@ -759,6 +759,26 @@ Add or update a language version. This creates or updates the `{contentGroup}_{l
 | `user_interests.userEmbedding` | Per-user | 256d vector, weighted mean of topic embeddings |
 | `user_interests.embeddingMeta` | Per-user | version, model, dim, topicsUsed, skipped counts |
 
+### Embedding Model
+
+> ⚠️ **All embeddings in this system use the same model and dimension. Do not mix.**
+
+| Property | Value |
+|----------|-------|
+| Model | **EmbeddingGemma-300M** (Google DeepMind, 300M params) |
+| HuggingFace | `google/embeddinggemma-300m` |
+| Native dimension | 768d |
+| Storage dimension | **256d** (Matryoshka truncation) |
+| Normalization | L2 unit vectors |
+| Previous model | e5-small (384d), migrated 2026-03-29 |
+
+**Where embeddings are stored:**
+- `interest_topics.embedding` — 256d per topic (203 topics, all populated)
+- `user_interests.userEmbedding` — 256d per user (group-weighted mean of topics)
+- Pipeline local cache — `.npz` files for search/article embeddings
+
+**Consistency rule**: If the model changes, bump `EMBEDDING_VERSION` in `api/index.ts`. The server validates `embedding.length === EMBEDDING_DIM` and skips mismatched vectors during user embedding computation.
+
 ### Embedding Text Construction
 
 For topic matching, build embedding text from:
