@@ -11,7 +11,7 @@
 
 | Field | Type | Recommended | Hard Limit | Notes |
 |-------|------|-------------|------------|-------|
-| `hook` | string | ≤10 CJK chars / ≤6 EN words | **30 chars** (API rejects) | Creates curiosity gap. No hype words ("Breaking", "Exciting"). Rendered as single-line label on the dot. |
+| `hook` | string | ≤10 CJK chars / ≤8 EN words | **50 chars** (API rejects) | Creates curiosity gap. No hype words ("Breaking", "Exciting"). Rendered as single-line label on the dot. |
 | `category` | enum | — | `focus` \| `attention` \| `seed` \| `whisper` | Determines dot visual style. Whispers always use `whisper`. |
 | `color_hint` | enum | — | `blue` \| `gold` \| `amber` \| `cyan` \| `green` \| `purple` \| `red` | Whispers always use `amber`. |
 
@@ -126,7 +126,7 @@ Whispers share the same dot/l1/l2 structure but with different field semantics:
 ### API rejects (400 error)
 
 - `dot` missing or not an object
-- `dot.hook` empty or >30 chars
+- `dot.hook` empty or >50 chars
 - `dot.category` not in allowed enum
 - `dot.color_hint` not in allowed enum
 - `l1` missing or not an object
@@ -146,7 +146,7 @@ Whispers share the same dot/l1/l2 structure but with different field semantics:
 
 - `l1.title` missing → don't POST, file is broken
 - `l2.content` <300 chars → quality too low
-- `dot.hook` >15 chars → trim or regenerate (API allows up to 30 but rendering truncates)
+- `dot.hook` >20 chars → trim or regenerate (API allows up to 50 but rendering may truncate)
 
 ---
 
