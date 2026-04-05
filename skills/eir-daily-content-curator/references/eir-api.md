@@ -342,7 +342,7 @@ Push generated content to Eir.
 ```
 
 **Key fields**:
-- `lang` (required): Language code ("en", "zh"). **Must be provided — API rejects if missing.** Each language version is a separate document. API validates that hook text matches declared lang (rejects CJK hook with lang="en" and vice versa).
+- `lang` (required): Language code ("en", "zh"). **Must be provided — API rejects if missing.** Each language version is a separate document. API rejects `lang="en"` if hook contains CJK characters (Chinese hooks with English words are fine).
 - `l1`, `l2` are **top-level** per item (NOT nested in `locales{}`).
 - For bilingual content, push two separate items with the same `slug`/`topicSlug` but different `lang`.
 - `locales{}` format is still accepted for backward compatibility but deprecated.

@@ -48,7 +48,7 @@
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
-| `lang` | `"zh"` \| `"en"` | **Yes** | **Required.** Language of this document's content. Determines which `{contentGroup}_{lang}` document is created. Not locale, not source language — the language the content is written in. API rejects if missing. API also validates that hook text matches declared lang (CJK check). |
+| `lang` | `"zh"` \| `"en"` | **Yes** | **Required.** Language of this document's content. Determines which `{contentGroup}_{lang}` document is created. Not locale, not source language — the language the content is written in. API rejects if missing. API rejects `lang="en"` if hook contains CJK characters (Chinese hooks with English words are fine). |
 | `slug` | string | No | Human-readable identifier. Falls back to `contentGroup` if omitted. |
 | `topicSlug` | string | No | Links content to a user interest topic for cooldown tracking. |
 | `dot` | object | **Yes** | See dot section above. |
@@ -139,7 +139,6 @@ Whispers share the same dot/l1/l2 structure but with different field semantics:
 - `sources` >10 items per content item
 - `lang` missing, or not `"zh"` or `"en"`
 - `lang` is `"en"` but hook contains CJK characters (language mismatch)
-- `lang` is `"zh"` but hook contains no CJK characters (language mismatch)
 - `items` empty, not an array, or >20 items
 
 ### API skips (returned as `status: "skipped"`)
