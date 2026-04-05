@@ -416,6 +416,47 @@ Possible `status` values: `accepted`, `skipped` (duplicate source_url), `error`.
 
 ---
 
+## Public Content API
+
+Public content uses the same `content_items_v2` container and schema as private content, differentiated by `visibility` and `channelId`.
+
+| | Private | Public |
+|---|---|---|
+| Container | `content_items_v2` | `content_items_v2` (same) |
+| userId (PK) | `u_xxx` | `public:{channelId}` |
+| visibility | `private` | `public` |
+| channelId | `user-private` | `eir-express`, etc |
+| TTL | 30 days | 3 days |
+
+**Channel** = a content stream from a provider. One provider can have multiple channels (e.g. `eir-express`, `eir-deep`). Channel ID uses provider prefix for global uniqueness.
+
+### POST /pc/content
+
+Push public content. Requires admin auth.
+
+**Query param or body field**: `channelId` (required, e.g. `eir-express`)
+
+**Request**: Same `{items: [...]}` format as `POST /oc/content`.
+
+Additional optional fields per item:
+- `qualityScore` (number, 0-1, default 0.5)
+- `freshness` (string: `"breaking"` | `"daily"` | `"evergreen"`, default `"daily"`)
+- `categories` (string[], coarse categories e.g. `["ai", "tech"]`)
+
+**Response**: Same format as `POST /oc/content`.
+
+### GET /pc/content
+
+List public content. Requires admin auth.
+
+**Query params**:
+- `channelId` — filter by channel (single-partition read, fast)
+- `limit` — max results (default 20, max 100)
+
+If `channelId` omitted, returns all public content (cross-partition, slower).
+
+---
+
 ## Whisper APIs
 
 ### GET /oc/conversations
@@ -675,7 +716,8 @@ Add or update a language version. This creates or updates the `{contentGroup}_{l
 
 | Container | Partition Key | Purpose | TTL |
 |-----------|---------------|---------|-----|
-| `content_items_v2` | `/userId` | Content (one doc per language) | 30d |
+| `content_items_v2` | `/userId` | Content (private: `u_xxx`, public: `public:{channelId}`) | private 30d, public 3d |
+| `content_operations` | `/id` | Content ops: topic stats, pipeline metrics | — |
 | `whispers_v2` | `/userId` | Whisper items | - |
 | `shared_content_v2` | `/id` | Shared content snapshots | - |
 | `short_ids` | `/id` | ID registry (uniqueness) | - |

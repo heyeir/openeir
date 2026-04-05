@@ -202,7 +202,7 @@ Each stage transition based on engagement, not time. A topic can stay in "focus"
 
 ## API: Curation Directives
 
-`GET /oc/content` returns:
+`GET /oc/curation` returns:
 
 ```json
 {
