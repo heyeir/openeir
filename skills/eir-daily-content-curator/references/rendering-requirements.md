@@ -22,7 +22,7 @@
 | `title` | string | 15-40 CJK chars / 8-15 EN words | **200 chars** (API rejects) | Opinionated, not a headline. Must be in `lang`. |
 | `summary` | string | 50-80 words | — | 2-3 sentences. Advances beyond the title — don't repeat. |
 | `key_quote` | string | 1 sentence | — | Best direct quote from sources. Use `""` if none. |
-| `via` | **string[]** | 1-2 items | — | **Must be an array.** Display-friendly source names, picked from `sources[].name`. Not free text — select from sources. |
+| `via` | **string[]** | — | — | **Must be an array.** Auto-derived from `sources[].name` — writer should NOT set this manually. `post_content.py` populates it. |
 | `bullets` | string[] | 3-4 items | 10 items (API rejects) | Each: ≤20 CJK chars / ≤50 EN chars. Don't repeat summary. |
 
 ### l2 (depth — expanded view)
@@ -60,15 +60,17 @@
 
 ## via vs sources
 
+`via` = `sources[].name` — the full set, not a subset.
+
 | | `sources[]` | `l1.via` |
 |---|---|---|
 | **Purpose** | Machine: dedup, provenance, linking | Human: display attribution on card |
-| **Contains** | Full metadata (url, title, name) | Just publisher names |
+| **Contains** | Full metadata (url, title, name) | Just the names |
 | **Type** | `Array<{url, title, name}>` | `string[]` |
-| **Rule** | Include ALL sources used | Pick 1-2 most relevant from `sources[].name` |
-| **Example** | `[{url: "https://...", name: "MIT Tech Review"}, {url: "...", name: "ArXiv"}]` | `["MIT Tech Review"]` |
+| **Set by** | Writer (required) | `post_content.py` (auto-derived) |
+| **Example** | `[{url: "...", name: "MIT Tech Review"}, {url: "...", name: "ArXiv"}]` | `["MIT Tech Review", "ArXiv"]` |
 
-**`via` is a curated subset of `sources[].name`** — not free text. Writers should select the most recognizable publisher names.
+**Writers only need to set `sources[]`.** The pipeline auto-populates `via` from `sources[].name`. If the writer includes `via` it will be overwritten.
 
 ---
 
