@@ -77,7 +77,7 @@ def fetch_directives():
     """Fetch directives from Eir API and cache locally. (degraded mode only)"""
     api_key = load_api_key()
     req = urllib.request.Request(
-        "%s/oc/content" % (get_api_url() + "/api"),
+        "%s/oc/curation" % (get_api_url() + "/api"),
         headers={"Authorization": "Bearer %s" % api_key}
     )
     with urllib.request.urlopen(req, timeout=15) as resp:

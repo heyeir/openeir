@@ -138,61 +138,12 @@ Conversation:
 
 
 def generate_whisper(conv: Dict, analysis: Dict) -> Optional[Dict]:
-    """Generate full Whisper from conversation and analysis."""
-    conv_text = format_conversation(conv)
+    """Generate full Whisper from conversation and analysis.
     
-    prompt = f'''You are Eir's Whisper crystallizer. Create a polished mini-essay.
-
-Rules:
-1. Include BOTH voices — user AND Eir's challenge/extension
-2. Preserve friction — "I don't know" moments > conclusions
-3. Hook = sharpest phrase from conversation
-4. Read like a thought journal, not news
-5. Write in user's language
-
-Core Tension: {analysis.get('core_tension', '')}
-Key Insight: {analysis.get('key_insight', '')}
-Unresolved: {analysis.get('unresolved', '')}
-Eir's Role: {analysis.get('eir_role', 'catalyst')}
-Thinking Path: {', '.join(analysis.get('thinking_path', []))}
-
-Conversation:
-{conv_text}
-
-Output JSON:
-{{
-  "dot": {{ "hook": "≤10 chars" }},
-  "l1": {{
-    "title": "Core tension",
-    "summary": "80-120 words"
-  }},
-  "l2": {{
-    "content": "300-600 words",
-    "tension": "X vs Y",
-    "unresolved": "...",
-    "thinking_path": ["..."],
-    "eir_role": "...",
-    "related_topics": ["..."]
-  }}
-}}'''
-    
+    NOTE: Must be run through an OpenClaw agent which provides LLM analysis.
+    The prompt templates above are reference only — the agent calls the LLM directly.
+    """
     sys.exit("Error: whisper_extract.py must be run through an OpenClaw agent. The agent provides LLM analysis.")
-    whisper = {
-        "dot": result.get("dot", {"hook": "..."}),
-        "l1": {
-            **result.get("l1", {}),
-            "participants": "user+eir",
-            "via": ["OpenClaw"]
-        },
-        "l2": result.get("l2", {}),
-        "conversationId": conv.get("id"),
-        "conversation_excerpt": {
-            "messages": conv.get("messages", [])[-8:],
-            "total_messages": len(conv.get("messages", []))
-        },
-        "source": "openclaw"
-    }
-    return whisper
 
 
 def post_whisper(whisper: Dict) -> Dict:

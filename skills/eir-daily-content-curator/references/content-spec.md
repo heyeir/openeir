@@ -55,6 +55,8 @@
 | `l1` | object | **Yes** | See l1 section above. `l1.title` is required. |
 | `l2` | object | No | See l2 section above. Strongly recommended. |
 | `sources` | array | No | See sources section above. At least 1 recommended. |
+| `visibility` | `"private"` \| `"public"` | **Yes** | `private` for user content, `public` for pool/shared content. Set by API, not writer. |
+| `channelId` | string | **Yes** | Content channel: `user-private`, `eir-express`, `shared-pick`, etc. Set by API, not writer. |
 
 ---
 
@@ -161,6 +163,19 @@ Both use the same ID scheme:
 - `contentGroup`: 8-char base64url, globally unique, registered in `short_ids` container
 - All language versions of the same item share the `contentGroup`
 - Content stored in `content_items_v2`, whispers in `whispers_v2`
+
+---
+
+## Public Content Fields
+
+These fields are set by the public content pipeline (`POST /pc/content`). Private content may also include them.
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `qualityScore` | number | 0.5 | 0-1 quality rating from pipeline |
+| `freshness` | string | `"daily"` | `"breaking"` \| `"daily"` \| `"evergreen"` |
+| `categories` | string[] | `[]` | Coarse topic categories e.g. `["ai", "tech"]` |
+| `canonicalUrl` | string | null | Primary source URL for dedup |
 
 ---
 
