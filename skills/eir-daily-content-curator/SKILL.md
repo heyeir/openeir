@@ -385,24 +385,27 @@ Cleanup runs daily at 03:00 via cron. Manual run: `python3 scripts/pipeline/cach
 
 The `whisper_extract.py` script analyzes Eir conversations to find "Whisper moments" — genuine intellectual collisions worth preserving. It generates polished mini-essays (Whispers) that appear in the user's Eir feed.
 
+**Writer prompt:** `references/whisper-writer-prompt.md` — defines Whisper style, structure, and detection criteria. The agent MUST follow this prompt when generating Whisper content.
+
 **How it works:**
-1. Fetches conversations marked as `whisperCandidate` from Eir API
-2. Uses LLM to analyze and generate Whisper content (dot, L1, L2)
-3. Posts generated Whisper back to Eir via `POST /api/oc/whispers`
+1. Fetches conversations via `GET /api/oc/conversations` (optionally filtered by `whisper_candidates=true`)
+2. Agent analyzes each conversation using `references/whisper-writer-prompt.md`
+3. Posts generated Whisper back to Eir via `POST /api/oc/whispers` (see `references/whisper-api.md`)
 
 **Running via OpenClaw agent:**
 
-Since Whisper extraction requires LLM analysis, it must be run through OpenClaw's agent system (not standalone Python):
+Whisper extraction requires LLM analysis and must run through OpenClaw's agent system:
 
 ```
-# Agent runs this skill, which uses OpenClaw's configured model
-# to analyze conversations and generate Whispers
+# Agent reads whisper-writer-prompt.md, analyzes conversations,
+# generates dot/l1/l2 structure, and POSTs to Eir API
 ```
 
 The skill automatically:
 - Uses OpenClaw's configured LLM (no separate model config needed)
 - Connects to Eir API using stored credentials
 - Processes whisper candidates incrementally
+- Generates specific, personal content (Whispers are private journal entries)
 
 **Manual run (for testing):**
 ```bash
