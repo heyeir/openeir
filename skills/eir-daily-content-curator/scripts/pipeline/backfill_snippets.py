@@ -68,9 +68,17 @@ def crawl_url(url):
 
 def needs_backfill(snippet_data):
     """Check if a snippet needs its content backfilled."""
+    status = snippet_data.get("crawl_status", "")
+    # Skip terminal states
+    if status in ("ok", "done", "unmatched", "failed_permanent"):
+        return False
     # Explicit pending status
-    if snippet_data.get("crawl_status") == "pending":
+    if status == "pending":
         return True
+    # Failed but retriable (max 3 retries)
+    if status == "failed":
+        retries = snippet_data.get("crawl_retries", 0)
+        return retries < 3
     # Missing or thin content
     content = snippet_data.get("markdown", "") or snippet_data.get("content", "")
     return len(content) < MIN_CONTENT_LEN
@@ -160,6 +168,16 @@ def main():
                 json.dump(d, f, ensure_ascii=False, indent=2)
             success += 1
         else:
+            # Track retries so we stop after 3 failures
+            d = item["data"]
+            retries = d.get("crawl_retries", 0) + 1
+            d["crawl_retries"] = retries
+            if retries >= 3:
+                d["crawl_status"] = "failed_permanent"
+            else:
+                d["crawl_status"] = "failed"
+            with open(item["path"], "w") as f:
+                json.dump(d, f, ensure_ascii=False, indent=2)
             fail += 1
         time.sleep(1)
 
