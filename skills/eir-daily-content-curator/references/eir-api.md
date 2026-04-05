@@ -268,7 +268,7 @@ Returns curation directives for today's content collection.
 
 **Local Enrichment** (when API returns null):
 
-Pipeline runs `interest_extractor.py enrich_topics()` to generate:
+The agent enriches locally (when API returns null) to generate:
 - `embedding_text`: Combines topic label + user group description + inferred needs
 - `keywords_enriched`: Bilingual keywords from label variations
 - `search_queries`: Fallback queries for topics without API hints
@@ -404,7 +404,7 @@ Possible `status` values: `accepted`, `skipped` (duplicate source_url), `error`.
 │     ← Includes description/keywords from global dictionary      │
 │                                                                 │
 │  2. Pipeline enrichment (if API returns null)                   │
-│     → interest_extractor.py enrich_topics()                     │
+│     → Agent enriches locally (no script needed)                 │
 │     → Combines: topic labels + group descriptions + needs       │
 │     → Generates: embedding_text, keywords, fallback queries     │
 │                                                                 │

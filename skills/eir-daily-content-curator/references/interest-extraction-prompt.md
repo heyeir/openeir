@@ -1,127 +1,115 @@
-# Interest Extraction Prompt
+# Interest Extraction & Sync Prompt
 
-Use this prompt when analyzing conversations to extract new interests.
+> This prompt is used by the OpenClaw agent to analyze conversations and sync interest operations to Eir.
 
-## Context
+## Overview
 
-You have access to:
-1. User's current interest profile (from `/oc/interests/context`)
-2. Recent conversations to analyze
-3. System suggestions (topics to demote/merge)
+You analyze recent OpenClaw conversations to discover what the user genuinely cares about, then sync structured operations to the Eir interest API. 
+
+**You decide WHAT the user is interested in. The server decides HOW MUCH (strength, heat, engagement).**
+
+## What This IS
+
+- Discovering genuine interests from conversation patterns
+- Generalizing private contexts into universal topics  
+- Confirming or rejecting server-generated suggestions
+- Carefully merging semantically overlapping topics
+
+## What This is NOT
+
+- Tracking what tasks the user is doing (debugging React ≠ interest in React)
+- Calculating strength/heat/engagement (server does this)
+- Applying time-based decay (server does this)
+- Replacing the content curation pipeline (that's a separate concern)
+
+## Data Sources
+
+### 1. Server Context
+`GET /oc/interests/context` returns:
+- Current topics with strength, heat, engagement data
+- System suggestions (demote/merge) based on behavioral analysis
+- User language settings
+
+### 2. Local Conversations  
+Read recent OpenClaw session transcripts from all agents to extract user messages. Focus on the last 24-48 hours. Look for:
+- Topics the user actively discussed or asked about
+- Recurring themes across multiple conversations
+- Explicit interest signals ("I want to follow X", "this is fascinating")
 
 ## Instructions
 
-Analyze the conversations and output structured operations for the interest sync API.
+### Step 1: Fetch Server Context
+Call `GET /oc/interests/context` to get current topics and suggestions.
 
-**Your responsibilities**:
-- Identify NEW interests from conversations
-- Decide on `decay_type` (event/ongoing/evergreen)
-- Confirm or reject system merge suggestions
-- Identify topics that should be merged (semantic overlap)
-- **Generalize specific contexts into universal interests** (privacy protection)
+### Step 2: Analyze Conversations
+Read recent session transcripts. For each user message, classify:
 
-**NOT your responsibilities**:
-- Calculating strength/heat (server does this)
-- Tracking engagement metrics (server does this)
-- Applying decay (server does this)
-
-## Prompt Template
-
-```
-You are analyzing conversations to extract user interests for Eir.
-
-**User's primary language**: {primary_language}
-All interest labels should be in this language.
-
-**Current interests** (do NOT re-add these):
-{current_topics_list}
-
-**System suggestions**:
-{suggestions_list}
-
-**Recent conversations**:
-{conversations}
-
----
-
-## 🔒 Privacy Rules (CRITICAL)
-
-Interest labels are stored and may be processed by third-party services. 
-**Protect user privacy while preserving useful public context.**
-
-### The Key Distinction: Private vs Public
-
-**✅ Public/Well-known (OK to include)**:
-- Famous companies: Microsoft, Apple, Google, Tesla, OpenAI, Anthropic
-- Public products: iPhone, GPT-4, Claude, VS Code, React, Kubernetes
-- Public figures: Elon Musk, Sam Altman (in news context)
-- Open source projects: Linux, Node.js, LangChain
-- Public events: WWDC, Google I/O, CES
-- Cities/regions: Shanghai, Beijing, San Francisco, Tokyo (general level)
-- Famous institutions: MIT, Stanford, Harvard, Tsinghua, Peking University (newsworthy)
-
-**❌ Private/Personally-identifiable (NEVER include)**:
-- User's employer or clients (unless Fortune 500 / globally famous)
-- User's own projects, startups, or products they're building
-- Internal codenames, team names, department names
-- Colleagues, family, friends by name
-- Specific addresses, neighborhoods, buildings
-- User's own school/hospital (unless globally famous AND in news context)
-- Financial details, health conditions
-- Private dates: birthdays, appointments, deadlines
-
-### Quick Test
-Ask: **"Would a random person on the internet recognize this?"**
-- ✅ "Microsoft" — yes, everyone knows Microsoft
-- ❌ "Acme Corp" — no, this is likely user's employer/client
-- ✅ "Tesla Model Y" — yes, public product
-- ❌ "Project Phoenix" — no, internal codename
-
-### ✅ Generalization Examples:
-
-| User context | → Interest label | Why |
-|--------------|------------------|-----|
-| "Microsoft AI news" | → "Microsoft AI" ✅ | Public company, OK |
-| "Apple Vision Pro launch" | → "Apple Vision Pro" ✅ | Public product |
-| "OpenAI's GPT-5" | → "GPT-5" or "OpenAI" ✅ | Public |
-| "Acme Corp proposal" | → "Business proposals" | Private client |
-| "Our company OKRs" | → "OKR methodology" | Private employer |
-| "Eir product design" | → "Product design" | User's own project |
-| "LangChain integration" | → "LangChain" ✅ | Public OSS |
-| "Report for John" | → "Report writing" | Private person |
-| "Sam Altman's talk" | → "Sam Altman" or "AI industry" ✅ | Public figure |
-
-### Reason field
-Also keep reason strings generic — don't leak private context there either.
-
-## What Makes a Good Interest
-
-✅ **Strong signals**:
+**✅ Strong signals (include):**
 - Explicit request: "I want to follow news about X"
 - Deep discussion: 3+ turns exploring a topic
-- Curious questions: "How does X work?"
-- Repeated mentions: Same topic in multiple conversations
+- Curious questions: "How does X work?" "What's the latest on X?"
+- Repeated mentions: Same topic across multiple conversations
+- Emotional engagement: excitement, concern, strong opinions about a topic
 
-⚠️ **Weak signals** (usually skip):
+**⚠️ Weak signals (usually skip):**
 - Single mention, never revisited
-- Mentioned while doing a task
-- From a document being processed
+- Mentioned while doing a task (tool usage ≠ interest)
+- From a document being processed (reading about X ≠ interested in X)
 
-❌ **NOT signals**:
-- "Debug this React code" → NOT interest in React
-- "I don't care about crypto" → This is DISLIKE, not interest
-- Tool commands: "Search for X" is a command
+**❌ NOT signals:**
+- "Debug this React code" → task, not interest
+- "Search for X" → command, not interest  
+- "I don't care about crypto" → this is DISLIKE, handle separately
 
-## decay_type Selection
+### Step 3: Apply Privacy Filter
 
-- **event**: Time-sensitive news/releases (GPT-5 launch, MCP 2.0 release)
-  → Fast decay: 70% at 7 days
-- **ongoing**: Active interest areas (AI safety, developer tools)
-  → Slow decay: 85% at 30 days
-- **evergreen**: Fundamental interests (productivity, design thinking)
-  → Minimal decay: 90% at 60 days
+Interest labels are stored and may be processed by third-party services. **Protect user privacy while preserving useful public context.**
 
-## Output Format
+**Quick test: "Would a random person on the internet recognize this?"**
+
+| User context | → Interest label | Why |
+|---|---|---|
+| "Microsoft AI news" | "Microsoft AI" ✅ | Public company |
+| "OpenAI GPT-5" | "GPT-5" ✅ | Public product |
+| "Acme Corp proposal" | "Business proposals" | Private client |
+| "Our company OKRs" | "OKR methodology" | Private employer |
+| "My project Eir" | "Content curation" | User's own project |
+| "Report for John" | "Report writing" | Private person |
+| "LangChain integration" | "LangChain" ✅ | Public OSS |
+
+**Also keep `reason` strings generic — don't leak private context there either.**
+
+### Step 4: Process Server Suggestions
+
+**Demote suggestions → default accept.** Server has engagement data you don't. If the server says "user hasn't clicked on X in 14 days", trust it — unless you see clear evidence in recent conversations that the user is still interested.
+
+**Merge suggestions → independent judgment.** Server may suggest merging based on keyword overlap, but you need to verify semantic equivalence. See merge strategy below.
+
+### Step 5: Decide Merge Operations
+
+**Conservative merge strategy — only merge when ALL conditions are met:**
+
+1. Topics are truly semantically equivalent (not just related)
+2. Both topics have strength < 0.5 (user isn't deeply engaged in the distinction)
+3. No recent conversation evidence that the user treats them as separate concerns
+
+**Examples:**
+- `react-hooks` + `react-state-management` → probably DON'T merge (developers care about the distinction)
+- `ai-safety` + `ai-alignment` → probably DON'T merge (researchers distinguish these)
+- `typescript-tips` + `typescript-tricks` → merge to `typescript` (no meaningful distinction)
+- `home-automation` + `smart-home` → merge (same thing, different words)
+
+**When in doubt, don't merge.** Extra topics are cheap; lost engagement history is expensive.
+
+### Step 6: Set decay_type for New Interests
+
+| decay_type | Use when | Examples |
+|---|---|---|
+| `event` | Time-sensitive news, product launches | GPT-5 launch, WWDC 2026, specific conference |
+| `ongoing` | Active interest area, likely to persist months | AI safety, developer tools, product design |
+| `evergreen` | Fundamental interest, part of identity | Productivity, systems thinking, design philosophy |
+
+### Step 7: Output Operations
 
 ```json
 {
@@ -129,105 +117,54 @@ Also keep reason strings generic — don't leak private context there either.
     {
       "op": "add",
       "slug": "topic-slug-kebab-case",
-      "label": "Topic Label in User's Language",
+      "label": "Topic Label in User's Primary Language",
       "decay_type": "event|ongoing|evergreen",
-      "reason": "Why this is a genuine interest (do NOT include private details here either)"
+      "reason": "Brief reason (no private info)"
+    },
+    {
+      "op": "boost",
+      "slug": "existing-topic",
+      "reason": "User explicitly asked to track this"
+    },
+    {
+      "op": "demote",
+      "slug": "topic-to-demote",
+      "reason": "Confirmed server suggestion: no engagement"
+    },
+    {
+      "op": "delete",
+      "slug": "topic-to-remove",
+      "reason": "User explicitly said not interested"
     },
     {
       "op": "merge",
       "from": ["slug-1", "slug-2"],
       "to": "merged-slug",
       "to_label": "Merged Topic Label",
-      "reason": "Why these should be combined"
-    },
-    {
-      "op": "delete",
-      "slug": "topic-to-remove",
-      "reason": "Why this should be removed"
-    },
-    {
-      "op": "boost",
-      "slug": "existing-topic",
-      "reason": "User explicitly asked to track this"
+      "reason": "Semantically identical, both low engagement"
     }
   ],
   "skipped_suggestions": [
     {
       "slug": "topic-slug",
       "action": "demote",
-      "reason": "Why we're NOT applying this suggestion"
+      "reason": "Recent conversation shows continued interest despite low clicks"
     }
   ],
-  "notes": "Optional notes about the analysis"
+  "notes": "Optional: brief summary of what changed and why"
 }
 ```
+
+Then POST this to `POST /oc/interests/sync`.
 
 ## Rules
 
-1. **Privacy first**: Generalize all specific contexts to universal interests
-2. **Label language**: Always use the user's `primary_language`
-3. **Slug format**: kebab-case, English, descriptive (e.g., `product-design` not `eir-product-design`)
+1. **Privacy first**: Generalize specific contexts to universal interests
+2. **Label language**: Always use the user's `primary_language` from context
+3. **Slug format**: kebab-case, English, descriptive (`product-design` not `eir-product-design`)
 4. **No duplicates**: Check against current topics before adding
 5. **Quality over quantity**: 3-5 high-confidence interests > 20 weak ones
-6. **Demote confirmations**: Apply system demote suggestions unless you have a reason not to
-7. **Merge carefully**: Only merge if topics truly overlap semantically
-8. **Reason field**: Also avoid private info in reason strings — keep generic
-```
-
-## Example
-
-**Input**:
-```
-primary_language: zh
-current_topics: ["ai-agents", "mcp-protocol"]
-suggestions: [{ slug: "rust-programming", action: "demote", reason: "0 clicks" }]
-
-conversations:
-- User asked about building AI agents with LangGraph for their startup "Acme AI"
-- User discussed concerns about AI alignment
-- User mentioned debugging a Python script for the Acme dashboard (one-off)
-- User expressed excitement about Apple Vision Pro announcement
-- User is designing the Eir content curation feature
-```
-
-**Output**:
-```json
-{
-  "operations": [
-    {
-      "op": "add",
-      "slug": "ai-alignment",
-      "label": "AI Alignment",
-      "decay_type": "ongoing",
-      "reason": "Discussed AI alignment concerns in depth"
-    },
-    {
-      "op": "add",
-      "slug": "apple-vision-pro",
-      "label": "Apple Vision Pro",
-      "decay_type": "event",
-      "reason": "Showed excitement about product announcement"
-    },
-    {
-      "op": "add",
-      "slug": "content-curation",
-      "label": "Content Curation",
-      "decay_type": "ongoing",
-      "reason": "Actively working on content curation design"
-    },
-    {
-      "op": "demote",
-      "slug": "rust-programming",
-      "reason": "Confirmed system suggestion: no engagement"
-    }
-  ],
-  "skipped_suggestions": [],
-  "notes": "Startup name 'Acme AI' and product name 'Eir' excluded from labels for privacy. Python debug was task-related, not an interest."
-}
-```
-
-Note how:
-- "Acme AI" startup → not mentioned, interest is just "AI agents" (already exists)
-- "Eir content curation" → generalized to "Content Curation"
-- "Acme dashboard" → excluded entirely (task, not interest)
-- Reasons don't mention company names
+6. **Demote = default accept**: Trust server engagement data
+7. **Merge = conservative**: Only when semantically identical AND both low-strength
+8. **Reason = also private-safe**: No company names, project names, or personal info in reason strings
+9. **Interest ≠ task**: Distinguish genuine curiosity from work execution
