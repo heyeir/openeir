@@ -1,7 +1,7 @@
 # Eir Content Specification
 
 > Single source of truth for all content field constraints and quality criteria.
-> Used by: writer prompts, post_content.py validation, API validation, front-end rendering.
+> Used by: writer prompts, API validation, front-end rendering.
 
 ---
 
@@ -22,7 +22,7 @@
 | `title` | string | 15-40 CJK chars / 8-15 EN words | **200 chars** (API rejects) | Opinionated, not a headline. Must be in `lang`. |
 | `summary` | string | 50-80 words | — | 2-3 sentences. Advances beyond the title — don't repeat. |
 | `key_quote` | string | 1 sentence | — | Best direct quote from sources. Use `""` if none. |
-| `via` | **string[]** | — | — | **Must be an array.** Auto-derived from `sources[].name`. Pipeline (`post_content.py`) populates it; API also falls back to `sources[].name` if empty. Writer should NOT set this. |
+| `via` | **string[]** | — | — | **Must be an array.** Auto-derived from `sources[].name`. Pipeline populates it; API also falls back to `sources[].name` if empty. Writer should NOT set this. |
 | `bullets` | string[] | 3-4 items | 10 items (API rejects) | Each: ≤20 CJK chars / ≤50 EN chars. Don't repeat summary. |
 
 ### l2 (depth — expanded view)
@@ -50,7 +50,6 @@
 |-------|------|----------|-------|
 | `lang` | `"zh"` \| `"en"` | **Yes** | **Required.** Language of this document's content. Determines which `{contentGroup}_{lang}` document is created. Not locale, not source language — the language the content is written in. API rejects if missing. API rejects `lang="en"` if hook contains CJK characters (Chinese hooks with English words are fine). |
 | `slug` | string | No | Human-readable identifier. Falls back to `contentGroup` if omitted. |
-| `topicSlug` | string | No | Links content to a user interest topic for cooldown tracking. Deprecated in favor of `interests.anchor`. |
 | `interests` | object | **Recommended** | See Interest Signals section below. |
 | `dot` | object | **Yes** | See dot section above. |
 | `l1` | object | **Yes** | See l1 section above. `l1.title` is required. |
@@ -70,7 +69,7 @@
 | **Purpose** | Machine: dedup, provenance, linking | Human: display attribution on card |
 | **Contains** | Full metadata (url, title, name) | Just the names |
 | **Type** | `Array<{url, title, name}>` | `string[]` |
-| **Set by** | Writer (required) | `post_content.py` (auto-derived); API also falls back to `sources[].name` if empty |
+| **Set by** | Writer (required) | Pipeline (auto-derived); API also falls back to `sources[].name` if empty |
 | **Example** | `[{url: "...", name: "MIT Tech Review"}, {url: "...", name: "ArXiv"}]` | `["MIT Tech Review", "ArXiv"]` |
 
 **Writers only need to set `sources[]`.** The pipeline auto-populates `via` from `sources[].name`; the API also falls back to `sources[].name` if `via` is empty. If the writer includes `via` it will be overwritten.
@@ -83,13 +82,12 @@
 
 - Set by pipeline's `output_lang` parameter
 - Each language version is a **separate document** with ID `{contentGroup}_{lang}`
-- For bilingual users: pipeline generates two items with same `slug`/`topicSlug` but different `lang`
+- For bilingual users: pipeline generates two items with same `slug` but different `lang`
 - `lang` is NOT locale (UI language) and NOT source_lang (language of source articles)
 
 | Field | Meaning | Set by |
 |-------|---------|--------|
 | `lang` | Content language | Pipeline `output_lang` |
-| `source_lang` | **Deprecated.** Was: dominant source language. Now: unused by API. | — |
 | `locale` (user pref) | UI language (dates, buttons) | User settings |
 
 ---
@@ -162,161 +160,11 @@ Both use the same ID scheme:
 {8-char contentGroup}_{lang}    e.g. a3k9m2x7_zh
 ```
 
-- `contentGroup`: 8-char base64url, globally unique, registered in `short_ids` container
+- `contentGroup`: 8-char base64url, globally unique
 - All language versions of the same item share the `contentGroup`
-- Content stored in `content_items_v2`, whispers in `whispers_v2`
 
 ---
-
-## Public Content Fields
-
-These fields are set by the public content pipeline (`POST /pc/content`). Private content may also include them.
-
-| Field | Type | Default | Notes |
-|-------|------|---------|-------|
-| `qualityScore` | number | 0.5 | 0-1 quality rating from pipeline |
-| `freshness` | string | `"daily"` | `"breaking"` \| `"daily"` \| `"evergreen"` |
-| `categories` | string[] | `[]` | Coarse topic categories e.g. `["ai", "tech"]` |
-| `canonicalUrl` | string | null | Primary source URL for dedup |
-| `embedding` | number[] | null | 256d vector from EmbeddingGemma-300M (see below) |
-| `embeddingModel` | string | null | Always `"embedding-gemma-300m"` when embedding is set |
-| `embeddingDim` | number | null | Always `256` when embedding is set |
-
----
-
-## Embedding Specification
-
-All embeddings in the Eir system **MUST** use the same model and dimension for cosine similarity to work.
-
-### Model
-
-| Property | Value |
-|----------|-------|
-| Model | **google/embeddinggemma-300m** (300M params, Gemma 3 derived) |
-| HuggingFace ID | `google/embeddinggemma-300m` |
-| Full dimension | 768d |
-| **Truncated dimension** | **256d** (Matryoshka) |
-| Max tokens | 2048 |
-
-### Method: Matryoshka Representation Learning
-
-1. Encode text at full 768d (no normalization)
-2. Truncate to first 256 dimensions
-3. L2 normalize after truncation
-
-```python
-from sentence_transformers import SentenceTransformer
-import numpy as np
-
-model = SentenceTransformer('google/embeddinggemma-300m')
-
-def embed(texts):
-    full_embs = model.encode(texts, normalize_embeddings=False)
-    truncated = full_embs[:, :256].copy()
-    norms = np.linalg.norm(truncated, axis=1, keepdims=True)
-    return (truncated / np.maximum(norms, 1e-12)).astype(np.float32)
-```
-
-### Where embeddings are used
-
-| Container | Field | Model | Dimension |
-|-----------|-------|-------|-----------|
-| `interest_topics` | `embedding` | embedding-gemma-300m | 256 |
-| `user_interests` | `userEmbedding` | weighted mean of topic embeddings | 256 |
-| `content_items` | `embedding` | embedding-gemma-300m | 256 |
-
-### API Validation
-
-`POST /pc/content` validates embedding:
-- Must be exactly 256d (error: `embedding must be 256d (EmbeddingGemma-300M Matryoshka), got Xd`)
-- Must contain only numbers
-
-### Pipeline Integration
-
-Content pipeline (`post_content.py`) should:
-1. After generating content, extract text: `l1.title + l1.summary + l2.content`
-2. Call `embed.py` to generate 256d embedding
-3. Include `embedding` in POST body
-
----
-
-## Content Quality Criteria
 
 ## Interest Signals
 
-Content should declare which user interests it serves (anchors) and what adjacent topics it introduces (related).
-
-### `interests` object
-
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| `anchor` | string[] | **Yes** (1-3) | Slugs from `GET /oc/curation` directives. Must match user's existing interests. API validates and rejects if none match. |
-| `related` | array | No (max 5) | Discovery topics. Each: `{slug: string, label: string}`. Slug format: `[a-z0-9][a-z0-9-]*[a-z0-9]`. |
-
-### How to set anchors
-
-1. Read directives from `GET /oc/curation` → each has a `slug`
-2. For each content item, pick 1-3 directive slugs that match the content's topic
-3. Set `interests.anchor` to those slugs
-
-If you can't match any directive → don't push the content. The API will reject it.
-
-### How to set related topics
-
-Pick 2-5 topics that are **adjacent** to the anchor but the user may not know about yet:
-- Must be specific and concrete ("neural-architecture-search" ✅, "technology" ❌)
-- `slug`: lowercase, hyphens, alphanumeric
-- `label`: human-readable name in the content's language
-
-Related topics not in the dictionary are automatically added as candidates for review.
-
-### Example
-
-```json
-{
-  "interests": {
-    "anchor": ["ai-agents"],
-    "related": [
-      { "slug": "a2a-protocol", "label": "A2A Protocol" },
-      { "slug": "multi-agent-systems", "label": "Multi-Agent Systems" }
-    ]
-  }
-}
-```
-
-### Backward compatibility
-
-If `interests` is omitted, `topicSlug` is used as a single anchor. New content should always use `interests`.
-
----
-
-## Required Checks
-
-1. **Factual accuracy** — All data points must be traceable to source material. Never fabricate.
-2. **Has an angle** — Not a flat news recap. Must have a point of view grounded in facts.
-3. **Specific** — Includes numbers, names, mechanisms, examples. No vague generalities.
-4. **Non-repetitive** — L1 and L2 don't repeat the same information. Each layer advances the narrative.
-
-## Quality Signals
-
-### High quality
-- Source has exclusive data or research findings
-- Topic has a controversial or unexpected angle
-- Source rated S or A
-- Content highly relevant to user's interests
-
-### Low quality (do not push)
-- Pure press-release content ("Company X launches Product Y")
-- Opinion pieces with no concrete information
-- Clickbait headlines with thin substance
-- Highly similar to recently pushed content
-
-## Source Ratings
-
-See `source-ratings.json`.
-
-| Rating | Description | Weight |
-|--------|-------------|--------|
-| S | Deep original work, primary data | 1.0 |
-| A | Quality publications, known authors | 0.8 |
-| B | General tech media | 0.6 |
+Content

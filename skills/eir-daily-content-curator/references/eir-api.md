@@ -1,153 +1,109 @@
 # Eir API Reference
 
-> **Base URL**: `https://api.heyeir.com/api`
->
-> **Authentication**: All `/oc/*` endpoints require `Authorization: Bearer <EIR_API_KEY>` header.
->
-> **Credential storage** (OpenClaw):
-> ```bash
-> openclaw config set skills.entries.eir-daily-content-curator \
->   '{"enabled":true,"env":{"EIR_API_URL":"https://api.heyeir.com/api","EIR_API_KEY":"<key>"}}' \
->   --strict-json
-> ```
+**Base URL**: `https://api.heyeir.com/api`
+
+**Authentication**: `Authorization: Bearer <EIR_API_KEY>` for all `/oc/*` endpoints.
 
 ---
 
 ## Connection
 
 ### POST /oc/connect
-
-Register with a pairing code. No API key needed (this is how you get one).
+Register with pairing code.
 
 **Request:** `{ "code": "ABCD-1234" }`
 
-**Response:** `{ "apiKey": "eir_oc_xxx", "userId": "u_abc123", "status": "connected" }`
+**Response:** `{ "apiKey": "eir_oc_xxx", "userId": "u_abc123" }`
 
 ### DELETE /oc/connect
-
-Disconnect. Revokes the API key.
+Disconnect and revoke API key.
 
 ### POST /oc/refresh-key
-
-Rotate API key. Old key valid for 60s grace period.
-
-**Response:** `{ "apiKey": "eir_oc_new_xxx", "rotatedAt": "...", "prevKeyExpiresAt": ... }`
+Rotate API key (60s grace period).
 
 ---
 
 ## Interests
 
 ### GET /oc/interests
-
-Returns user interests in v3 format.
+Returns user interests.
 
 **Response:**
 ```json
 {
-  "user": { "id": "u_xxx", "locale": "zh", "primary_language": "zh", "bilingual": false },
+  "user": { "id": "u_xxx", "primaryLanguage": "zh", "bilingual": false },
   "interests": [
     {
       "id": "ui_abc1234",
       "slug": "artificial-intelligence",
-      "label": "人工智能",
-      "source": "content_interest",
+      "label": "Artificial Intelligence",
       "status": "active",
       "heat": 5,
-      "strength": 0.6,
-      "createdAt": 1775467481053,
-      "lastActiveAt": 1775467481053
+      "strength": 0.6
     }
   ]
 }
 ```
 
 ### POST /oc/interests/add
+Add interests by label. Server matches against dictionary.
 
-Add interests by label. Server matches against the topic dictionary.
-
-**Request:**
-```json
-{
-  "labels": ["AI Agents", "MCP Protocol"],
-  "lang": "en"
-}
-```
+**Request:** `{ "labels": ["AI Agents", "MCP"], "lang": "en" }`
 
 **Response:** `{ "added": 2, "results": [...] }`
-
-Matched labels get a `slug` and `status: "active"`. Unmatched labels get `slug: null` and `status: "unknown"` (flagged for admin review).
 
 ---
 
 ## Curation
 
 ### GET /oc/curation
-
-Returns curation directives for today's content collection.
+Returns curation directives for content collection.
 
 **Response:**
 ```json
 {
-  "user": { "primary_language": "zh", "bilingual": false },
-  "schema_version": "2",
-  "tracked": [
-    {
-      "slug": "mcp-protocol",
-      "topic": "MCP Protocol",
-      "description": "...",
-      "keywords": ["MCP", "model context protocol"],
-      "search_hints": ["MCP 2.0", "Anthropic MCP"],
-      "strength": 0.9,
-      "engagement_health": 1.1,
-      "priority": "high",
-      "max_items": null,
-      "quality_threshold": 0.6,
-      "freshness": "7d"
-    }
-  ],
+  "schema_version": "1.0",
+  "user": {
+    "primaryLanguage": "zh",
+    "bilingual": false
+  },
   "directives": [
     {
-      "type": "focus",
+      "slug": "mcp-protocol",
+      "label": "MCP Protocol",
+      "tier": "tracked",
+      "freshness": "7d",
+      "searchHints": ["MCP 2.0 announced", "Anthropic MCP ecosystem"],
+      "userNeeds": "Protocol updates and adoption",
+      "trackingGoal": "Stay current on protocol updates"
+    },
+    {
       "slug": "ai-agents",
-      "topic": "AI Agents",
-      "description": "...",
-      "keywords": ["..."],
-      "search_hints": ["..."],
-      "strength": 0.8,
-      "score": 0.72,
-      "engagement_health": 0.9,
-      "quality_threshold": 0.7,
-      "freshness": "7d"
+      "label": "AI Agents",
+      "tier": "focus",
+      "freshness": "7d",
+      "searchHints": ["AI agent frameworks comparison", "autonomous agent production"],
+      "userNeeds": null,
+      "trackingGoal": null
     }
   ],
-  "budget": {
-    "suggested_total": 6,
-    "remaining_today": 5
-  },
   "exclude": {
     "disliked": ["crypto", "nft"]
   }
 }
 ```
 
-**Tiers:** tracked (user explicit) → focus (strong) → explore (moderate) → seed (discovery).
+**Tiers:** tracked → focus → explore → seed (by priority).
 
-See `eir-interest-rules.md` for curation logic.
+**Server-side curation:** The API applies quotas per tier based on user engagement history. Topics in cooldown are filtered server-side.
 
-### GET /oc/sources
-
-Returns already-pushed source URLs for dedup.
-
-**Query:** `?days=7` (default: 7)
-
-**Response:** `{ "urls": ["https://..."], "count": 12, "since": "..." }`
+See `eir-interest-rules.md` for curation guidelines.
 
 ---
 
 ## Content
 
 ### POST /oc/content
-
 Push generated content.
 
 **Request:**
@@ -156,14 +112,10 @@ Push generated content.
   "items": [
     {
       "slug": "mcp-protocol-2-0",
-      "topicSlug": "mcp-protocol",
       "lang": "en",
       "interests": {
         "anchor": ["mcp-protocol"],
-        "related": [
-          { "slug": "a2a-protocol", "label": "A2A Protocol" },
-          { "slug": "agent-interoperability", "label": "Agent Interoperability" }
-        ]
+        "related": [{ "slug": "a2a-protocol", "label": "A2A Protocol" }]
       },
       "dot": {
         "hook": "MCP 2.0 Released",
@@ -183,76 +135,47 @@ Push generated content.
         "eir_take": "...",
         "related_topics": ["ai-agents"]
       },
-      "sources": [
-        { "url": "https://...", "title": "...", "name": "Anthropic Blog" }
-      ]
+      "sources": [{ "url": "https://...", "title": "...", "name": "Anthropic Blog" }]
     }
   ]
 }
 ```
 
-**Key rules:**
-- `lang` required ("en" or "zh"). API rejects `lang="en"` if hook contains CJK.
-- `interests.anchor` required (1-3 slugs from curation directives). API validates against user interests.
-- `interests.related` optional (max 5). Topics not in dictionary auto-created as candidates.
-- `l1` and `l2` are top-level per item.
-- For bilingual: push two separate items, same `slug`/`topicSlug`, different `lang`.
-- `l1.via`: auto-derived from `sources[].name` if empty.
-- Field types & limits → see `content-spec.md`.
+**Rules:**
+- `lang` required ("en" or "zh")
+- `interests.anchor` required (1-3 slugs from curation directives). Must match user's interests.
+- `interests.related` optional (max 5). Unknown topics auto-created as candidates.
+- For bilingual: push two items with same `slug`, different `lang`
+- See `content-spec.md` for field limits
 
 **Response:**
 ```json
 {
   "accepted": 1,
-  "results": [
-    { "status": "accepted", "id": "a3k9m2x7_en", "contentGroup": "a3k9m2x7", "slug": "mcp-protocol-2-0" }
-  ]
+  "results": [{ "status": "accepted", "id": "a3k9m2x7_en", "contentGroup": "a3k9m2x7" }]
 }
 ```
 
-ID format: `{8-char contentGroup}_{lang}`. All language versions share the same `contentGroup`.
+### GET /oc/content/:id
+Read back a content item.
 
 ### DELETE /oc/content/:id
-
-Delete content by doc id or contentGroup (deletes all langs).
-
-### GET /oc/content/:id
-
-Read back a single content item.
+Delete by id or contentGroup.
 
 ---
 
 ## Conversations & Whispers
 
 ### GET /oc/conversations
-
-List user conversations.
+List conversations.
 
 **Query:** `?limit=20&whisper_candidates=true&since=2026-04-01T00:00:00Z`
 
-**Response:**
-```json
-{
-  "conversations": [
-    {
-      "id": "conv_abc123",
-      "startedAt": 1712345678000,
-      "messageCount": 12,
-      "preview": "First user message...",
-      "whisperCandidate": true,
-      "whisperReason": "Genuine insight about AI consciousness"
-    }
-  ]
-}
-```
-
 ### GET /oc/conversations/:id
-
-Get full conversation with all messages.
+Get full conversation.
 
 ### POST /oc/whispers
-
-Create a whisper from conversation insight.
+Create a whisper.
 
 **Request:**
 ```json
@@ -276,5 +199,3 @@ Create a whisper from conversation insight.
   "source": "openclaw"
 }
 ```
-
-**Response:** `{ "ok": true, "id": "whisper_...", "whisper": { ... } }`

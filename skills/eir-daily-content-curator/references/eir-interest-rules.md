@@ -1,97 +1,61 @@
 # Eir Interest Rules
 
-> For the OC content curator agent. Only what you need to know.
+Curation guidelines for the content curator agent.
 
 ## Your Job
 
-1. **Read directives**: `GET /oc/curation` → tells you what topics to find content for
-2. **Find content**: Search/crawl based on directives
+1. **Read directives**: `GET /oc/curation` → topics to find content for
+2. **Find content**: Search using `searchHints` from each directive
 3. **Push content**: `POST /oc/content`
-4. **Discover interests**: From user conversations → `POST /oc/interests/add`
-
-That's it. The server handles strength, heat, scoring, and tier assignment.
+4. **Discover interests**: From conversations → `POST /oc/interests/add`
 
 ## Curation Tiers
 
-Directives from `GET /oc/curation` come in tiers:
+| Tier | Description | Quality Expectation |
+|------|-------------|---------------------|
+| **tracked** | User explicitly follows | Highly relevant, timely |
+| **focus** | Strong interest signal | Relevant + quality |
+| **explore** | Moderate interest | Quality threshold applies |
+| **seed** | Discovery topics | Must be excellent to justify |
 
-| Tier | Meaning | Quality Bar |
-|------|---------|-------------|
-| **tracked** | User explicitly follows | 0.6 — always include |
-| **focus** | Strong interest, good engagement | 0.7 — higher bar |
-| **explore** | Moderate interest or declining focus | 0.6 |
-| **seed** | Discovery items | 0.8 — must be excellent |
-
-## Budget
-
-The `budget` field in curation response tells you:
-- `suggested_total`: target items for the day
-- `remaining_today`: how many more you can push
-
-**Rules:**
-- Quality > quantity — if nothing good, push nothing
-- Tracked topics have no cap
-- Respect the quality_threshold per directive
-- Max 2 items from same topic group (unless exceptional)
-- 36h cooldown between same-topic pushes
+The API returns a curated subset of topics per tier. Server-side filtering already applied:
+- Topics in cooldown are excluded
+- Quotas adjusted based on user engagement history
 
 ## Content Selection
 
-For each directive, score candidates on:
-- **Topic relevance** (25%) — matches the topic?
-- **Source authority** (25%) — trusted source?
-- **Freshness** (20%) — recent enough?
-- **Depth** (15%) — substantial, not thin?
-- **Novelty** (15%) — not a duplicate?
+For each candidate, evaluate:
+- **Relevance** to the directive's topic
+- **Source authority** — trusted, primary sources preferred
+- **Freshness** — match the directive's `freshness` (1d = within 24h, 7d = within week)
+- **Depth** — substantial, not thin listicles
+- **Novelty** — not duplicating recently pushed content
 
-Minimum: `quality_threshold` from the directive (usually 0.6-0.8).
+**Quality bar by tier:**
+- tracked: relevant + timely
+- focus/explore: relevant + quality source
+- seed: must be exceptional to earn attention
 
-## Language
+## Using Directives
 
-- `primary_language` from curation response = content language
-- If `bilingual: true`, push two items per content (same slug, different `lang`)
-- Interest labels always use `primary_language`
+Each directive contains:
+- `slug` — topic identifier (use as `interests.anchor`)
+- `label` — display name
+- `tier` — priority level
+- `freshness` — recency requirement ("1d", "2d", "3d", "7d", "14d")
+- `searchHints` — 2-3 search queries to find content
+- `userNeeds` — guidance on what the user wants (may be null)
+- `trackingGoal` — specific goal for tracked topics (may be null)
 
-## Adding Interests
+**Search strategy:**
+- Use `searchHints` directly as search queries
+- For freshness "1d"-"3d": prioritize news, announcements, releases
+- For freshness "7d"+: mix news with analysis, insights, perspectives
+- Respect `userNeeds` when selecting content angles
 
-When you discover interests from conversations:
-```
-POST /oc/interests/add
-{ "labels": ["AI Agents", "MCP Protocol"], "lang": "en" }
-```
-Server matches labels to the topic dictionary. Unknown labels get flagged for admin review.
+## Interest Anchors on Content
 
-## Interest Signals on Content
-
-Every content item you push MUST include an `interests` field:
-
-```json
-"interests": {
-  "anchor": ["ai-agents"],   // 1-3 slugs from your curation directives
-  "related": [                // 2-5 adjacent discovery topics
-    { "slug": "a2a-protocol", "label": "A2A Protocol" }
-  ]
-}
-```
-
-### How to set anchors
-- Use the `slug` field from the directives you received in `GET /oc/curation`
-- Each content item must have 1-3 anchors that match the directives
-- The API validates anchors against user interests — mismatches are rejected with 400
-
-### How to set related topics
-- Pick 2-5 topics adjacent to the anchor but potentially new to the user
-- `slug`: lowercase, hyphens, alphanumeric (e.g. "multi-agent-systems")
-- `label`: human-readable in the content's language
-- Topics not in the dictionary are auto-created as candidates
-- These drive the "Explore More" section on the detail page
-
-### Legacy: topicSlug
-If `interests` is omitted, `topicSlug` is used as a single anchor. New content should always use `interests`.
-
-## Interest Signals on Content
-
-Every content item you push MUST include an `interests` field:
+Every content item MUST include:
 
 ```json
 "interests": {
@@ -102,25 +66,33 @@ Every content item you push MUST include an `interests` field:
 }
 ```
 
-### How to set anchors
-- Use the `slug` field from the directives you received in `GET /oc/curation`
-- Each content item must have 1-3 anchors that match the directives
-- The API validates anchors against user interests — mismatches are rejected with 400
+**Anchor rules:**
+- 1-3 slugs from the curation directives
+- Must match user's interests (API validates, rejects 400 if mismatch)
 
-### How to set related topics
-- Pick 2-5 topics adjacent to the anchor but potentially new to the user
-- `slug`: lowercase, hyphens, alphanumeric (e.g. "multi-agent-systems")
-- `label`: human-readable in the content's language
-- Topics not in the dictionary are auto-created as candidates (referenceCount++)
-- These drive the "Explore More" section on the detail page
+**Related topics:**
+- 2-5 adjacent topics
+- Unknown topics auto-created as candidates
+- Drive "Explore More" on detail pages
 
-### Legacy: topicSlug
-If `interests` is omitted, `topicSlug` is used as a single anchor. New content should always use `interests`.
+## Exclusions
+
+The API returns `exclude.disliked` — slugs to filter out during content selection.
+
+## Adding Interests
+
+From conversations:
+```
+POST /oc/interests/add
+{ "labels": ["AI Agents", "MCP"], "lang": "en" }
+```
+
+Server matches to dictionary. Unknown labels flagged for review.
 
 ## Best Practices
 
-1. If content is truly excellent, push it even beyond budget
-2. If nothing is worth reading, stay quiet (0 items is fine)
-3. Seed items should be adjacent to existing interests, not random
-4. Never override user's explicit tracking decisions
-5. Use `GET /oc/sources` to dedup — don't re-push same URLs
+1. **Quality over quantity** — if nothing good, push nothing
+2. **Max 2 items per topic group** unless exceptional
+3. **Seed topics**: adjacent to existing interests, not random
+4. **Use `GET /oc/sources`** for URL dedup
+5. **Never override** user's explicit tracking decisions

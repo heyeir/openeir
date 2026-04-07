@@ -309,16 +309,14 @@ Agent: [disables cron job]
 
 ## Quick Reference (For Agent)
 
-### Version Check (required before every pipeline run)
+### Version Check
 
-Before running any pipeline step, check version compatibility:
+Before running any pipeline step, verify schema compatibility:
 
-1. Read `schema_version` and `min_skill_version` from the `GET /oc/curation` response
-2. Compare `schema_version` against `supported_schema_versions` in `config/settings.json`
-3. Compare `min_skill_version` against `skill_version` in `config/settings.json`
-4. If either doesn't match: **stop** and tell the user:
-   > "Your openeir skill is outdated. Run: `openclaw skill update openeir`"
-5. If both match: proceed with the pipeline
+1. Read `schema_version` from `GET /oc/curation` response
+2. Compare against `supported_schema_versions` in `config/settings.json`
+3. If mismatch: **stop** and tell user to update the skill
+4. Major version changes (1.x → 2.x) require mandatory updates. Minor version updates are optional.
 
 ### Commands
 
@@ -337,83 +335,39 @@ Before running any pipeline step, check version compatibility:
 | Disable cron | `openclaw cron edit <id> --enabled=false` |
 | Extract whispers | Run via OpenClaw agent (see below) |
 
-### RSS Sources — Relevance Matters
+### RSS Sources
 
-The pipeline pre-filters RSS articles against your topics before storing them. Articles that don't match any of your interests are discarded immediately — no embedding stored, no snippet crawled.
-
-**This means your RSS sources should align with your interests.**
-
-- ✅ **Good**: Sources that frequently cover your tracked topics (AI, design, etc.)
-- ⚠️ **Review**: General news aggregators (HN, Lobsters) — high volume, low match rate (~5%). Consider lowering their tier.
-- ❌ **Waste**: Sources with zero overlap (e.g., automotive news when you have no automotive topics). Remove or wait until you add matching interests.
-
-**Check your source ROI:**
-```bash
-python3 scripts/pipeline/cache_cleanup.py --stats
-```
-
-This shows match rate per source. Sources with <10% match rate are candidates for removal or tier downgrade.
-
-**Adding sources that match your interests:**
-- Find RSS feeds for blogs, newsletters, or publications you follow
-- Add them to `config/sources.json` under the `"rss"` key
-- Set `rating` to S (4h), A (8h), or B (24h) based on update frequency
+Add RSS feeds to `config/sources.json`:
 
 ```json
 {
-  "name": "Your Favorite Blog",
+  "name": "Example Blog",
   "url": "https://example.com/feed.xml",
   "rating": "A",
   "lang": "en"
 }
 ```
 
-### Cache Health & TTL
+Ratings: S (4h), A (8h), B (24h) based on update frequency.
 
-The pipeline manages content freshness automatically:
+### Cache Management
 
-| Content type | TTL | Rationale |
-|---|---|---|
-| Unmatched articles | 48h | Give topic matching 2 cycles to check, then discard |
-| Matched articles | 7d | Available for content generation |
-| Published source URLs | 30d | Kept for dedup |
-| Orphan snippets | Immediate | No parent article, safe to remove |
-
-Cleanup runs daily at 03:00 via cron. Manual run: `python3 scripts/pipeline/cache_cleanup.py`
+Cleanup runs automatically. Manual: `python3 scripts/pipeline/cache_cleanup.py`
 
 ### Whisper Extraction
 
-The `whisper_extract.py` script analyzes Eir conversations to find "Whisper moments" — genuine intellectual collisions worth preserving. It generates polished mini-essays (Whispers) that appear in the user's Eir feed.
+Generates private journal entries from conversation insights.
 
-**Writer prompt:** `references/whisper-writer-prompt.md` — defines Whisper style, structure, and detection criteria. The agent MUST follow this prompt when generating Whisper content.
+**API:**
+- `GET /api/oc/conversations` — fetch conversations
+- `POST /api/oc/whispers` — post generated Whisper
 
-**How it works:**
-1. Fetches conversations via `GET /api/oc/conversations` (optionally filtered by `whisper_candidates=true`)
-2. Agent analyzes each conversation using `references/whisper-writer-prompt.md`
-3. Posts generated Whisper back to Eir via `POST /api/oc/whispers` (see `references/whisper-api.md`)
+See `references/whisper-api.md` for details.
 
-**Running via OpenClaw agent:**
-
-Whisper extraction requires LLM analysis and must run through OpenClaw's agent system:
-
-```
-# Agent reads whisper-writer-prompt.md, analyzes conversations,
-# generates dot/l1/l2 structure, and POSTs to Eir API
-```
-
-The skill automatically:
-- Uses OpenClaw's configured LLM (no separate model config needed)
-- Connects to Eir API using stored credentials
-- Processes whisper candidates incrementally
-- Generates specific, personal content (Whispers are private journal entries)
-
-**Manual run (for testing):**
+**Test run:**
 ```bash
-cd ~/.openclaw/workspace/eir
 python3 scripts/pipeline/whisper_extract.py --dry-run
 ```
-
-**Note:** The `--dry-run` flag previews without posting. Remove to actually create Whispers.
 
 ### Cron Schedule Examples
 
