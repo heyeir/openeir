@@ -4,7 +4,7 @@
 
 ## Your Job
 
-1. **Read directives**: `GET /oc/curation` → tells you what topics to find content for
+1. **Read directives**: `GET /oc/context` → tells you what topics to find content for
 2. **Find content**: Search/crawl based on directives
 3. **Push content**: `POST /oc/content`
 4. **Discover interests**: From user conversations → `POST /oc/interests/add`
@@ -13,14 +13,14 @@ That's it. The server handles strength, heat, scoring, and tier assignment.
 
 ## Curation Tiers
 
-Directives from `GET /oc/curation` come in tiers:
+Directives from `GET /oc/context` come in tiers:
 
 | Tier | Meaning | Quality Bar |
 |------|---------|-------------|
 | **tracked** | User explicitly follows | 0.6 — always include |
-| **focus** | Strong interest, good engagement | 0.7 — higher bar |
-| **explore** | Moderate interest or declining focus | 0.6 |
-| **seed** | Discovery items | 0.8 — must be excellent |
+| **focus** | heat > 5 or strength > 0.7 | 0.7 — higher bar |
+| **explore** | heat 1–5 | 0.7 |
+| **seed** | heat < 1 (discovery) | 0.8 — must be excellent |
 
 ## Budget
 
@@ -33,7 +33,8 @@ The `budget` field in curation response tells you:
 - Tracked topics have no cap
 - Respect the quality_threshold per directive
 - Max 2 items from same topic group (unless exceptional)
-- 36h cooldown between same-topic pushes
+- Cooldown is per-directive via the `freshness` field (not a fixed window). Examples: AI news = 1d, stable domains = 7d, academic = 14d
+- If `cooldownUntil` is set and in the future, skip that directive unless content is truly exceptional
 
 ## Content Selection
 
@@ -75,7 +76,7 @@ Every content item you push MUST include an `interests` field:
 ```
 
 ### How to set anchors
-- Use the `slug` field from the directives you received in `GET /oc/curation`
+- Use the `slug` field from the directives you received in `GET /oc/context`
 - Each content item must have 1-3 anchors that match the directives
 - The API validates anchors against user interests — mismatches are rejected with 400
 

@@ -150,53 +150,62 @@ Returns interest groups for the user. Each group object now includes a `userNeed
 
 ---
 
-## Curation
+## Curation Context
 
-### GET /oc/curation
+### GET /oc/context
 
-Returns curation directives for today's content collection.
+Returns curation context for today's content collection (schema v3).
 
 **Response:**
 ```json
 {
-  "user": { "primary_language": "zh", "bilingual": false },
-  "schema_version": "2",
-  "tracked": [
-    {
-      "slug": "mcp-protocol",
-      "topic": "MCP Protocol",
-      "description": "...",
-      "keywords": ["MCP", "model context protocol"],
-      "search_hints": ["MCP 2.0", "Anthropic MCP"],
-      "strength": 0.9,
-      "engagement_health": 1.1,
-      "priority": "high",
-      "max_items": null,
-      "quality_threshold": 0.6,
-      "freshness": "7d"
-    }
-  ],
+  "schema_version": "3",
+  "user": {
+    "locale": "zh",
+    "bilingual": false,
+    "contentPrefs": { ... }
+  },
   "directives": [
     {
-      "type": "focus",
+      "slug": "mcp-protocol",
+      "label": "MCP Protocol",
+      "tier": "tracked",
+      "tracked": true,
+      "trackingGoal": "Stay current on spec changes",
+      "heat": 8,
+      "strength": 0.9,
+      "freshness": "1d",
+      "cooldownUntil": null,
+      "lastPushedAt": 1775467481053,
+      "keywords": ["MCP", "model context protocol"],
+      "searchHints": ["MCP 2.0", "Anthropic MCP"],
+      "userNeeds": "Track spec evolution and ecosystem adoption",
+      "qualityThreshold": 0.6
+    },
+    {
       "slug": "ai-agents",
-      "topic": "AI Agents",
-      "description": "...",
-      "keywords": ["..."],
-      "search_hints": ["..."],
+      "label": "AI Agents",
+      "tier": "focus",
+      "tracked": false,
+      "trackingGoal": null,
+      "heat": 6,
       "strength": 0.8,
-      "score": 0.72,
-      "engagement_health": 0.9,
-      "quality_threshold": 0.7,
-      "freshness": "7d"
+      "freshness": "7d",
+      "cooldownUntil": null,
+      "lastPushedAt": 1775381081053,
+      "keywords": ["AI agents", "agentic"],
+      "searchHints": ["autonomous agents"],
+      "userNeeds": null,
+      "qualityThreshold": 0.7
     }
   ],
-  "budget": {
-    "suggested_total": 6,
-    "remaining_today": 5
-  },
   "exclude": {
     "disliked": ["crypto", "nft"]
+  },
+  "limits": {
+    "dailyMax": 6,
+    "pushedToday": 1,
+    "remaining": 5
   }
 }
 ```
