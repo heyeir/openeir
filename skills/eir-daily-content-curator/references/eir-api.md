@@ -158,6 +158,13 @@ Push generated content.
       "slug": "mcp-protocol-2-0",
       "topicSlug": "mcp-protocol",
       "lang": "en",
+      "interests": {
+        "anchor": ["mcp-protocol"],
+        "related": [
+          { "slug": "a2a-protocol", "label": "A2A Protocol" },
+          { "slug": "agent-interoperability", "label": "Agent Interoperability" }
+        ]
+      },
       "dot": {
         "hook": "MCP 2.0 Released",
         "category": "focus",
@@ -186,6 +193,8 @@ Push generated content.
 
 **Key rules:**
 - `lang` required ("en" or "zh"). API rejects `lang="en"` if hook contains CJK.
+- `interests.anchor` required (1-3 slugs from curation directives). API validates against user interests.
+- `interests.related` optional (max 5). Topics not in dictionary auto-created as candidates.
 - `l1` and `l2` are top-level per item.
 - For bilingual: push two separate items, same `slug`/`topicSlug`, different `lang`.
 - `l1.via`: auto-derived from `sources[].name` if empty.
