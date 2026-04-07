@@ -4,7 +4,7 @@
 
 ## Your Job
 
-1. **Read directives**: `GET /oc/context` → tells you what topics to find content for
+1. **Read directives**: `GET /oc/curation` → tells you what topics to find content for
 2. **Find content**: Search/crawl based on directives
 3. **Push content**: `POST /oc/content`
 4. **Discover interests**: From user conversations → `POST /oc/interests/add`
@@ -13,7 +13,7 @@ That's it. The server handles strength, heat, scoring, and tier assignment.
 
 ## Curation Tiers
 
-Directives from `GET /oc/context` come in tiers:
+Directives from `GET /oc/curation` come in tiers:
 
 | Tier | Meaning | Quality Bar |
 |------|---------|-------------|
@@ -76,7 +76,7 @@ Every content item you push MUST include an `interests` field:
 ```
 
 ### How to set anchors
-- Use the `slug` field from the directives you received in `GET /oc/context`
+- Use the `slug` field from the directives you received in `GET /oc/curation`
 - Each content item must have 1-3 anchors that match the directives
 - The API validates anchors against user interests — mismatches are rejected with 400
 

@@ -152,7 +152,7 @@ Returns interest groups for the user. Each group object now includes a `userNeed
 
 ## Curation Context
 
-### GET /oc/context
+### GET /oc/curation
 
 Returns curation context for today's content collection (schema v3).
 

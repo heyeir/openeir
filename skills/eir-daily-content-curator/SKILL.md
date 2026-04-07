@@ -313,7 +313,7 @@ Agent: [disables cron job]
 
 Before running any pipeline step, check version compatibility:
 
-1. Fetch `GET /oc/context` and read `schema_version` from the response
+1. Fetch `GET /oc/curation` and read `schema_version` from the response
 2. If `schema_version` is not `"3"`: **stop** and tell the user:
    > "Curation context schema has changed (expected v3, got vX). Your openeir skill may be outdated. Run: `openclaw skill update openeir`"
 3. If `schema_version` is `"3"`: proceed with the pipeline
