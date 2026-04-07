@@ -2,6 +2,10 @@
 """
 Post Translation — reads translated content and PATCHes to Eir API as locale.
 
+Note: Translations inherit the `interests` field (anchor + related) from the source
+content item, set during the original POST /oc/content. This script does NOT need
+to set interests.
+
 Reads from data/translated/*.json (output by translation subagent)
 and calls PATCH /api/oc/content/:id/locale/:lang to add the translation.
 

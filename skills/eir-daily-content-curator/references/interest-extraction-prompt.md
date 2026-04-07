@@ -75,3 +75,12 @@ Use `primary_language` from user profile for label language. The server matches 
 4. **Don't duplicate** — check GET /oc/interests first
 5. **Broad enough to be useful** — "AI" is too broad, "GPT-4o mini tokenizer bug" is too narrow
 6. **Respect user privacy** — generalize private details into public topics
+
+## Relationship to Content Interest Signals
+
+Interest extraction from conversations is separate from the `interests.anchor` and `interests.related` fields on content items.
+
+- **This prompt**: discovers interests from user conversations → `POST /oc/interests/add`
+- **Content interests**: declared by the content writer when generating content → `interests.anchor` + `interests.related` on `POST /oc/content`
+
+Both feed into the same interest system. Extracted interests may later appear as valid anchor targets in curation directives.

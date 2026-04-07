@@ -50,7 +50,8 @@
 |-------|------|----------|-------|
 | `lang` | `"zh"` \| `"en"` | **Yes** | **Required.** Language of this document's content. Determines which `{contentGroup}_{lang}` document is created. Not locale, not source language — the language the content is written in. API rejects if missing. API rejects `lang="en"` if hook contains CJK characters (Chinese hooks with English words are fine). |
 | `slug` | string | No | Human-readable identifier. Falls back to `contentGroup` if omitted. |
-| `topicSlug` | string | No | Links content to a user interest topic for cooldown tracking. |
+| `topicSlug` | string | No | Links content to a user interest topic for cooldown tracking. Deprecated in favor of `interests.anchor`. |
+| `interests` | object | **Recommended** | See Interest Signals section below. |
 | `dot` | object | **Yes** | See dot section above. |
 | `l1` | object | **Yes** | See l1 section above. `l1.title` is required. |
 | `l2` | object | No | See l2 section above. Strongly recommended. |
@@ -240,6 +241,55 @@ Content pipeline (`post_content.py`) should:
 ---
 
 ## Content Quality Criteria
+
+## Interest Signals
+
+Content should declare which user interests it serves (anchors) and what adjacent topics it introduces (related).
+
+### `interests` object
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `anchor` | string[] | **Yes** (1-3) | Slugs from `GET /oc/curation` directives. Must match user's existing interests. API validates and rejects if none match. |
+| `related` | array | No (max 5) | Discovery topics. Each: `{slug: string, label: string}`. Slug format: `[a-z0-9][a-z0-9-]*[a-z0-9]`. |
+
+### How to set anchors
+
+1. Read directives from `GET /oc/curation` → each has a `slug`
+2. For each content item, pick 1-3 directive slugs that match the content's topic
+3. Set `interests.anchor` to those slugs
+
+If you can't match any directive → don't push the content. The API will reject it.
+
+### How to set related topics
+
+Pick 2-5 topics that are **adjacent** to the anchor but the user may not know about yet:
+- Must be specific and concrete ("neural-architecture-search" ✅, "technology" ❌)
+- `slug`: lowercase, hyphens, alphanumeric
+- `label`: human-readable name in the content's language
+
+Related topics not in the dictionary are automatically added as candidates for review.
+
+### Example
+
+```json
+{
+  "interests": {
+    "anchor": ["ai-agents"],
+    "related": [
+      { "slug": "a2a-protocol", "label": "A2A Protocol" },
+      { "slug": "multi-agent-systems", "label": "Multi-Agent Systems" }
+    ]
+  }
+}
+```
+
+### Backward compatibility
+
+If `interests` is omitted, `topicSlug` is used as a single anchor. New content should always use `interests`.
+
+---
+
 ## Required Checks
 
 1. **Factual accuracy** — All data points must be traceable to source material. Never fabricate.

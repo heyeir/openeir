@@ -20,6 +20,13 @@ Write a **single JSON file** to `output_path`. The JSON must have this exact str
   "lang": "<output_lang>",
   "content_url_slug": "<SEO-friendly English slug, 3-8 words hyphenated, all lowercase>",
   "topic_slug": "<slug from task>",
+  "interests": {
+    "anchor": ["<slug from task's directive — same as topic_slug>"],
+    "related": [
+      {"slug": "<lowercase-hyphenated>", "label": "<human-readable in output_lang>"},
+      {"slug": "<lowercase-hyphenated>", "label": "<human-readable in output_lang>"}
+    ]
+  },
   "dot": {
     "hook": "<≤10 chars (CJK) or ≤6 English words, in output_lang>",
     "category": "<choose: focus | attention | seed>",
@@ -85,6 +92,11 @@ Write a **single JSON file** to `output_path`. The JSON must have this exact str
 14. `l2.content`: Start from where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
 15. `l2.context`: Be specific and reader-facing. Wrong: "This reveals a growing trend." Right: "If you're building agents today, your eval pipeline probably can't catch these failure modes."
 
+### Interest Signals
+17. `interests.anchor` must contain the `slug` from the task (the directive slug). Usually identical to `topic_slug`.
+18. `interests.related` should have 2-5 topics adjacent/tangential to the main topic. Slugs must be lowercase-hyphenated. Labels must be in `output_lang`.
+19. Related topics should be specific enough to be useful ("neural-architecture-search") but not too narrow ("bert-base-uncased-layer-12").
+
 ### Output
 16. Only output the JSON file. No other files, no API calls, no extra commentary.
 
@@ -96,6 +108,7 @@ For full field types, recommended limits, and hard limits, see **`references/con
 
 - **`source_lang` is deprecated** — do not include it in output. `lang` (= `output_lang`) is the only language field.
 - **`l1.via` is auto-generated** — the pipeline populates it from `sources[].name`. Do not set it.
+- **`topic_slug` is deprecated** in favor of `interests.anchor` but kept for backward compat. `post_content.py` auto-generates `interests` from `topic_slug` + `l2.related_topics` if `interests` is not set.
 - **API Compatibility**: The generated JSON uses `topic_slug` (snake_case). The `post_content.py` script
   automatically converts this to `topicSlug` (camelCase) when posting to the API.
 - **`publish_time`**: Use snake_case in the generated JSON. Use `""` if missing (never null).
