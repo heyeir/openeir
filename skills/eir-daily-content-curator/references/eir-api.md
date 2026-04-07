@@ -77,6 +77,77 @@ Add interests by label. Server matches against the topic dictionary.
 
 Matched labels get a `slug` and `status: "active"`. Unmatched labels get `slug: null` and `status: "unknown"` (flagged for admin review).
 
+### DELETE /oc/interests/:slug
+
+Delete all user interest documents matching a slug. Physical delete (not soft-delete).
+
+**Response:** `{ "success": true, "deleted": 3 }`
+
+### POST /oc/interests/merge
+
+Merge one interest slug into another.
+
+**Request:**
+```json
+{
+  "fromSlug": "machine-learning",
+  "toSlug": "artificial-intelligence",
+  "newStrength": 0.8
+}
+```
+
+**Behavior:**
+- Heat is summed (from + to)
+- Strength is set to `newStrength` if provided, otherwise unchanged
+- `fromSlug` documents are physically deleted
+
+**Response:**
+```json
+{ "success": true, "mergedHeat": 3, "finalHeat": 8, "newStrength": 0.8, "deleted": 3 }
+```
+
+### POST /oc/interests/needs
+
+Store category-level user needs description.
+
+**Request:**
+```json
+{
+  "categorySlug": "technology",
+  "userNeeds": "I want to stay on top of AI infrastructure and developer tooling trends"
+}
+```
+
+**Storage:** Saved in the interest profile document under a `categoryNeeds` map.
+
+**Response:** `{ "success": true, "categorySlug": "technology", "userNeeds": "..." }`
+
+### GET /interests/groups
+
+Returns interest groups for the user. Each group object now includes a `userNeeds` field loaded from the profile's `categoryNeeds` map.
+
+**Response (partial):**
+```json
+{
+  "groups": [
+    {
+      "slug": "technology",
+      "label": "Technology",
+      "interests": ["..."],
+      "userNeeds": "I want to stay on top of AI infrastructure and developer tooling trends"
+    },
+    {
+      "slug": "design",
+      "label": "Design",
+      "interests": ["..."],
+      "userNeeds": null
+    }
+  ]
+}
+```
+
+`userNeeds` is `string | null` — null when no needs have been set for that category.
+
 ---
 
 ## Curation
