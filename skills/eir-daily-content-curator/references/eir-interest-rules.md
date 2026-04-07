@@ -61,6 +61,62 @@ POST /oc/interests/add
 ```
 Server matches labels to the topic dictionary. Unknown labels get flagged for admin review.
 
+## Interest Signals on Content
+
+Every content item you push MUST include an `interests` field:
+
+```json
+"interests": {
+  "anchor": ["ai-agents"],   // 1-3 slugs from your curation directives
+  "related": [                // 2-5 adjacent discovery topics
+    { "slug": "a2a-protocol", "label": "A2A Protocol" }
+  ]
+}
+```
+
+### How to set anchors
+- Use the `slug` field from the directives you received in `GET /oc/curation`
+- Each content item must have 1-3 anchors that match the directives
+- The API validates anchors against user interests — mismatches are rejected with 400
+
+### How to set related topics
+- Pick 2-5 topics adjacent to the anchor but potentially new to the user
+- `slug`: lowercase, hyphens, alphanumeric (e.g. "multi-agent-systems")
+- `label`: human-readable in the content's language
+- Topics not in the dictionary are auto-created as candidates
+- These drive the "Explore More" section on the detail page
+
+### Legacy: topicSlug
+If `interests` is omitted, `topicSlug` is used as a single anchor. New content should always use `interests`.
+
+## Interest Signals on Content
+
+Every content item you push MUST include an `interests` field:
+
+```json
+"interests": {
+  "anchor": ["ai-agents"],
+  "related": [
+    { "slug": "a2a-protocol", "label": "A2A Protocol" }
+  ]
+}
+```
+
+### How to set anchors
+- Use the `slug` field from the directives you received in `GET /oc/curation`
+- Each content item must have 1-3 anchors that match the directives
+- The API validates anchors against user interests — mismatches are rejected with 400
+
+### How to set related topics
+- Pick 2-5 topics adjacent to the anchor but potentially new to the user
+- `slug`: lowercase, hyphens, alphanumeric (e.g. "multi-agent-systems")
+- `label`: human-readable in the content's language
+- Topics not in the dictionary are auto-created as candidates (referenceCount++)
+- These drive the "Explore More" section on the detail page
+
+### Legacy: topicSlug
+If `interests` is omitted, `topicSlug` is used as a single anchor. New content should always use `interests`.
+
 ## Best Practices
 
 1. If content is truly excellent, push it even beyond budget

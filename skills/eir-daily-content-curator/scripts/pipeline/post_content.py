@@ -20,6 +20,7 @@ import glob
 import hashlib
 import json
 import os
+import re
 import shutil
 import sys
 import time
@@ -41,6 +42,16 @@ TRANSLATE_TASKS_DIR = DATA / "translate_tasks"
 REQUEST_INTERVAL = 0.5  # seconds between requests
 MAX_RETRIES = 3
 TIMEOUT = 60  # seconds
+
+
+def slugify(text):
+    """Convert a human-readable topic to a slug: lowercase, hyphens, alphanumeric."""
+    s = text.lower().strip()
+    s = re.sub(r'[^a-z0-9\s-]', '', s)
+    s = re.sub(r'[\s_]+', '-', s)
+    s = re.sub(r'-+', '-', s)
+    s = s.strip('-')
+    return s or 'unknown'
 
 
 def load_config():
@@ -246,6 +257,20 @@ def post_content(generated_file, api_key, dry_run=False, dedup=None, bilingual=F
         item["content_url_slug"] = content["content_url_slug"]
     if content.get("topics"):
         item["topics"] = content["topics"]
+    
+    # Interest signals: pass through or auto-generate from legacy fields
+    if "interests" in content:
+        item["interests"] = content["interests"]
+    else:
+        topic_slug = content.get("topic_slug", content.get("topicSlug", slug))
+        interests = {"anchor": [topic_slug]}
+        related_topics = content.get("l2", {}).get("related_topics", [])
+        if related_topics:
+            interests["related"] = [
+                {"slug": slugify(t), "label": t}
+                for t in related_topics[:5]
+            ]
+        item["interests"] = interests
     
     payload = {"items": [item]}
     
