@@ -15,330 +15,199 @@ metadata:
 
 Curates personalized content based on your interests.
 
-## Agent Setup Flow
+## Modes
 
+**Eir mode** — Full AI-powered curation (requires heyeir.com account)
+- Learns interests from conversations
+- 5-step pipeline: plan → search → select → crawl → generate+post
+- Content delivered to the Eir app
 
-When user says "set up daily news" or similar, follow this **step-by-step conversational flow**. **Ask before doing** — explain what you're about to do and wait for confirmation.
+**Standalone mode** — Simple RSS aggregation
+- Reads tech news from RSS feeds
+- Delivers summaries directly in chat
+- No account needed
 
 ---
 
-### Step 1: Check current setup
+## Eir Mode Pipeline
 
-First, check if already configured:
+### Architecture (5 steps)
+
+```
+Step 0: plan         → GET /oc/curation → directives (topics + searchHints)
+Step 1: search       → SearXNG (news-first → general fallback) → raw_results/
+Step 2: select       → Cluster by topic → LLM judges candidates → candidates.json
+Step 3: crawl        → Crawl candidate URLs via Crawl4AI → snippets/
+Step 4+5: generate   → Agent LLM generates content → POST API → translate → POST
+```
+
+### Running the Pipeline
+
+**Step 0 — Plan (fetch directives):**
+```bash
+python3 -m pipeline.search --dry-run   # preview queries
+python3 -m pipeline.search             # runs plan + search
+```
+Search fetches directives from the API automatically before searching.
+
+**Step 1 — Search:**
+```bash
+python3 -m pipeline.search
+python3 -m pipeline.search --topic ai-agents   # single topic
+```
+
+**Step 2 — Select candidates:**
+```bash
+python3 -m pipeline.candidate_selector
+python3 -m pipeline.candidate_selector --dry-run
+```
+Writes `candidate_prompt.txt` for agent LLM to evaluate.
+Agent reads prompt, calls LLM, writes `candidates.json`.
+
+**Step 3 — Crawl:**
+```bash
+python3 -m pipeline.crawl
+python3 -m pipeline.crawl --dry-run
+```
+Only crawls URLs from accepted candidates. Includes freshness gate.
+
+**Step 4+5 — Generate + POST (agent-driven):**
+The agent imports `generate_and_post` module functions:
+```python
+from pipeline.generate_and_post import (
+    get_candidates_for_generation,
+    build_generation_prompt,
+    post_to_api,
+    build_translate_prompt,
+    record_pushed,
+    save_generated,
+    save_posted,
+    get_api_key,
+)
+```
+
+Flow:
+1. `get_candidates_for_generation()` → list of ready candidates with prompts
+2. Agent calls LLM with `candidate["prompt"]` → gets JSON content
+3. `post_to_api(content, api_key)` → returns (content_id, contentGroup)
+4. `build_translate_prompt(content)` → agent calls LLM for EN translation
+5. `post_to_api(en_content, api_key)` → POST translated version
+6. `record_pushed(content, id, group)` → track what was posted
+
+### Data Directories
+
+All pipeline data lives in `<workspace>/data/v9/`:
+
+| Directory | Contents |
+|-----------|----------|
+| `raw_results/` | Search results (by timestamp) |
+| `candidates.json` | LLM-selected candidates |
+| `snippets/` | Crawled article content |
+| `generated/` | Generated content JSON |
+| `posted/` | Successfully posted content |
+
+Shared state (cross-run):
+- `data/directives.json` — cached API directives
+- `data/pushed_titles.json` — posting history
+- `data/used_source_urls.json` — dedup URLs
+
+### Content Quality Rules
+
+See `references/content-spec.md` for full field constraints. Key rules:
+- `dot.hook` ≤10 CJK chars, no hype words
+- `dot.category`: `focus` | `attention` | `seed` | `whisper`
+- `l1.bullets` 3-4 items, each ≤20 chars
+- Never set any field to null — use `""` or `[]`
+- Source attribution in `sources[]`, never inline
+- Generate zh first, then translate to en (separate POST per language)
+
+### Writer Prompt
+
+The generation prompt is loaded from `references/writer-prompt-eir.md`.
+Full field spec in `references/content-spec.md`.
+
+---
+
+## Agent Setup Flow
+
+When user says "set up daily news" or similar, follow this step-by-step flow.
+
+### Step 1: Check current setup
 
 ```bash
 python3 scripts/setup.py --check
 ```
 
-If already set up, show the current configuration and ask what they want to change. Otherwise proceed to Step 2.
+### Step 2: Choose mode
 
----
+Ask user: **Standalone** (simple RSS) or **Eir** (full AI curation with heyeir.com account)?
 
-### Step 2: Explain and choose mode
+### Step 3: Collect settings
 
-**Ask user which mode they want:**
+| Setting | Default |
+|---------|---------|
+| Language | Auto-detect |
+| Max items/day | 5 |
+| Search (Tavily/Brave/SearXNG) | None (standalone) |
 
-> "I can set up daily content curation in two modes:
-> 
-> **A. Standalone** — Simple RSS aggregation
-> • Reads tech news from RSS feeds
-> • Delivers summaries directly here
-> • No account needed, works immediately
-> 
-> **B. Eir** — Full AI-powered curation (requires heyeir.com account)
-> • Learns your interests from conversations
-> • Personalized content with deep-dive analysis
-> • Reads in the Eir app with beautiful formatting
-> 
-> Which would you prefer?"
+For Eir mode: connect account via `node scripts/connect.mjs <PAIRING_CODE>`
 
-**Wait for user response.** Do not proceed until they choose.
-
----
-
-### Step 3: Set workspace location
-
-**Tell user where data will be stored (no need to ask):**
-
-> "Data will be stored in your workspace: `~/.openclaw/workspace/eir/`
-> This includes config, cache, and generated content."
-
-**Set it immediately:**
+### Step 4: Initialize
 
 ```bash
-python3 scripts/setup.py --set-workspace ~/.openclaw/workspace/eir
+python3 scripts/setup.py --init --settings '<json>'
 ```
 
----
-
-### Step 4: Collect settings with user
-
-**Guide user through each setting. Ask for every item:**
-
-| Setting | How to ask | Default |
-|---------|-----------|---------|
-| **Language** | "Content language? Chinese (zh) or English (en)?" | Auto-detect from conversation |
-| **Max items/day** | "How many items per day? Recommend 5-10" | 5 |
-| **Search** | "Enable web search? Requires API key (Tavily/Brave) or local SearXNG" | None |
-
-**Advanced (optional):**
-
-> **Local search infrastructure**: If you want to run your own search and crawl services instead of using Tavily/Brave APIs, see `references/infrastructure-setup.md`. Most users don't need this.
-
-**For Standalone mode, ask about search:**
-
-> "Enable web search?
-> • **Yes** — Need Tavily or Brave API key (more comprehensive)
-> • **No** — RSS only (simpler, no API dependency)
-> 
-> Your choice?"
-
-**If they choose search, ask for API key:**
-
-> "Which search service?
-> 1. Tavily (recommended, free tier sufficient) — https://tavily.com
-> 2. Brave Search — https://brave.com/search/api/
-> 
-> Provide API key or configure later?"
-
-**For Eir mode, ask about connection:**
-
-> "Need to connect Eir account. Open Eir app → Settings → Connect OpenClaw to get pairing code.
-> 
-> Have a pairing code?"
-
-**If yes, run connect:**
+### Step 5: Set schedule
 
 ```bash
-node scripts/connect.mjs <PAIRING_CODE>
+openclaw cron add --name "eir-daily" --cron "0 8 * * *" --tz "Asia/Shanghai" \
+  --session isolated --message "Run eir-daily-content-curator pipeline"
 ```
 
-**If no:**
+### Step 6: Test run
 
-> "Can skip for now. Run `node scripts/connect.mjs <CODE>` later to connect."
+For standalone: `python3 scripts/standalone/curate.py`
+For Eir: run pipeline steps 0-4+5
 
 ---
 
-### Step 5: Initialize with collected settings
-
-**After collecting all settings, confirm with user:**
-
-> "Confirm configuration:
-> • Mode: Standalone
-> • Language: zh
-> • Max items/day: 5
-> • Search: Tavily (API key configured)
-> • Workspace: ~/.openclaw/workspace/eir/
-> 
-> Confirm create?"
-
-**Wait for confirmation, then run:**
-
-```bash
-python3 scripts/setup.py --init --settings '{"mode":"standalone","language":"zh","max_items_per_day":5,"search":{"providers":["tavily"],"tavily_api_key":"xxx"}}'
-```
-
----
-
-### Step 6: Propose cron schedule
-
-**After setup completes, propose a schedule and ask:**
-
-> "Setup complete! Now configure delivery schedule.
-> 
-> Recommend: 8:00 AM daily
-> • Frequency: Once per day
-> • Timezone: Asia/Shanghai
-> 
-> Does that work? Or what time would you prefer?"
-
-**If user confirms:**
-
-```bash
-openclaw cron add --name "eir-daily" --cron "0 8 * * *" --tz "Asia/Shanghai" --message "Run eir-daily-content-curator skill"
-```
-
-**If user wants different time, ask:**
-
-> "What time would you prefer? (e.g., 7am, 9:30am, 8pm evening)"
-
-Convert to cron:
-- "7am" → `0 7 * * *`
-- "9:30am" → `30 9 * * *`
-- "8pm" → `0 20 * * *`
-
-**Always confirm before creating:**
-
-> "Set for 9:30 AM daily. Confirm?"
-
----
-
-### Step 7: Test run
-
-**Say:**
-
-> "Let me fetch today's preview so you can see what it looks like..."
-
-**Run:**
-
-```bash
-python3 scripts/standalone/curate.py
-```
-
-**Present results:**
-
-> "Today's preview:
-> 
-> • **Claude 4 Released** (Anthropic Blog)
->   200K context window, native tool use...
->   https://...
-> 
-> • **Agent Evaluation Checklist** (LangChain)
->   Practical agent eval checklist...
->   https://...
-> 
-> This format look good?"
-
-**If yes:**
-
-> "Done! You'll receive your first update tomorrow at [time].
-> Say 'pause daily news' or 'change delivery time' anytime to adjust."
-
-**If user wants changes:**
-
-> "What would you like to adjust? Topics, sources, or delivery time?"
-
----
-
-## Output Format
-
-```
-• **[Claude 4 Released](https://anthropic.com/...)** (Anthropic Blog)
-  200K context window, native tool use.
-
-• **[Agent Evaluation Checklist](https://blog.langchain.com/...)** (LangChain)
-  Practical agent eval checklist.
-```
-
----
-
-## Example Conversation
-
-### Scenario 1: First-time setup
-
-```
-User: "Set up daily news for me"
-
-Agent: "I can set up daily content curation in two modes:
-
-A. Standalone — Simple RSS aggregation, no account needed
-B. Eir — AI-powered personalization, requires heyeir.com account
-
-Which would you prefer?"
-
-User: "A, simpler"
-
-Agent: "Data will be stored in ~/.openclaw/workspace/eir/
-
-Content language? Chinese or English?"
-
-User: "Chinese"
-
-Agent: "How many items per day? Recommend 5-10"
-
-User: "5"
-
-Agent: "Enable web search? Need API key, or RSS only?"
-
-User: "No search for now"
-
-Agent: "Confirm config:
-• Mode: Standalone
-• Language: zh
-• Max items/day: 5
-• Search: None
-
-Confirm create?"
-
-User: "Yes"
-
-Agent: [runs setup.py --init]
-"Setup complete! Delivery time recommend 8 AM, OK?"
-
-User: "OK"
-
-Agent: [creates cron job]
-"Done! Let me fetch a preview..."
-
-Agent: [runs curate.py]
-"Today's preview:...
-This format look good?"
-
-User: "Looks good"
-
-Agent: "Tomorrow 8 AM you'll receive first update. Say 'pause' or 'change time' anytime."
-```
-
-### Scenario 2: User wants to change time
-
-```
-User: "Move my news to 9am"
-
-Agent: "Update from 8am to 9am. Confirm?"
-
-User: "Yes"
-
-Agent: [updates cron job]
-"Updated. Daily news now at 9:00 AM."
-```
-
-### Scenario 3: User wants to pause
-
-```
-User: "Pause my daily news"
-
-Agent: "Pause delivery, settings saved. Say 'resume' anytime to restart. Confirm?"
-
-User: "Yes"
-
-Agent: [disables cron job]
-"Paused."
-```
-
----
-
-## Quick Reference (For Agent)
-
-### Version Check
-
-Before running any pipeline step, verify schema compatibility:
-
-1. Read `schema_version` from `GET /oc/curation` response
-2. Compare against `supported_schema_versions` in `config/settings.json`
-3. If mismatch: **stop** and tell user to update the skill
-4. Major version changes (1.x → 2.x) require mandatory updates. Minor version updates are optional.
+## Quick Reference
 
 ### Commands
 
 | Task | Command |
-|------|---------|  
+|------|---------|
 | Check setup | `python3 scripts/setup.py --check` |
-| Set workspace | `python3 scripts/setup.py --set-workspace <path>` |
-| Init with settings | `python3 scripts/setup.py --init --settings '<json>'` |
-| Show workspace | `python3 scripts/setup.py --show-workspace` |
-| Test curation | `python3 scripts/standalone/curate.py` |
-| Cache health | `python3 scripts/pipeline/cache_cleanup.py --stats` |
-| Cache cleanup | `python3 scripts/pipeline/cache_cleanup.py` |
-| Markdown clean | `python3 scripts/pipeline/markdown_cleaner.py` |
-| Add cron | `openclaw cron add --name "eir-daily" --cron "0 8 * * *" --tz "Asia/Shanghai" --message "..."` |
-| List cron | `openclaw cron list` |
-| Disable cron | `openclaw cron edit <id> --enabled=false` |
-| Extract whispers | Run via OpenClaw agent (see below) |
+| Search | `python3 -m pipeline.search` |
+| Select candidates | `python3 -m pipeline.candidate_selector` |
+| Crawl | `python3 -m pipeline.crawl` |
+| Standalone curate | `python3 scripts/standalone/curate.py` |
+
+### Infrastructure
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| SearXNG | localhost:8888 | Meta-search engine |
+| Crawl4AI | localhost:11235 | Web page crawler |
+| Search Gateway | localhost:8899 | Search proxy (legacy) |
+
+See `references/infrastructure-setup.md` for Docker setup.
+
+### API Reference
+
+See `references/eir-api.md` for endpoints and payload format.
+
+### Version Check
+
+Before running pipeline, verify schema compatibility:
+1. Read `schema_version` from `GET /oc/curation`
+2. Compare against `supported_schema_versions` in `config/settings.json`
+3. Major version changes require skill update
 
 ### RSS Sources
 
-Add RSS feeds to `config/sources.json`:
-
+Add feeds to `config/sources.json`:
 ```json
 {
   "name": "Example Blog",
@@ -347,33 +216,4 @@ Add RSS feeds to `config/sources.json`:
   "lang": "en"
 }
 ```
-
-Ratings: S (4h), A (8h), B (24h) based on update frequency.
-
-### Cache Management
-
-Cleanup runs automatically. Manual: `python3 scripts/pipeline/cache_cleanup.py`
-
-### Whisper Extraction
-
-Generates private journal entries from conversation insights.
-
-**API:**
-- `GET /api/oc/conversations` — fetch conversations
-- `POST /api/oc/whispers` — post generated Whisper
-
-See `references/whisper-api.md` for details.
-
-**Test run:**
-```bash
-python3 scripts/pipeline/whisper_extract.py --dry-run
-```
-
-### Cron Schedule Examples
-
-| User says | Cron expression |
-|-----------|-----------------|
-| "8am" | `0 8 * * *` |
-| "9:30am" | `30 9 * * *` |
-| "8pm" | `0 20 * * *` |
-| "twice daily" | `0 8,20 * * *` |
+Ratings: S (4h), A (8h), B (24h).

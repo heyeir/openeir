@@ -4,8 +4,6 @@
   "supported_schema_versions": ["2"],
   "max_items_per_day": 10,
   "local_storage": "data/",
-  
-  "api_url": null,
 
   "search": {
     "providers": ["tavily", "brave"],
@@ -13,16 +11,15 @@
     "crawl4ai_url": null,
     "search_gateway_url": null
   },
-  
+
   "rss_sources": "config/sources.json",
-  
+
   "cron": {
     "schedule": "0 8 * * *",
     "timezone": "UTC"
   },
-  
+
   "eir": {
-    "api_key": null,
     "bilingual": false,
     "sync_interests": true,
     "post_content": true,

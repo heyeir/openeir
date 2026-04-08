@@ -1,0 +1,55 @@
+"""
+Pipeline shared config — resolves workspace, API credentials, service URLs.
+"""
+
+import json
+import os
+import sys
+from pathlib import Path
+
+from .eir_config import (
+    WORKSPACE, CONFIG_DIR, DATA_DIR, SKILL_DIR,
+    load_config, get_api_url, get_api_key, load_settings,
+)
+
+# Pipeline data directories
+V9_DIR = DATA_DIR / "v9"
+RAW_RESULTS_DIR = V9_DIR / "raw_results"
+CANDIDATES_FILE = V9_DIR / "candidates.json"
+GENERATED_DIR = V9_DIR / "generated"
+POSTED_DIR = V9_DIR / "posted"
+SNIPPETS_DIR = V9_DIR / "snippets"
+
+# Shared state files (keep using v8 locations for continuity)
+DIRECTIVES_FILE = DATA_DIR / "directives.json"
+PUSHED_TITLES_FILE = DATA_DIR / "pushed_titles.json"
+USED_SOURCE_URLS_FILE = DATA_DIR / "used_source_urls.json"
+
+# Service URLs
+_settings = load_settings()
+_search_cfg = _settings.get("search", {})
+SEARXNG_URL = _search_cfg.get("searxng_url") or "http://localhost:8888"
+CRAWL4AI_URL = _search_cfg.get("crawl4ai_url") or "http://localhost:11235"
+SEARCH_GATEWAY_URL = _search_cfg.get("search_gateway_url") or "http://localhost:8899"
+
+# Freshness mapping: directive string → days
+FRESHNESS_DAYS = {
+    "1d": 1, "3d": 3, "7d": 7, "14d": 14, "30d": 30,
+}
+
+# Search config
+NEWS_MIN_RESULTS = 3  # if news returns fewer, supplement with general
+MAX_RESULTS_PER_QUERY = 10
+
+
+def ensure_dirs():
+    """Create all pipeline data directories."""
+    for d in [V9_DIR, RAW_RESULTS_DIR, GENERATED_DIR, POSTED_DIR, SNIPPETS_DIR]:
+        d.mkdir(parents=True, exist_ok=True)
+
+
+def load_json(path, default=None):
+    try:
+        return json.loads(Path(path).read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return default if default is not None else {}
