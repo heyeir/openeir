@@ -76,7 +76,7 @@ def load_config() -> dict:
 
     # Fallback: config file
     for path in [
-        Path(os.environ.get("EIR_CONFIG", "")),
+        Path(os.environ.get("EIR_CONFIG", "/dev/null")),
         CONFIG_DIR / "eir.json",
         SKILL_DIR / "config" / "eir.json",
     ]:
