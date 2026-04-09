@@ -14,7 +14,7 @@ from .config import V9_DIR, USED_SOURCE_URLS_FILE, PUSHED_TITLES_FILE, load_json
 
 STATE_FILE = V9_DIR / "run_state.json"
 
-STEPS = ["search", "candidates", "crawl", "generate", "brief"]
+STEPS = ["search", "candidates", "crawl", "generate"]
 
 # Bloom filter for URL dedup (memory-efficient for large URL sets)
 _BLOOM_SIZE = 100000  # 100K bits ≈ 12.5KB, enough for thousands of URLs
@@ -109,24 +109,23 @@ def save_state(state):
 
 
 def get_or_create_run():
-    """Get current run or create a new one.
+    """Get today's run or create a new one.
     Returns (state, is_resume).
     Logic:
-    - If run exists and is not complete/error → resume
-    - If run is complete or error → start new run
-    - If no run exists → start new run
+    - If today's run exists and is not complete → resume
+    - Otherwise → start new run for today
+    Managed by calendar day so each day gets one fresh pipeline cycle.
     """
     state = load_state()
-    status = state.get("status", "")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    # Resume if incomplete
-    if status not in ("complete", "error", "") and state.get("run_id"):
+    # Resume if today's run exists and is not complete
+    if state.get("run_id") == today and state.get("status") not in ("complete", ""):
         return state, True
 
-    # New run
-    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    # New run for today
     state = {
-        "run_id": run_id,
+        "run_id": today,
         "status": "started",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "steps": {},
@@ -257,9 +256,10 @@ def persist_used_urls(urls):
 
 
 def get_posted_topic_slugs():
-    """Get topic slugs already posted in current run."""
+    """Get topic slugs already posted today."""
     state = load_state()
-    if state.get("status") in ("complete", "error", ""):
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if state.get("run_id") != today:
         return set()
     return {p["topic"] for p in state.get("posted_ids", []) if p.get("topic")}
 

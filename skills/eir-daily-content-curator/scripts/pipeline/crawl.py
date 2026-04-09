@@ -195,14 +195,15 @@ def main():
         path = item["path"]
         print("  🔗 [%s] %s" % (item["candidate_slug"], url[:70]))
 
-        # Try Crawl4AI first, then web_fetch fallback
+        # Try Crawl4AI
         content, raw_html = crawl_url(url)
         crawl_method = "crawl4ai"
 
         if not content:
-            print("    ↩️ Trying web_fetch fallback...")
-            content, raw_html = web_fetch_fallback(url)
-            crawl_method = "web_fetch"
+            # web_fetch only for date extraction, not content fallback
+            print("    ↩️ Crawl4AI failed, fetching HTML head for date only...")
+            raw_html = fetch_html_head_only(url) or ""
+            crawl_method = None  # no content obtained
 
         if content:
             snippet_data = {
@@ -240,8 +241,14 @@ def main():
                 "crawl_status": "failed",
                 "crawled_at": datetime.now(timezone.utc).isoformat(),
             }
+            # Still try to extract date from HTML head
+            if raw_html:
+                pub_date = extract_publish_date(raw_html, url)
+                if pub_date:
+                    snippet_data["publishedDate"] = pub_date
+                    print("    📅 Date (from HTML head): %s" % pub_date)
             path.write_text(json.dumps(snippet_data, indent=2, ensure_ascii=False))
-            print("    ❌ Failed (both crawl4ai and web_fetch)")
+            print("    ❌ No content (date-only save)")
             failed += 1
 
         time.sleep(1)  # rate limit
