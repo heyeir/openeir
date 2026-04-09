@@ -125,8 +125,7 @@ Push generated content.
       "l1": {
         "title": "MCP Protocol v2.0",
         "summary": "Anthropic releases MCP 2.0...",
-        "key_quote": "...",
-        "via": ["Anthropic Blog"]
+        "key_quote": "..."
       },
       "l2": {
         "content": "...(500+ words)...",

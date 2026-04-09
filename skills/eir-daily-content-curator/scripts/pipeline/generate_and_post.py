@@ -36,7 +36,6 @@ REQUEST_INTERVAL = 0.5
 
 # Writer prompt is loaded from references/ at call time
 WRITER_PROMPT_PATH = SKILL_DIR / "references" / "writer-prompt-eir.md"
-TRANSLATE_PROMPT_PATH = SKILL_DIR / "references" / "writer-prompt-eir.md"  # same file, translate section below
 
 
 def api_request(method, url, data=None, api_key=""):
@@ -109,7 +108,7 @@ def _load_writer_prompt():
     if WRITER_PROMPT_PATH.exists():
         return WRITER_PROMPT_PATH.read_text()
     # Fallback: minimal inline prompt
-    return "Generate a Chinese article for Eir. Output JSON only. See content-spec.md for format."
+    return "Generate content for Eir. Output JSON only. See content-spec.md for format."
 
 
 def build_generation_prompt(candidate, sources):
@@ -199,10 +198,8 @@ Output JSON (no markdown fences):
   },
   "l1": {
     "title": "opinionated title, 8-15 EN words",
-    "subtitle": "translated subtitle",
     "summary": "translated summary, 2-3 sentences",
     "key_quote": "translated key quote or empty string",
-    "via": %s,
     "bullets": ["translated bullet 1", "bullet 2", "bullet 3"]
   },
   "l2": {
@@ -232,7 +229,6 @@ Rules:
         content_data.get("contentGroup", ""),
         content_data["dot"].get("category", "focus"),
         content_data["dot"].get("color_hint", "blue"),
-        json.dumps(content_data["l1"].get("via", []), ensure_ascii=False),
         json.dumps(content_data.get("sources", []), ensure_ascii=False),
         content_data.get("contentGroup", ""),
     )

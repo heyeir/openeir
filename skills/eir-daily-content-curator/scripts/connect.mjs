@@ -44,6 +44,7 @@ try {
   }
 
   const config = {
+    apiUrl: BASE_URL + '/api',
     apiKey: data.apiKey,
     userId: data.userId,
     connectedAt: new Date().toISOString(),

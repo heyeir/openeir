@@ -26,7 +26,7 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
     ]
   },
   "dot": {
-    "hook": "<≤10 chars (CJK) or ≤6 English words, in output_lang>",
+    "hook": "<≤10 CJK chars or ≤6 English words, in output_lang>",
     "category": "<choose: focus | attention | seed>",
     "color_hint": "<color_hint from task>"
   },
@@ -35,7 +35,7 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
       "url": "https://...",
       "title": "Article Title",
       "name": "Source Name",
-      "publish_time": "<from source_articles[].published, or empty string if missing>"
+      "publish_time": "<ISO date from source, or empty string if unknown>"
     }
   ],
   "l1": {
@@ -61,52 +61,39 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
 
 ### Language
 1. **ALL text fields must be in `output_lang`.** This includes `dot.hook`, `l1.title`, `l1.summary`, `l1.bullets`, `l2.content`, `l2.bullets`, `l2.context`, `l2.eir_take`, `l2.related_topics`. No exceptions.
-2. **NEVER mix languages** in a single field. Technical terms and proper nouns (e.g. "GPT-4", "Transformer", "LLM", "Obsidian") may remain in their original form.
-3. **`related_topics`** must be human-readable phrases in `output_lang`. NOT English slugs, NOT code-style identifiers.
+2. **NEVER mix languages** in a single field. Technical terms and proper nouns (e.g. "GPT-4", "Transformer", "LLM") may remain in their original form.
+3. **`related_topics`** must be human-readable phrases in `output_lang`. NOT slugs or code-style identifiers.
    - ✅ `["digital sovereignty", "AI ethics", "open-source safety"]`
-   - ❌ `["dark-forest-theory", "ai-platform-power"]` — these are slugs, not topics
+   - ❌ `["dark-forest-theory", "ai-platform-power"]`
 
-### Category Selection
-4. **`dot.category`**: Choose based on content importance:
-   - **`focus`** — Major news, breakthrough announcements, high-impact events. Things people would regret missing. Use sparingly (~10-15% of content).
-   - **`attention`** — Default. Valuable updates, interesting developments, worth knowing. Most content falls here (~70-80%).
-   - **`seed`** — Background knowledge, tutorials, explainers, foundational concepts. Educational rather than timely (~10-15%).
+### Category
+4. **`dot.category`** — choose by importance:
+   - **`focus`** — Major news, breakthroughs, high-impact events. Use sparingly (~10-15%).
+   - **`attention`** — Default. Valuable updates, worth knowing (~70-80%).
+   - **`seed`** — Background knowledge, explainers, foundational concepts (~10-15%).
 
 ### Content Quality
-
-> **Field types, limits, and null handling** → see `references/content-spec.md` (single source of truth).
-
 5. **Do NOT set `l1.via`** — the pipeline auto-generates it from `sources[].name`.
-6. `sources`: copy `url`, `title`, `source_name` → `name` from each source article. Add `publish_time` from `source_articles[].published`. Use `""` if missing (never null). Every source used must appear here.
-7. `key_quote`: pick the most insightful direct quote from the sources, or `""` if no good quote.
-8. `content_url_slug`: SEO-friendly English slug, 3-8 words hyphenated, all lowercase, unique per item. No dates, no source names.
-9. Be opinionated and curated — this is NOT a news summary, it's a knowledge signal.
-10. `eir_take` is **PUBLIC** (visible on share pages). Do NOT include user-specific info.
+6. **`sources`**: include `url`, `title`, `name` (publisher), and `publish_time` for each source used. Use `""` if publish_time is unknown (never null).
+7. **`key_quote`**: pick the most insightful direct quote from the sources, or `""` if none.
+8. **`eir_take`** is **PUBLIC** (visible on share pages). Do NOT include user-specific info.
 
 ### Content Style
-11. Tone: "a smart friend you trust" — not a news anchor, not an encyclopedia.
-12. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly". Apply equivalent rules for non-English output.
-13. Source attribution goes in structured fields (`sources[]`), NEVER inline in prose as `[Source: XX]`.
-14. `l2.content`: Start from where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
-15. `l2.context`: Be specific and reader-facing. Wrong: "This reveals a growing trend." Right: "If you're building agents today, your eval pipeline probably can't catch these failure modes."
+9. Tone: "a smart friend you trust" — not a news anchor, not an encyclopedia.
+10. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly". Apply equivalent rules for non-English output.
+11. Source attribution goes in `sources[]`, NEVER inline in prose as `[Source: XX]`.
+12. `l2.content`: Start where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
+13. `l2.context`: Be specific and reader-facing. Wrong: "This reveals a growing trend." Right: "If you're building agents today, your eval pipeline probably can't catch these failure modes."
+14. Be opinionated and curated — this is NOT a news summary, it's a knowledge signal.
 
 ### Interest Signals
-17. `interests.anchor` must contain the `topicSlug` (the directive slug).
-18. `interests.related` should have 2-5 topics adjacent/tangential to the main topic. Slugs must be lowercase-hyphenated. Labels must be in `output_lang`.
-19. Related topics should be specific enough to be useful ("neural-architecture-search") but not too narrow ("bert-base-uncased-layer-12").
+15. `interests.anchor` must contain the `topicSlug` (the directive slug).
+16. `interests.related` should have 2-5 adjacent topics. Slugs: lowercase-hyphenated. Labels: in `output_lang`.
+17. Related topics should be specific enough to be useful ("neural-architecture-search") but not too narrow ("bert-base-uncased-layer-12").
 
 ### Output
-16. Only output the JSON. No other text, no markdown fences.
+18. Only output the JSON. No other text, no markdown fences.
 
 ## Field Constraints
 
-For full field types, recommended limits, and hard limits, see **`references/content-spec.md`**.
-
-## Notes
-
-- **`l1.via` is auto-generated** — the pipeline populates it from `sources[].name`. Do not set it.
-- Use `topicSlug` (camelCase) in output. The pipeline posts directly to the API.
-- **`publish_time`** in sources: Use `""` if missing (never null).
-- The API stores each language version as a separate document with ID `{contentGroup}_{lang}`.
-
----
+For full field types, limits, and null handling, see **`references/content-spec.md`** (single source of truth).

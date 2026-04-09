@@ -164,7 +164,6 @@ Content-Type: application/json
 ```
 
 **Notes**:
-- Creates whisper in `whispers_v2` container (no TTL)
 - ID format: `{8-char contentGroup}_{lang}` (e.g., `x7k2m9p4_en`)
 - Clears `whisperCandidate` flag on source conversation if `conversationId` provided
 
@@ -179,7 +178,7 @@ interface WhisperItem {
   id: string                    // "{contentGroup}_{lang}" e.g. "x7k2m9p4_en"
   contentGroup: string          // 8-char short ID
   lang: string                  // language code
-  userId: string                // partition key
+  userId: string
   
   // L0 Dot
   dot: {
@@ -217,22 +216,7 @@ interface WhisperItem {
   date: string                  // YYYY-MM-DD
   created_at: string            // ISO 8601
   updated_at: string            // ISO 8601
-  ttl: -1                       // no expiration
 }
-```
-
----
-
-## Cosmos DB Containers
-
-```
-Container: whispers_v2
-  Partition Key: /userId
-  TTL: -1 (no expiration)
-
-Container: short_ids
-  Partition Key: /id
-  TTL: -1 (permanent, ensures IDs are never reused)
 ```
 
 ---
@@ -267,8 +251,3 @@ The API key is obtained via `POST /oc/connect` with a pairing code, then stored 
 │     → Server clears candidate flag on conversation          │
 └─────────────────────────────────────────────────────────────┘
 ```
-
----
-
-*Document Version: 2026-04-04*
-*Corresponds to F18-Whisper.md PRD*
