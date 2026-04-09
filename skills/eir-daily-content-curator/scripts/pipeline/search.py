@@ -182,6 +182,173 @@ def build_queries(directive):
     return queries
 
 
+# --- Layered search (2-pass) for broad "news" topics ---
+
+ENTITY_KEYWORDS = [
+    "Anthropic", "OpenAI", "Google", "Meta", "Microsoft", "Apple", "Nvidia",
+    "Amazon", "Huawei", "ByteDance", "Baidu", "Alibaba", "Tencent", "Zhipu",
+    "Mistral", "Cohere", "xAI", "DeepSeek", "Perplexity",
+    "Claude", "GPT", "Gemini", "Llama", "Codex", "Copilot", "Cursor",
+    "Sora", "Muse", "Grok", "Kimi", "Qwen",
+]
+
+
+def _is_broad_news_topic(directive):
+    """Detect if a directive is a broad news-aggregation topic that benefits
+    from 2-pass layered search. Heuristic: tier=focus AND freshness <= 1d."""
+    tier = directive.get("tier", "")
+    freshness = directive.get("freshness", "7d")
+    return tier == "focus" and freshness in ("1d", "3d")
+
+
+def _extract_entities(results):
+    """Extract company/product entity names from search result titles."""
+    entity_counts = {}
+    for r in results:
+        title = r.get("title", "")
+        for ent in ENTITY_KEYWORDS:
+            if ent.lower() in title.lower():
+                entity_counts[ent] = entity_counts.get(ent, 0) + 1
+    # Return entities sorted by count (most mentioned first)
+    return sorted(entity_counts.keys(), key=lambda e: -entity_counts[e])
+
+
+def _get_user_interest_keywords(all_directives):
+    """Derive user interest keywords from directive slugs and labels."""
+    interest_kw = set()
+    interest_map = {
+        "ai-agent": ["agent", "agentic"],
+        "ai-companion": ["companion", "emotional AI"],
+        "content-creation": ["content", "creator"],
+        "design": ["design", "UX"],
+        "product": ["product", "feature"],
+    }
+    for d in all_directives:
+        slug = d.get("slug", "")
+        for prefix, kws in interest_map.items():
+            if prefix in slug:
+                interest_kw.update(kws)
+    # Always include these core interests
+    interest_kw.update(["agent", "product", "launch"])
+    return list(interest_kw)
+
+
+def _build_pass2_queries(entities, interest_keywords, freshness):
+    """Generate targeted Pass 2 queries: entity × interest keyword."""
+    queries = []
+    seen = set()
+    for ent in entities[:6]:  # top 6 entities
+        # Basic entity news query
+        q = "%s AI news" % ent
+        if q not in seen:
+            queries.append({"q": q, "freshness": freshness})
+            seen.add(q)
+        # Entity + interest keywords (pick top 2 interests)
+        for kw in interest_keywords[:2]:
+            q2 = "%s %s" % (ent, kw)
+            if q2 not in seen:
+                queries.append({"q": q2, "freshness": freshness})
+                seen.add(q2)
+    return queries
+
+
+def search_topic_layered(directive, used_urls, all_directives):
+    """2-pass layered search for broad news topics.
+    Pass 1: Broad discovery query → detect entities (companies/products)
+    Pass 2: Entity × user-interests targeted queries
+    """
+    slug = directive["slug"]
+    topic_name = directive.get("label") or directive.get("topic", slug)
+    freshness = directive.get("freshness", "7d")
+
+    all_results = []
+    seen_urls = set()
+
+    def _add(results, query):
+        added = 0
+        for r in results:
+            if r["url"] not in seen_urls and r["url"] not in used_urls:
+                r["topic_slug"] = slug
+                r["topic_name"] = topic_name
+                r["search_query"] = query
+                all_results.append(r)
+                seen_urls.add(r["url"])
+                added += 1
+        return added
+
+    # --- Pass 1: Broad discovery ---
+    print("    🔎 [Pass 1] Broad discovery")
+    broad_queries = [
+        "AI industry news today",
+        "AI行业新闻 今日",
+    ]
+    # Also include original searchHints for coverage
+    original_queries = build_queries(directive)
+    for qinfo in original_queries:
+        if qinfo["q"] not in broad_queries:
+            broad_queries.append(qinfo["q"])
+
+    pass1_raw = []  # unfiltered for entity extraction
+    pass1_results = []  # filtered for adding
+    for q in broad_queries:
+        print("    🔍 [P1 news] %s" % q[:60])
+        results = searxng_search(q, category="news")
+        pass1_raw.extend(results)  # keep raw for entity detection
+        results = filter_by_freshness(results, freshness)
+        for r in results:
+            pass1_results.append(r)
+        _add(results, q)
+        time.sleep(0.5)
+
+    # Extract entities from UNFILTERED Pass 1 (better entity detection)
+    entities = _extract_entities(pass1_raw)
+    print("    📡 Detected entities: %s" % ", ".join(entities[:8]))
+
+    # --- Pass 2: Entity × interest targeted search ---
+    interest_kw = _get_user_interest_keywords(all_directives)
+    pass2_queries = _build_pass2_queries(entities, interest_kw, freshness)
+    if pass2_queries:
+        print("    🔎 [Pass 2] %d targeted queries (entities × interests)" % len(pass2_queries))
+        for qinfo in pass2_queries:
+            q = qinfo["q"]
+            print("    🔍 [P2 news] %s" % q[:60])
+            results = searxng_search(q, category="news")
+            results = filter_by_freshness(results, freshness)
+            n = _add(results, q)
+            if n > 0:
+                print("      +%d new" % n)
+            time.sleep(0.4)
+
+    # General fallback if still low
+    fresh = [r for r in all_results if r.get("freshness_status") == "fresh"]
+    if len(fresh) < NEWS_MIN_RESULTS:
+        print("    📎 Still low (%d), trying general..." % len(fresh))
+        for q in broad_queries[:2]:
+            print("    🔍 [general] %s" % q[:60])
+            results = searxng_search(q, category="general")
+            results = filter_by_freshness(results, freshness)
+            _add(results, q)
+            time.sleep(0.5)
+
+    # Post-filter
+    all_results = _post_filter(all_results)
+    print("    ✅ %s: %d results (layered 2-pass)" % (slug, len(all_results)))
+    return all_results
+
+
+def _post_filter(results):
+    """Common post-processing: skip junk URLs, short titles, sort."""
+    skip_patterns = [".pdf", ".zip", ".mp4", "youtube.com/watch", "twitter.com/", "x.com/"]
+    results = [r for r in results if not any(p in r["url"].lower() for p in skip_patterns)]
+    results = [r for r in results if len(r.get("title", "")) >= 10]
+
+    def sort_key(r):
+        fresh = 0 if r.get("freshness_status") == "fresh" else 1
+        return (fresh, -r.get("score", 0))
+    results.sort(key=sort_key)
+    return results
+
+
 def search_topic(directive, used_urls):
     """Search for a single topic: news first, general fallback."""
     slug = directive["slug"]
@@ -234,19 +401,8 @@ def search_topic(directive, used_urls):
                     seen_urls.add(r["url"])
             time.sleep(0.5)
 
-    # Filter: skip PDFs, videos, social media
-    skip_patterns = [".pdf", ".zip", ".mp4", "youtube.com/watch", "twitter.com/", "x.com/"]
-    all_results = [r for r in all_results if not any(p in r["url"].lower() for p in skip_patterns)]
-
-    # Filter: title too short
-    all_results = [r for r in all_results if len(r.get("title", "")) >= 10]
-
-    # Sort: fresh first, then by score
-    def sort_key(r):
-        fresh = 0 if r.get("freshness_status") == "fresh" else 1
-        return (fresh, -r.get("score", 0))
-    all_results.sort(key=sort_key)
-
+    # Post-filter
+    all_results = _post_filter(all_results)
     print("    ✅ %s: %d results after filtering" % (slug, len(all_results)))
     return all_results
 
@@ -295,7 +451,10 @@ def main():
                 print("    [dry-run] Would search: %s" % q["q"][:60])
             continue
 
-        results = search_topic(directive, used_urls)
+        if _is_broad_news_topic(directive):
+            results = search_topic_layered(directive, used_urls, all_directives)
+        else:
+            results = search_topic(directive, used_urls)
         all_results.extend(results)
 
     if args.dry_run:
