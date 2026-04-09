@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Phase 1: Search — news-first, general-fallback.
+Phase 1: Search - news-first, general-fallback.
 
 For each directive topic:
   1. Search SearXNG news category → filter by publishedDate within freshness
@@ -45,7 +45,7 @@ def fetch_directives_from_api():
 
 
 def load_directives():
-    """Load directives — fetch from API, fallback to cache."""
+    """Load directives - fetch from API, fallback to cache."""
     try:
         data = fetch_directives_from_api()
         n = len(data.get("directives", [])) + len(data.get("tracked", []))
@@ -113,7 +113,7 @@ def filter_by_freshness(results, freshness_str):
     for r in results:
         pub = r.get("publishedDate")
         if not pub:
-            # No date — mark as unknown, keep but deprioritize
+            # No date - mark as unknown, keep but deprioritize
             r["freshness_status"] = "unknown"
             filtered.append(r)
             continue
@@ -245,7 +245,7 @@ def search_topic(directive, used_urls):
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description=""Search — news-first")
+    parser = argparse.ArgumentParser(description="Search")
     parser.add_argument("--topic", type=str, help="Only search this topic slug")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
@@ -310,7 +310,7 @@ def main():
     latest_path.write_text(json.dumps(output, indent=2, ensure_ascii=False))
 
     elapsed = time.time() - start
-    print("\n✅ Search done in %.0fs — %d results saved to %s" % (
+    print("\n✅ Search done in %.0fs - %d results saved to %s" % (
         elapsed, len(all_results), output_path.name))
 
     # Summary by topic

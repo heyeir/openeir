@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Phase 2: Candidate Selection — cluster similar articles, LLM judges hot topics.
+Phase 2: Candidate Selection - cluster similar articles, LLM judges hot topics.
 
 Reads latest_search.json, clusters by embedding similarity, then asks LLM
 which clusters are worth generating content for.
@@ -39,7 +39,7 @@ def cluster_by_topic(results):
     """Group results by their directive topic_slug.
 
     Within each topic, further cluster similar articles by title similarity
-    (simple word-overlap for now — embedding clustering can be added later).
+    (simple word-overlap for now - embedding clustering can be added later).
     """
     by_topic = {}
     for r in results:
@@ -78,7 +78,7 @@ Rules:
 - A topic is "hot" if it has fresh, newsworthy, or insightful content that users would find valuable
 - Each hot topic normally produces 1 article
 - A very broad/general topic (like "AI hot news") can produce 2-3 articles if there are clearly distinct sub-stories
-- Return suggested_angle for each article to write — be specific about the angle/focus
+- Return suggested_angle for each article to write - be specific about the angle/focus
 - matched_topic_slug must be the directive slug that this article belongs to
 
 %s
@@ -151,7 +151,7 @@ def has_fresh_source(candidate, directives_map):
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description=""Candidate Selection")
+    parser = argparse.ArgumentParser(description="Candidate Selection")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 

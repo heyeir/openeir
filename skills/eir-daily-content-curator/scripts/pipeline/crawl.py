@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Phase 3: Selective Crawl — only crawl URLs that are in candidates.json.
+Phase 3: Selective Crawl - only crawl URLs that are in candidates.json.
 
 Reads candidates.json, crawls full text via Crawl4AI, saves to v9/snippets/.
 
@@ -40,7 +40,7 @@ DATE_PATTERNS = [
     r'(20\d{2})[.](0[1-9]|1[0-2])[.](0[1-9]|[12]\d|3[01])',
 ]
 
-# Relative time patterns — "4h", "2 days ago", "3小时前", "1 hour ago"
+# Relative time patterns - "4h", "2 days ago", "3小时前", "1 hour ago"
 RELATIVE_TIME_PATTERNS = [
     # English: 4h, 4 hours ago, 2 days ago, 30 minutes ago, 1 min ago, 3 hrs ago
     (r'(\d{1,3})\s*(?:h|hr|hrs|hour|hours)(?:\s+ago)?\b', 'hours'),
@@ -83,7 +83,7 @@ def parse_relative_time(content):
     return None
 
 
-# HTML head date patterns — structured data, meta tags, JS variables
+# HTML head date patterns - structured data, meta tags, JS variables
 HTML_DATE_KEYS = [
     r'datePublished',
     r'article:published_time',
@@ -109,7 +109,7 @@ def fetch_html_head(url, max_bytes=15000):
 
 
 def extract_date_from_html_head(html):
-    """Extract publish date from raw HTML head — meta tags, JSON-LD, JS vars.
+    """Extract publish date from raw HTML head - meta tags, JSON-LD, JS vars.
 
     Handles HTML entity encoding (e.g. MSN's &quot;pageGenTime&quot;:&quot;...&quot;).
     """
@@ -158,7 +158,7 @@ def extract_publish_date(content, url="", html_head=""):
     Returns ISO 8601 string or None.
     Priority: 1) HTML head structured data, 2) URL path date, 3) article text.
     """
-    # Priority 1: HTML head (most reliable — JSON-LD, meta tags, pageGenTime)
+    # Priority 1: HTML head (most reliable - JSON-LD, meta tags, pageGenTime)
     if html_head:
         dt = extract_date_from_html_head(html_head)
         if dt:
@@ -252,7 +252,7 @@ def snippet_path_for_url(url):
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description=""Selective Crawl")
+    parser = argparse.ArgumentParser(description="Selective Crawl")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -340,7 +340,7 @@ def main():
         time.sleep(1)  # rate limit
 
     elapsed = time.time() - start
-    print("\n✅ Crawl done in %.0fs — %d success, %d failed" % (elapsed, success, failed))
+    print("\n✅ Crawl done in %.0fs - %d success, %d failed" % (elapsed, success, failed))
 
     # Update candidates with crawl status
     for c in candidate_list:
@@ -360,7 +360,7 @@ def main():
     print("  Updated candidates.json with crawl status")
 
     # === Freshness gate: enrich candidates with extracted dates ===
-    print("\n📅 Freshness gate — checking source dates...")
+    print("\n📅 Freshness gate - checking source dates...")
 
     # Load directives for freshness config
     from .config import DIRECTIVES_FILE
