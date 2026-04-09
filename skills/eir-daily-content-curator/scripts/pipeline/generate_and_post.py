@@ -281,11 +281,15 @@ def save_posted(content_data, content_id, content_group):
 # === Functions for the agent to call ===
 
 def get_candidates_for_generation():
-    """Return candidates that have crawled content, ready for generation."""
+    """Return candidates that have crawled content and pass freshness gate."""
     candidates = load_json(CANDIDATES_FILE, {})
     ready = []
     for c in candidates.get("candidates", []):
         if not c.get("has_content", False):
+            continue
+        if not c.get("has_fresh_source", True):
+            # Freshness gate: skip candidates without verified fresh sources.
+            # Default True so candidates without the field (pre-gate runs) pass.
             continue
         sources = load_candidate_sources(c)
         if sources:
