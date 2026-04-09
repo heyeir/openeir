@@ -2,8 +2,8 @@
 Pipeline run state manager — enables resume from last checkpoint.
 
 State file: data/v9/run_state.json
-Each run has a unique run_id (date-based, one per calendar day).
-Steps: search → candidates → crawl → generate → post → brief
+One run at a time. Run continues until complete, then new run can start.
+Steps: search → candidates → crawl → generate → brief
 """
 
 import json
@@ -16,10 +16,85 @@ STATE_FILE = V9_DIR / "run_state.json"
 
 STEPS = ["search", "candidates", "crawl", "generate", "brief"]
 
+# Bloom filter for URL dedup (memory-efficient for large URL sets)
+_BLOOM_SIZE = 100000  # 100K bits ≈ 12.5KB, enough for thousands of URLs
+_BLOOM_HASHES = 5
 
-def _today_run_id():
-    """Run ID = calendar date in local-ish form (UTC)."""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+class URLBloomFilter:
+    """Simple bloom filter for URL dedup with O(1) lookup."""
+    
+    def __init__(self, size=_BLOOM_SIZE, hashes=_BLOOM_HASHES):
+        self.size = size
+        self.hashes = hashes
+        self.bits = [False] * size
+        self.count = 0
+
+    def _hashes_for(self, url):
+        import hashlib
+        h = hashlib.md5(url.encode()).hexdigest()
+        # MD5 gives 32 hex chars, use chunks of 6 chars for 5 hashes
+        for i in range(self.hashes):
+            start = (i * 6) % 30
+            yield int(h[start:start+6], 16) % self.size
+
+    def add(self, url):
+        """Add URL to filter."""
+        for i in self._hashes_for(url):
+            self.bits[i] = True
+        self.count += 1
+
+    def might_contain(self, url):
+        """Check if URL might be in filter (may have false positives)."""
+        return all(self.bits[i] for i in self._hashes_for(url))
+
+    def to_dict(self):
+        return {"size": self.size, "bits": "".join("1" if b else "0" for b in self.bits), "count": self.count}
+
+    @classmethod
+    def from_dict(cls, d):
+        bf = cls(d.get("size", _BLOOM_SIZE))
+        bits_str = d.get("bits", "")
+        bf.bits = [c == "1" for c in bits_str] if bits_str else [False] * bf.size
+        bf.count = d.get("count", 0)
+        return bf
+
+
+# Global bloom filter (loaded once)
+_url_bloom = None
+
+
+def _get_bloom_filter():
+    """Get or create the global URL bloom filter."""
+    global _url_bloom
+    if _url_bloom is not None:
+        return _url_bloom
+    
+    # Try loading from file
+    bloom_file = V9_DIR / "url_bloom.json"
+    if bloom_file.exists():
+        try:
+            d = load_json(bloom_file, {})
+            _url_bloom = URLBloomFilter.from_dict(d)
+            return _url_bloom
+        except Exception:
+            pass
+    
+    # Create new and populate from existing URLs
+    _url_bloom = URLBloomFilter()
+    urls = get_all_used_urls()
+    for u in urls:
+        _url_bloom.add(u)
+    return _url_bloom
+
+
+def _save_bloom_filter():
+    """Persist bloom filter to file."""
+    global _url_bloom
+    if _url_bloom is None:
+        return
+    bloom_file = V9_DIR / "url_bloom.json"
+    bloom_file.write_text(json.dumps(_url_bloom.to_dict()))
 
 
 def load_state():
@@ -34,21 +109,24 @@ def save_state(state):
 
 
 def get_or_create_run():
-    """Get today's run or create a new one.
+    """Get current run or create a new one.
     Returns (state, is_resume).
-    If today's run exists and is not complete, resume it.
-    If today's run is complete or no run exists, create new.
+    Logic:
+    - If run exists and is not complete/error → resume
+    - If run is complete or error → start new run
+    - If no run exists → start new run
     """
     state = load_state()
-    today = _today_run_id()
+    status = state.get("status", "")
 
-    if state.get("run_id") == today and state.get("status") != "complete":
-        # Resume
+    # Resume if incomplete
+    if status not in ("complete", "error", "") and state.get("run_id"):
         return state, True
 
     # New run
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     state = {
-        "run_id": today,
+        "run_id": run_id,
         "status": "started",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "steps": {},
@@ -70,7 +148,24 @@ def mark_step(state, step, status, details=None):
     if details:
         state["steps"][step].update(details)
     state["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # If error, mark run as error and notify
+    if status == "error":
+        state["status"] = "error"
+        state["error_at"] = datetime.now(timezone.utc).isoformat()
+        error_msg = details.get("error", "Unknown error") if details else "Unknown error"
+        state.setdefault("errors", []).append({
+            "step": step,
+            "error": error_msg,
+            "at": datetime.now(timezone.utc).isoformat(),
+        })
+    
     save_state(state)
+    
+    # Notify on error (called by agent, not here directly)
+    if status == "error":
+        return error_msg
+    return None
 
 
 def is_step_done(state, step):
@@ -99,6 +194,10 @@ def record_posted_url(state, url):
     state.setdefault("posted_source_urls", [])
     if url not in state["posted_source_urls"]:
         state["posted_source_urls"].append(url)
+    # Also add to bloom filter
+    bf = _get_bloom_filter()
+    bf.add(url)
+    _save_bloom_filter()
     save_state(state)
 
 
@@ -116,8 +215,8 @@ def record_posted_id(state, content_id, content_group, slug, topic_slug):
 
 
 def get_all_used_urls():
-    """Get ALL used source URLs: from state + pushed_titles + used_source_urls.json.
-    This is the single source of truth for URL dedup.
+    """Get ALL used source URLs: from used_source_urls.json + pushed_titles.
+    This is the source of truth for populating bloom filter.
     """
     urls = set()
 
@@ -133,12 +232,13 @@ def get_all_used_urls():
             for u in p.get("source_urls", []):
                 urls.add(u)
 
-    # 3. From current run state
-    state = load_state()
-    for u in state.get("posted_source_urls", []):
-        urls.add(u)
-
     return urls
+
+
+def url_is_used(url):
+    """Fast bloom filter check if URL is likely already used."""
+    bf = _get_bloom_filter()
+    return bf.might_contain(url)
 
 
 def persist_used_urls(urls):
@@ -148,12 +248,34 @@ def persist_used_urls(urls):
         existing = []
     all_urls = list(set(existing) | set(urls))
     USED_SOURCE_URLS_FILE.write_text(json.dumps(all_urls, indent=2))
+    
+    # Also update bloom filter
+    bf = _get_bloom_filter()
+    for u in urls:
+        bf.add(u)
+    _save_bloom_filter()
 
 
 def get_posted_topic_slugs():
-    """Get topic slugs already posted today (for content-level dedup)."""
+    """Get topic slugs already posted in current run."""
     state = load_state()
-    today = _today_run_id()
-    if state.get("run_id") != today:
+    if state.get("status") in ("complete", "error", ""):
         return set()
     return {p["topic"] for p in state.get("posted_ids", []) if p.get("topic")}
+
+
+def get_error_for_notification():
+    """Get error info for user notification (if run is in error state)."""
+    state = load_state()
+    if state.get("status") != "error":
+        return None
+    errors = state.get("errors", [])
+    if not errors:
+        return {"step": "unknown", "error": "Unknown error"}
+    last = errors[-1]
+    return {
+        "run_id": state.get("run_id"),
+        "step": last.get("step"),
+        "error": last.get("error"),
+        "at": last.get("at"),
+    }

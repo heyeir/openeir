@@ -60,9 +60,15 @@ def load_directives():
 
 
 def load_used_urls():
-    """Load already-published source URLs (delegates to run_state for full dedup)."""
+    """Load already-published source URLs (uses bloom filter for fast check)."""
     from .run_state import get_all_used_urls
     return get_all_used_urls()
+
+
+def url_is_used(url):
+    """Fast bloom filter check if URL is likely already used."""
+    from .run_state import url_is_used as _url_is_used
+    return _url_is_used(url)
 
 
 def _detect_query_language(query):
