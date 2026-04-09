@@ -29,6 +29,51 @@ Curates personalized content based on your interests.
 
 ---
 
+## Interest Sync (Eir mode)
+
+Before running the content pipeline each day, sync user interests from recent conversations. This ensures curation directives reflect what the user actually cares about.
+
+### How It Works
+
+1. **Fetch existing interests** — `GET /oc/interests` to see what's already tracked
+2. **Analyze recent conversations** — review the past 24h of user chat sessions for genuine interest signals (curiosity, deep questions, repeated engagement — not routine tool usage or one-off tasks)
+3. **Extract and generalize** — map specific topics to searchable public labels (see `references/interest-extraction-prompt.md` for the full extraction prompt and rules)
+4. **Submit new interests** — `POST /oc/interests/add` with deduplicated labels in the user's primary language
+
+### Setting Up the Cron Job
+
+Schedule interest sync to run **before** the daily content curation job (e.g., 30 minutes earlier):
+
+```bash
+openclaw cron add \
+  --name "interest-sync" \
+  --cron "30 3 * * *" \
+  --tz "Asia/Shanghai" \
+  --message "Run interest sync: read references/interest-extraction-prompt.md from the eir-daily-content-curator skill, then follow its steps — fetch current interests from GET /oc/interests, analyze recent conversations for new interest signals, and POST /oc/interests/add for any new topics discovered."
+```
+
+Adjust the schedule so it completes before your content curation cron fires.
+
+### Cron Prompt Guidelines
+
+The cron message should instruct the agent to:
+- Load `references/interest-extraction-prompt.md` from this skill for extraction rules
+- Call `GET /oc/interests` to check existing interests
+- Review recent conversation sessions (past 24h) for interest signals
+- Call `POST /oc/interests/add` with any new labels discovered
+- Skip if no new interests are found
+
+### Testing
+
+Run manually first to verify the flow works:
+1. Read `references/interest-extraction-prompt.md`
+2. Call `GET /oc/interests` and note current list
+3. Review a few recent conversations
+4. Identify any new interests and call `POST /oc/interests/add`
+5. Verify with `GET /oc/interests` that new entries appear
+
+---
+
 ## Eir Mode Pipeline
 
 ### Architecture
@@ -123,6 +168,7 @@ openclaw cron add --name "eir-daily" --cron "0 8 * * *" --tz "Asia/Shanghai" \
 
 | Task | Command |
 |------|---------|
+| Interest sync | Agent-driven (see Interest Sync section above) |
 | Check setup | `python3 scripts/setup.py --check` |
 | Search | `python3 -m pipeline.search` |
 | Select candidates | `python3 -m pipeline.candidate_selector` |
