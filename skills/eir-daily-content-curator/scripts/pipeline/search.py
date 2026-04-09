@@ -60,18 +60,9 @@ def load_directives():
 
 
 def load_used_urls():
-    """Load already-published source URLs."""
-    urls = set()
-    # From API cache
-    used = load_json(USED_SOURCE_URLS_FILE, [])
-    if isinstance(used, list):
-        urls.update(used)
-    # From pushed_titles
-    pushed = load_json(PUSHED_TITLES_FILE, [])
-    for p in pushed:
-        for u in p.get("source_urls", []):
-            urls.add(u)
-    return urls
+    """Load already-published source URLs (delegates to run_state for full dedup)."""
+    from .run_state import get_all_used_urls
+    return get_all_used_urls()
 
 
 def _detect_query_language(query):
@@ -213,50 +204,10 @@ def _extract_entities(results):
     return sorted(entity_counts.keys(), key=lambda e: -entity_counts[e])
 
 
-def _get_user_interest_keywords(all_directives):
-    """Derive user interest keywords from directive slugs and labels."""
-    interest_kw = set()
-    interest_map = {
-        "ai-agent": ["agent", "agentic"],
-        "ai-companion": ["companion", "emotional AI"],
-        "content-creation": ["content", "creator"],
-        "design": ["design", "UX"],
-        "product": ["product", "feature"],
-    }
-    for d in all_directives:
-        slug = d.get("slug", "")
-        for prefix, kws in interest_map.items():
-            if prefix in slug:
-                interest_kw.update(kws)
-    # Always include these core interests
-    interest_kw.update(["agent", "product", "launch"])
-    return list(interest_kw)
-
-
-def _build_pass2_queries(entities, interest_keywords, freshness):
-    """Generate targeted Pass 2 queries: entity × interest keyword."""
-    queries = []
-    seen = set()
-    for ent in entities[:6]:  # top 6 entities
-        # Basic entity news query
-        q = "%s AI news" % ent
-        if q not in seen:
-            queries.append({"q": q, "freshness": freshness})
-            seen.add(q)
-        # Entity + interest keywords (pick top 2 interests)
-        for kw in interest_keywords[:2]:
-            q2 = "%s %s" % (ent, kw)
-            if q2 not in seen:
-                queries.append({"q": q2, "freshness": freshness})
-                seen.add(q2)
-    return queries
-
-
-def search_topic_layered(directive, used_urls, all_directives):
-    """2-pass layered search for broad news topics.
-    Pass 1: Broad discovery query → detect entities (companies/products)
-    Pass 2: Entity × user-interests targeted queries
-    """
+def search_topic_layered_pass1(directive, used_urls):
+    """Pass 1 of layered search: broad discovery.
+    Returns (pass1_results_added, pass1_signal) where pass1_signal is a list
+    of {title, url, date} for the agent to analyze."""
     slug = directive["slug"]
     topic_name = directive.get("label") or directive.get("topic", slug)
     freshness = directive.get("freshness", "7d")
@@ -276,63 +227,85 @@ def search_topic_layered(directive, used_urls, all_directives):
                 added += 1
         return added
 
-    # --- Pass 1: Broad discovery ---
-    print("    🔎 [Pass 1] Broad discovery")
+    print("    \U0001f50e [Pass 1] Broad discovery")
     broad_queries = [
         "AI industry news today",
-        "AI行业新闻 今日",
+        "AI\u884c\u4e1a\u65b0\u95fb \u4eca\u65e5",
     ]
-    # Also include original searchHints for coverage
     original_queries = build_queries(directive)
     for qinfo in original_queries:
         if qinfo["q"] not in broad_queries:
             broad_queries.append(qinfo["q"])
 
-    pass1_raw = []  # unfiltered for entity extraction
-    pass1_results = []  # filtered for adding
+    pass1_raw = []
     for q in broad_queries:
-        print("    🔍 [P1 news] %s" % q[:60])
+        print("    \U0001f50d [P1 news] %s" % q[:60])
         results = searxng_search(q, category="news")
-        pass1_raw.extend(results)  # keep raw for entity detection
+        pass1_raw.extend(results)
         results = filter_by_freshness(results, freshness)
-        for r in results:
-            pass1_results.append(r)
         _add(results, q)
         time.sleep(0.5)
 
-    # Extract entities from UNFILTERED Pass 1 (better entity detection)
-    entities = _extract_entities(pass1_raw)
-    print("    📡 Detected entities: %s" % ", ".join(entities[:8]))
+    # Build signal for agent: unique titles with dates
+    seen_titles = set()
+    signal = []
+    for r in pass1_raw:
+        t = r.get("title", "")
+        if t and t not in seen_titles:
+            seen_titles.add(t)
+            signal.append({
+                "title": t[:120],
+                "url": r.get("url", "")[:120],
+                "date": str(r.get("publishedDate", ""))[:20],
+            })
+    signal = signal[:30]  # top 30
 
-    # --- Pass 2: Entity × interest targeted search ---
-    interest_kw = _get_user_interest_keywords(all_directives)
-    pass2_queries = _build_pass2_queries(entities, interest_kw, freshness)
-    if pass2_queries:
-        print("    🔎 [Pass 2] %d targeted queries (entities × interests)" % len(pass2_queries))
-        for qinfo in pass2_queries:
-            q = qinfo["q"]
-            print("    🔍 [P2 news] %s" % q[:60])
-            results = searxng_search(q, category="news")
-            results = filter_by_freshness(results, freshness)
-            n = _add(results, q)
-            if n > 0:
-                print("      +%d new" % n)
-            time.sleep(0.4)
+    print("    \U0001f4e1 Pass 1: %d results, %d signal titles" % (len(all_results), len(signal)))
+    return all_results, signal, seen_urls
+
+
+def search_topic_layered_pass2(directive, pass2_queries, used_urls, existing_urls):
+    """Pass 2: execute agent-generated targeted queries."""
+    slug = directive["slug"]
+    topic_name = directive.get("label") or directive.get("topic", slug)
+    freshness = directive.get("freshness", "7d")
+
+    all_results = []
+    seen_urls = set(existing_urls)
+
+    print("    \U0001f50e [Pass 2] %d agent-generated queries" % len(pass2_queries))
+    for q in pass2_queries:
+        print("    \U0001f50d [P2 news] %s" % q[:60])
+        results = searxng_search(q, category="news")
+        results = filter_by_freshness(results, freshness)
+        for r in results:
+            if r["url"] not in seen_urls and r["url"] not in used_urls:
+                r["topic_slug"] = slug
+                r["topic_name"] = topic_name
+                r["search_query"] = q
+                all_results.append(r)
+                seen_urls.add(r["url"])
+        time.sleep(0.4)
 
     # General fallback if still low
     fresh = [r for r in all_results if r.get("freshness_status") == "fresh"]
     if len(fresh) < NEWS_MIN_RESULTS:
-        print("    📎 Still low (%d), trying general..." % len(fresh))
-        for q in broad_queries[:2]:
-            print("    🔍 [general] %s" % q[:60])
+        print("    \U0001f4ce Still low (%d), trying general..." % len(fresh))
+        for q in pass2_queries[:2]:
+            print("    \U0001f50d [general] %s" % q[:60])
             results = searxng_search(q, category="general")
             results = filter_by_freshness(results, freshness)
-            _add(results, q)
+            for r in results:
+                if r["url"] not in seen_urls and r["url"] not in used_urls:
+                    r["topic_slug"] = slug
+                    r["topic_name"] = topic_name
+                    r["search_query"] = q
+                    all_results.append(r)
+                    seen_urls.add(r["url"])
             time.sleep(0.5)
 
-    # Post-filter
     all_results = _post_filter(all_results)
-    print("    ✅ %s: %d results (layered 2-pass)" % (slug, len(all_results)))
+    print("    \u2705 %s: +%d results from Pass 2" % (slug, len(all_results)))
     return all_results
 
 
@@ -452,10 +425,18 @@ def main():
             continue
 
         if _is_broad_news_topic(directive):
-            results = search_topic_layered(directive, used_urls, all_directives)
+            # Pass 1 only — agent handles Pass 2 via pass1_signal.json
+            p1_results, signal, p1_urls = search_topic_layered_pass1(directive, used_urls)
+            all_results.extend(p1_results)
+            layered_signals[slug] = {
+                "directive": directive,
+                "signal": signal,
+                "pass1_urls": list(p1_urls),
+                "pass1_count": len(p1_results),
+            }
         else:
             results = search_topic(directive, used_urls)
-        all_results.extend(results)
+            all_results.extend(results)
 
     if args.dry_run:
         print("\n[dry-run] Done.")

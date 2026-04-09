@@ -236,7 +236,7 @@ Rules:
 
 
 def record_pushed(content_data, content_id, content_group):
-    """Append to pushed_titles.json."""
+    """Append to pushed_titles.json AND update run state for dedup."""
     pushed = load_json(PUSHED_TITLES_FILE, [])
     if not isinstance(pushed, list):
         pushed = []
@@ -251,6 +251,25 @@ def record_pushed(content_data, content_id, content_group):
         "source_urls": [s.get("url", "") for s in content_data.get("sources", [])],
     })
     PUSHED_TITLES_FILE.write_text(json.dumps(pushed, ensure_ascii=False, indent=2))
+
+    # Also update run state for cross-step dedup
+    try:
+        from .run_state import record_posted_url, record_posted_id, persist_used_urls
+        for s in content_data.get("sources", []):
+            url = s.get("url", "")
+            if url:
+                record_posted_url(load_json(V9_DIR / "run_state.json", {}), url)
+        record_posted_id(
+            load_json(V9_DIR / "run_state.json", {}),
+            content_id, content_group,
+            content_data["slug"],
+            content_data.get("topicSlug", ""),
+        )
+        # Persist to used_source_urls.json
+        all_urls = [s.get("url", "") for s in content_data.get("sources", []) if s.get("url")]
+        persist_used_urls(all_urls)
+    except Exception:
+        pass  # non-critical: dedup state update failure shouldn't block posting
 
 
 def save_generated(content_data, suffix=""):
@@ -281,16 +300,45 @@ def save_posted(content_data, content_id, content_group):
 # === Functions for the agent to call ===
 
 def get_candidates_for_generation():
-    """Return candidates that have crawled content and pass freshness gate."""
+    """Return candidates that have crawled content, pass freshness gate,
+    and haven't been posted today (topic-level dedup)."""
     candidates = load_json(CANDIDATES_FILE, {})
+
+    # Topic dedup: skip topics already posted today
+    try:
+        from .run_state import get_posted_topic_slugs
+        posted_topics = get_posted_topic_slugs()
+    except Exception:
+        posted_topics = set()
+
+    # URL dedup: skip candidates whose source URLs are all used
+    try:
+        from .run_state import get_all_used_urls
+        used_urls = get_all_used_urls()
+    except Exception:
+        used_urls = set()
+
     ready = []
     for c in candidates.get("candidates", []):
+        topic = c.get("matched_topic_slug", "")
+
+        # Skip if this topic already posted today
+        if topic in posted_topics:
+            print("  ⏭️ %s: already posted today" % topic)
+            continue
+
         if not c.get("has_content", False):
             continue
         if not c.get("has_fresh_source", True):
-            # Freshness gate: skip candidates without verified fresh sources.
-            # Default True so candidates without the field (pre-gate runs) pass.
             continue
+
+        # URL dedup: check if ALL source URLs are already used
+        source_urls = c.get("source_urls", [])
+        fresh_urls = [u for u in source_urls if u not in used_urls]
+        if source_urls and not fresh_urls:
+            print("  ⏭️ %s: all source URLs already used" % topic)
+            continue
+
         sources = load_candidate_sources(c)
         if sources:
             ready.append({
