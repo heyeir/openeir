@@ -98,6 +98,13 @@ def extract_publish_date(content: str, url: str = "") -> str | None:
     candidates.sort(key=lambda x: priority.get(x[0], 99))
 
     best = candidates[0][1]
+
+    # Sanity check: if the best (structured) date is much older than a text-pattern
+    # date, prefer the newer one. This catches stale template dates in HTML.
+    text_dates = [dt for src, dt in candidates if src == "text-pattern"]
+    if text_dates and best < max(text_dates) - timedelta(days=90):
+        best = max(text_dates)
+
     return best.isoformat()
 
 

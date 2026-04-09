@@ -74,12 +74,20 @@ def load_used_urls():
     return urls
 
 
+def _detect_query_language(query):
+    """Detect if query is primarily Chinese or English."""
+    cjk_count = sum(1 for c in query if '\u4e00' <= c <= '\u9fff')
+    return "zh" if cjk_count > len(query) * 0.2 else "en"
+
+
 def searxng_search(query, category="news", limit=MAX_RESULTS_PER_QUERY):
     """Search SearXNG and return results list."""
+    lang = _detect_query_language(query)
     params = urllib.parse.urlencode({
         "q": query,
         "format": "json",
         "categories": category,
+        "language": lang,
         "pageno": 1,
     })
     url = "%s/search?%s" % (SEARXNG_URL, params)
