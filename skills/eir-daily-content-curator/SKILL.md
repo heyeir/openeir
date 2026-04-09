@@ -31,150 +31,95 @@ Curates personalized content based on your interests.
 
 ## Eir Mode Pipeline
 
-### Architecture (5 steps)
+### Architecture
 
 ```
-Step 0: plan         → GET /oc/curation → directives (topics + searchHints)
-Step 1: search       → SearXNG (news-first → general fallback) → raw_results/
-Step 2: select       → Cluster by topic → LLM judges candidates → candidates.json
-Step 3: crawl        → Crawl candidate URLs via Crawl4AI → snippets/
-Step 4+5: generate   → Agent LLM generates content → POST API → translate → POST
+plan    → fetch directives from API (topics + search hints)
+search  → SearXNG (news-first, general fallback)
+select  → cluster by topic, LLM judges candidates
+crawl   → fetch full article text for selected candidates
+generate → LLM writes content → POST to API → translate → POST
 ```
 
 ### Running the Pipeline
 
-**Step 0 — Plan (fetch directives):**
 ```bash
-python3 -m pipeline.search --dry-run   # preview queries
-python3 -m pipeline.search             # runs plan + search
-```
-Search fetches directives from the API automatically before searching.
-
-**Step 1 — Search:**
-```bash
+# Search (fetches directives automatically, then searches)
 python3 -m pipeline.search
 python3 -m pipeline.search --topic ai-agents   # single topic
-```
+python3 -m pipeline.search --dry-run            # preview queries
 
-**Step 2 — Select candidates:**
-```bash
+# Select candidates (clusters results, writes prompt for LLM)
 python3 -m pipeline.candidate_selector
 python3 -m pipeline.candidate_selector --dry-run
-```
-Writes `candidate_prompt.txt` for agent LLM to evaluate.
-Agent reads prompt, calls LLM, writes `candidates.json`.
 
-**Step 3 — Crawl:**
-```bash
+# Crawl (fetches full text for selected candidate URLs)
 python3 -m pipeline.crawl
 python3 -m pipeline.crawl --dry-run
 ```
-Only crawls URLs from accepted candidates. Includes freshness gate.
 
-**Step 4+5 — Generate + POST (agent-driven):**
-The agent imports `generate_and_post` module functions:
-```python
-from pipeline.generate_and_post import (
-    get_candidates_for_generation,
-    build_generation_prompt,
-    post_to_api,
-    build_translate_prompt,
-    record_pushed,
-    save_generated,
-    save_posted,
-    get_api_key,
-)
-```
+**Generate + POST** is agent-driven. The agent calls `generate_and_post` module functions to:
+1. Load candidates with crawled content
+2. Generate content via LLM using the writer prompt
+3. POST to Eir Content API
+4. Translate and POST the translated version
 
-Flow:
-1. `get_candidates_for_generation()` → list of ready candidates with prompts
-2. Agent calls LLM with `candidate["prompt"]` → gets JSON content
-3. `post_to_api(content, api_key)` → returns (content_id, contentGroup)
-4. `build_translate_prompt(content)` → agent calls LLM for EN translation
-5. `post_to_api(en_content, api_key)` → POST translated version
-6. `record_pushed(content, id, group)` → track what was posted
-
-### Data Directories
-
-All pipeline data lives in `<workspace>/data/v9/`:
-
-| Directory | Contents |
-|-----------|----------|
-| `raw_results/` | Search results (by timestamp) |
-| `candidates.json` | LLM-selected candidates |
-| `snippets/` | Crawled article content |
-| `generated/` | Generated content JSON |
-| `posted/` | Successfully posted content |
-
-Shared state (cross-run):
-- `data/directives.json` — cached API directives
-- `data/pushed_titles.json` — posting history
-- `data/used_source_urls.json` — dedup URLs
-
-### Content Quality Rules
+### Content Quality
 
 See `references/content-spec.md` for full field constraints. Key rules:
-- `dot.hook` ≤10 CJK chars, no hype words
+- `dot.hook` ≤10 CJK chars / ≤6 EN words
 - `dot.category`: `focus` | `attention` | `seed` | `whisper`
-- `l1.bullets` 3-4 items, each ≤20 chars
-- Never set any field to null — use `""` or `[]`
-- Source attribution in `sources[]`, never inline
+- `l1.bullets` 3-4 items, each ≤20 CJK chars
+- Never set any field to `null` — use `""` or `[]`
+- Source attribution in `sources[]`, never inline in prose
 - Generate zh first, then translate to en (separate POST per language)
 
 ### Writer Prompt
 
-The generation prompt is loaded from `references/writer-prompt-eir.md`.
-Full field spec in `references/content-spec.md`.
+Loaded from `references/writer-prompt-eir.md`. Full field spec in `references/content-spec.md`.
 
 ---
 
-## Agent Setup Flow
+## Setup
 
-When user says "set up daily news" or similar, follow this step-by-step flow.
+When user says "set up daily news" or similar:
 
-### Step 1: Check current setup
-
+### 1. Check current setup
 ```bash
 python3 scripts/setup.py --check
 ```
 
-### Step 2: Choose mode
+### 2. Choose mode
+Ask user: **Standalone** (simple RSS) or **Eir** (full AI curation, requires heyeir.com account)?
 
-Ask user: **Standalone** (simple RSS) or **Eir** (full AI curation with heyeir.com account)?
-
-### Step 3: Collect settings
+### 3. Collect settings
 
 | Setting | Default |
 |---------|---------|
 | Language | Auto-detect |
 | Max items/day | 5 |
-| Search (Tavily/Brave/SearXNG) | None (standalone) |
+| Search provider | Tavily or Brave (standalone), SearXNG (self-hosted) |
 
-For Eir mode: connect account via `node scripts/connect.mjs <PAIRING_CODE>`
+For Eir mode, connect account: `node scripts/connect.mjs <PAIRING_CODE>`
 
-### Step 4: Initialize
-
+### 4. Initialize
 ```bash
 python3 scripts/setup.py --init --settings '<json>'
 ```
 
-### Step 5: Set schedule
-
+### 5. Set schedule
 ```bash
 openclaw cron add --name "eir-daily" --cron "0 8 * * *" --tz "Asia/Shanghai" \
   --session isolated --message "Run eir-daily-content-curator pipeline"
 ```
 
-### Step 6: Test run
-
-For standalone: `python3 scripts/standalone/curate.py`
-For Eir: run pipeline steps 0-4+5
+### 6. Test run
+- Standalone: `python3 scripts/standalone/curate.py`
+- Eir: run the pipeline steps above
 
 ---
 
 ## Quick Reference
-
-### Commands
 
 | Task | Command |
 |------|---------|
@@ -186,17 +131,20 @@ For Eir: run pipeline steps 0-4+5
 
 ### Infrastructure
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| SearXNG | localhost:8888 | Meta-search engine |
-| Crawl4AI | localhost:11235 | Web page crawler |
-| Search Gateway | localhost:8899 | Search proxy (legacy) |
+Self-hosted search and crawl services are optional. See `references/infrastructure-setup.md` for Docker setup.
 
-See `references/infrastructure-setup.md` for Docker setup.
+### References
 
-### API Reference
-
-See `references/eir-api.md` for endpoints and payload format.
+| File | Contents |
+|------|----------|
+| `references/content-spec.md` | Field types, limits, validation rules |
+| `references/eir-api.md` | API endpoints and payloads |
+| `references/writer-prompt-eir.md` | Content generation prompt |
+| `references/writer-prompt-standalone.md` | Standalone mode prompt |
+| `references/eir-interest-rules.md` | Curation tier guidelines |
+| `references/whisper-api.md` | Whisper extraction API |
+| `references/whisper-writer-prompt.md` | Whisper generation prompt |
+| `references/infrastructure-setup.md` | SearXNG + Crawl4AI Docker setup |
 
 ### Version Check
 

@@ -167,4 +167,28 @@ Both use the same ID scheme:
 
 ## Interest Signals
 
-Content
+Every content item should include interest signals:
+
+```json
+"interests": {
+  "anchor": ["ai-agents"],
+  "related": [
+    { "slug": "a2a-protocol", "label": "A2A Protocol" }
+  ]
+}
+```
+
+### Anchor
+
+- 1-3 slugs from the curation directives
+- Must match user's interests (API validates, rejects 400 if mismatch)
+- Use `topicSlug` (camelCase) in the content item
+
+### Related
+
+- 2-5 adjacent topics
+- Slugs: lowercase-hyphenated
+- Labels: human-readable in content's `lang`
+- Unknown topics auto-created as candidates
+
+See `eir-interest-rules.md` for curation guidelines.

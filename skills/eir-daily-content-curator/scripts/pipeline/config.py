@@ -20,7 +20,7 @@ GENERATED_DIR = V9_DIR / "generated"
 POSTED_DIR = V9_DIR / "posted"
 SNIPPETS_DIR = V9_DIR / "snippets"
 
-# Shared state files (keep using v8 locations for continuity)
+# Shared state files (cross-run)
 DIRECTIVES_FILE = DATA_DIR / "directives.json"
 PUSHED_TITLES_FILE = DATA_DIR / "pushed_titles.json"
 USED_SOURCE_URLS_FILE = DATA_DIR / "used_source_urls.json"
