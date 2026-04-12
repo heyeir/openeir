@@ -19,6 +19,7 @@ CANDIDATES_FILE = V9_DIR / "candidates.json"
 GENERATED_DIR = V9_DIR / "generated"
 POSTED_DIR = V9_DIR / "posted"
 SNIPPETS_DIR = V9_DIR / "snippets"
+TASKS_DIR = V9_DIR / "tasks"
 
 # Shared state files (cross-run)
 DIRECTIVES_FILE = DATA_DIR / "directives.json"
@@ -44,7 +45,7 @@ MAX_RESULTS_PER_QUERY = 10
 
 def ensure_dirs():
     """Create all pipeline data directories."""
-    for d in [V9_DIR, RAW_RESULTS_DIR, GENERATED_DIR, POSTED_DIR, SNIPPETS_DIR]:
+    for d in [V9_DIR, RAW_RESULTS_DIR, GENERATED_DIR, POSTED_DIR, SNIPPETS_DIR, TASKS_DIR]:
         d.mkdir(parents=True, exist_ok=True)
 
 
