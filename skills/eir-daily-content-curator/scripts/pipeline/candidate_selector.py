@@ -88,6 +88,7 @@ Return JSON (no markdown fences):
   "candidates": [
     {
       "matched_topic_slug": "the-directive-slug",
+      "content_slug": "descriptive-content-slug-for-this-article",
       "suggested_angle": "specific angle for this article",
       "reason": "why this is worth writing about",
       "source_urls": ["url1", "url2", "url3"],
@@ -98,7 +99,13 @@ Return JSON (no markdown fences):
   "skipped_topics": [
     {"slug": "...", "reason": "why skipped"}
   ]
-}""" % "\n\n".join(sections)
+}
+
+content_slug rules:
+- Descriptive, kebab-case, based on the specific article content (e.g. "coreweave-anthropic-cloud-deal", "jetbrains-air-launch")
+- 3-6 words, lowercase, hyphens only
+- Must be unique across candidates
+- Will be used as both the filename and the content ID in the API""" % "\n\n".join(sections)
 
     return prompt
 
