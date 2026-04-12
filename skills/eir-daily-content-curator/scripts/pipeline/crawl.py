@@ -200,10 +200,15 @@ def main():
         crawl_method = "crawl4ai"
 
         if not content:
-            # web_fetch only for date extraction, not content fallback
-            print("    ↩️ Crawl4AI failed, fetching HTML head for date only...")
-            raw_html = fetch_html_head_only(url) or ""
-            crawl_method = None  # no content obtained
+            # Fallback: use web_fetch to get content
+            print("    ↩️ Crawl4AI failed, trying web_fetch fallback...")
+            content, raw_html = web_fetch_fallback(url)
+            if content:
+                crawl_method = "web_fetch"
+            else:
+                # Last resort: just fetch HTML head for date extraction
+                raw_html = fetch_html_head_only(url) or ""
+                crawl_method = None
 
         if content:
             snippet_data = {
