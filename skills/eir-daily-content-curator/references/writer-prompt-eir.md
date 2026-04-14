@@ -75,16 +75,35 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
 ### Content Quality
 5. **Do NOT set `l1.via`** — the pipeline auto-generates it from `sources[].name`.
 6. **`sources`**: include `url`, `title`, `name` (publisher), and `publish_time` for each source used. Use `""` if publish_time is unknown (never null).
-7. **`key_quote`**: pick the most insightful direct quote from the sources, or `""` if none.
+7. **`key_quote`**: must be a **string** (not an object). Pick the most insightful direct quote from the sources, or `""` if none.
 8. **`eir_take`** is **PUBLIC** (visible on share pages). Do NOT include user-specific info.
+
+### Mandatory Fields (NEVER omit)
+**Every field in the JSON structure above is REQUIRED.** Specifically:
+- `l1.bullets`: 3-4 items, MUST be present
+- `l2.bullets`: 3-5 items with `{text, confidence}`, MUST be present
+- `l2.context`: MUST be present — address the reader directly with SO WHAT
+- `l2.eir_take`: MUST be present — see eir_take rules below
+- `l2.related_topics`: 3 items, MUST be present
+- `key_quote`: string, MUST be present (use `""` if no quote)
+
+If any of these fields are missing, the content will fail validation.
+
+### eir_take Rules
+- Eir is a **knowledge curation product** (heyeir.com) — a breathing knowledge canvas that helps people stay informed.
+- When the topic directly relates to knowledge consumption, AI-assisted reading, content curation, or information overload: **connect eir_take to Eir's perspective as a product in this space**.
+- Do NOT be generic ("这值得关注"). Be sharp, specific, and opinionated.
+- Good: "Eir 做内容策展的前提是用户主动选择看什么——当 AI 伴侣开始替用户决定'需要'什么时，策展就变成了操控。"
+- Bad: "这是一个值得全社会关注的问题。"
 
 ### Content Style
 9. Tone: "a smart friend you trust" — not a news anchor, not an encyclopedia.
-10. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly". Apply equivalent rules for non-English output.
+10. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly", "值得关注", "引发关注". Apply equivalent rules for non-English output.
 11. Source attribution goes in `sources[]`, NEVER inline in prose as `[Source: XX]`.
 12. `l2.content`: Start where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
 13. `l2.context`: Be specific and reader-facing. Wrong: "This reveals a growing trend." Right: "If you're building agents today, your eval pipeline probably can't catch these failure modes."
 14. Be opinionated and curated — this is NOT a news summary, it's a knowledge signal.
+15. `l2.context`: address the reader in second person. Tell them what this means for THEM, not what it means in general.
 
 ### Interest Signals
 15. `interests.anchor` must contain the `topicSlug` (the directive slug).
