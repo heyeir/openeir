@@ -36,6 +36,47 @@ WRITER_PROMPT_PATH = SKILL_DIR / "references" / "writer-prompt-eir.md"
 MIN_CONTENT_LEN = 500
 
 
+def extract_article_body(text, max_len=4000):
+    """Extract the article body from crawled content, skipping nav/boilerplate.
+
+    Strategy:
+    - Skip image links, markdown link lists, short fragments, nav-like lines.
+    - Find the first substantial paragraph (40+ chars of real text).
+    - Return up to max_len chars of the article body.
+    """
+    if not text:
+        return ""
+
+    lines = text.split("\n")
+    body_start = 0
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        # Skip image-only lines: ![...](...)  or plain URLs
+        if stripped.startswith("![") or stripped.startswith("http"):
+            continue
+        # Skip markdown link lists: * [...], - [...], * [![
+        if re.match(r'^[\*\-]\s*\[', stripped):
+            continue
+        # Skip lines that are mostly links/markdown formatting
+        plain = re.sub(r'\[([^\]]*?)\]\([^)]*\)', r'\1', stripped)
+        plain = re.sub(r'[!\[\]()#*_`>\-]', '', plain).strip()
+        if len(plain) < 40:
+            continue
+        # Found a substantial line — this is likely the article start
+        body_start = i
+        break
+
+    # Include the heading before if present
+    if body_start > 0 and lines[body_start - 1].strip().startswith("#"):
+        body_start -= 1
+
+    body = "\n".join(lines[body_start:])
+    return body[:max_len]
+
+
 def snippet_path_for_url(url):
     url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
     return SNIPPETS_DIR / ("%s.json" % url_hash)
@@ -58,6 +99,8 @@ def _get_title_for_url(candidate, url):
 def load_candidate_sources(candidate):
     """Load crawled content for a candidate's source URLs."""
     sources = []
+    # Get source_dates from candidate (written by crawl.py freshness gate)
+    source_dates = candidate.get("source_dates", {})
     for url in candidate.get("crawled_sources", candidate.get("source_urls", [])):
         path = snippet_path_for_url(url)
         if not path.exists():
@@ -66,12 +109,16 @@ def load_candidate_sources(candidate):
         content = snippet.get("content", "")
         if len(content) < MIN_CONTENT_LEN:
             continue
+        # Get publishedDate: snippet first, then fallback to source_dates
+        pub_date = snippet.get("publishedDate")
+        if not pub_date and url in source_dates:
+            pub_date = source_dates[url].get("publishedDate")
         sources.append({
             "url": url,
             "title": _get_title_for_url(candidate, url),
             "name": urlparse(url).netloc.replace("www.", ""),
             "content": content[:6000],
-            "publishedDate": snippet.get("publishedDate"),
+            "publishedDate": pub_date,
         })
     return sources
 
@@ -109,7 +156,7 @@ def pack_single_task(candidate, sources, writer_prompt, directives_map):
     source_meta = []
     for i, s in enumerate(sources):
         source_text += "\n--- Source %d: %s (%s) ---\n%s\n" % (
-            i + 1, s["title"], s["name"], s["content"][:4000])
+            i + 1, s["title"], s["name"], extract_article_body(s["content"], 4000))
         source_meta.append({
             "url": s["url"],
             "title": s["title"],
