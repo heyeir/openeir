@@ -416,6 +416,7 @@ def main():
 
     # Search each topic
     all_results = []
+    layered_signals = {}
     for directive in all_directives:
         slug = directive["slug"]
         print("\n📌 %s [%s, freshness=%s]" % (

@@ -21,14 +21,17 @@ from pathlib import Path
 
 from .config import (
     CANDIDATES_FILE, SNIPPETS_DIR, CRAWL4AI_URL, V9_DIR, FRESHNESS_DAYS,
-    DIRECTIVES_FILE,
+    DIRECTIVES_FILE, DATA_DIR,
     ensure_dirs, load_json,
 )
 from .date_extractor import extract_publish_date
 
-CRAWL_TIMEOUT = 30
+CRAWL_TIMEOUT = 30          # HTTP client timeout (seconds)
+PAGE_TIMEOUT_MS = 20000     # Crawl4AI Playwright navigation timeout (ms)
 MIN_CONTENT_LEN = 500
 MAX_CONTENT_LEN = 8000
+
+DOMAIN_STATS_FILE = DATA_DIR / "domain_stats.json"
 
 # ─── Crawling ────────────────────────────────────────────────────────────────
 
@@ -43,7 +46,7 @@ def crawl_url(url):
             "urls": [url],
             "word_count_threshold": 100,
             "excluded_tags": ["nav", "footer", "header", "aside"],
-            "bypass_cache": True,
+            "page_timeout": PAGE_TIMEOUT_MS,
         }).encode()
         req = urllib.request.Request(
             "%s/crawl" % CRAWL4AI_URL,
@@ -106,9 +109,17 @@ def web_fetch_fallback(url):
 
         html_head = raw[:20000]
 
-        # Basic HTML to text: strip tags, collapse whitespace
-        text = re.sub(r"<script[^>]*>.*?</script>", " ", raw, flags=re.DOTALL | re.IGNORECASE)
+        # Remove page template elements (same tags Crawl4AI excludes)
+        for tag in ["nav", "header", "footer", "aside", "menu"]:
+            text = re.sub(r"<%s[^>]*>.*?</%s>" % (tag, tag), "", raw,
+                          flags=re.DOTALL | re.IGNORECASE)
+            raw = text  # chain removals
+
+        # Remove script and style
+        text = re.sub(r"<script[^>]*>.*?</script>", " ", text, flags=re.DOTALL | re.IGNORECASE)
         text = re.sub(r"<style[^>]*>.*?</style>", " ", text, flags=re.DOTALL | re.IGNORECASE)
+
+        # Strip remaining HTML tags and collapse whitespace
         text = re.sub(r"<[^>]+>", " ", text)
         text = re.sub(r"\s+", " ", text).strip()
 
@@ -135,7 +146,60 @@ def fetch_html_head_only(url):
         return ""
 
 
-# ─── Snippet storage ─────────────────────────────────────────────────────────
+# ─── Content quality ─────────────────────────────────────────────────────────
+
+# Boilerplate phrases that indicate nav/template content rather than article body
+_BOILERPLATE_PHRASES = [
+    "privacy policy", "terms of use", "cookie settings", "sign up",
+    "newsletter", "about us", "contact us", "all rights reserved",
+    "submit press release", "press release", "advertisement",
+    "subscribe", "log in", "sign in", "follow us",
+]
+
+
+def content_quality_score(text):
+    """Return a quality score 0-100. Low score = likely boilerplate.
+
+    Checks:
+    - Ratio of boilerplate phrases to total length
+    - Average sentence length (very short = nav links)
+    - Presence of article-like structure (paragraphs)
+    """
+    if not text or len(text) < 200:
+        return 0
+
+    text_lower = text.lower()
+    total_len = len(text_lower)
+
+    # Boilerplate phrase density
+    bp_count = sum(1 for phrase in _BOILERPLATE_PHRASES if phrase in text_lower)
+    bp_penalty = min(bp_count * 8, 40)  # max 40 points penalty
+
+    # Check first 500 chars — if mostly short fragments, likely nav
+    first_chunk = text[:500]
+    words = first_chunk.split()
+    if len(words) < 20:
+        return max(0, 30 - bp_penalty)
+
+    # Avg word count per "sentence" (split by . or newline)
+    sentences = [s.strip() for s in re.split(r'[.\n]', text[:2000]) if len(s.strip()) > 10]
+    if not sentences:
+        return max(0, 30 - bp_penalty)
+
+    avg_sentence_words = sum(len(s.split()) for s in sentences) / len(sentences)
+    # Article sentences typically 8-30 words; nav fragments < 5
+    if avg_sentence_words < 4:
+        return max(0, 25 - bp_penalty)
+
+    score = 70
+    if avg_sentence_words >= 8:
+        score += 15
+    if len(sentences) >= 5:
+        score += 15
+    score -= bp_penalty
+
+    return max(0, min(100, score))
+
 
 
 def snippet_path_for_url(url):
@@ -149,6 +213,7 @@ def snippet_path_for_url(url):
 
 def main():
     import argparse
+    from urllib.parse import urlparse
     parser = argparse.ArgumentParser(description="Selective Crawl")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
@@ -162,104 +227,155 @@ def main():
         print("  ❌ No candidates in candidates.json")
         sys.exit(1)
 
-    # Collect all URLs to crawl
-    urls_to_crawl = []
+    # Load domain stats
+    domain_stats = load_json(DOMAIN_STATS_FILE, {})
+
+    def get_domain(url):
+        return urlparse(url).netloc.replace("www.", "")
+
+    def domain_rate(domain):
+        d = domain_stats.get(domain, {})
+        total = d.get("ok", 0) + d.get("fail", 0)
+        if total == 0:
+            return 0.5
+        return d["ok"] / total
+
+    def update_domain(domain, ok):
+        d = domain_stats.setdefault(domain, {"ok": 0, "fail": 0})
+        d["ok" if ok else "fail"] += 1
+
+    # Collect URLs per candidate, sorted by domain success rate
+    candidate_urls = []
     for c in candidate_list:
+        urls = []
         for url in c.get("source_urls", []):
             path = snippet_path_for_url(url)
             if path.exists():
                 existing = load_json(path)
-                content = existing.get("content", "")
-                if len(content) >= MIN_CONTENT_LEN:
-                    continue  # already have good content
-            urls_to_crawl.append({
-                "url": url,
-                "candidate_slug": c.get("matched_topic_slug", "?"),
-                "path": path,
-            })
+                if len(existing.get("content", "")) >= MIN_CONTENT_LEN:
+                    continue
+            urls.append(url)
+        urls.sort(key=lambda u: -domain_rate(get_domain(u)))
+        slug = c.get("content_slug", c.get("matched_topic_slug", "?"))
+        candidate_urls.append({"slug": slug, "urls": urls})
 
-    print("  %d candidates, %d URLs to crawl" % (len(candidate_list), len(urls_to_crawl)))
+    total_urls = sum(len(cu["urls"]) for cu in candidate_urls)
+    print("  %d candidates, %d URLs to crawl" % (len(candidate_list), total_urls))
 
     if args.dry_run:
-        for item in urls_to_crawl:
-            print("  [dry-run] Would crawl: %s" % item["url"][:80])
+        for cu in candidate_urls:
+            print("  [%s] %d URLs" % (cu["slug"], len(cu["urls"])))
+            for u in cu["urls"]:
+                d = get_domain(u)
+                print("    %.0f%% %s — %s" % (domain_rate(d) * 100, d, u[:60]))
         return
 
-    # Crawl each URL
+    # Crawl each candidate's URLs
     success = 0
     failed = 0
     start = time.time()
+    MIN_GOOD_SOURCES = 1
 
-    for item in urls_to_crawl:
-        url = item["url"]
-        path = item["path"]
-        print("  🔗 [%s] %s" % (item["candidate_slug"], url[:70]))
+    for cu in candidate_urls:
+        slug = cu["slug"]
+        good_count = 0
 
-        # Try Crawl4AI
-        content, raw_html = crawl_url(url)
-        crawl_method = "crawl4ai"
+        for url in cu["urls"]:
+            domain = get_domain(url)
+            rate = domain_rate(domain)
+            path = snippet_path_for_url(url)
 
-        if not content:
-            # Fallback: use web_fetch to get content
-            print("    ↩️ Crawl4AI failed, trying web_fetch fallback...")
-            content, raw_html = web_fetch_fallback(url)
+            # Skip low-rate domains if we already have enough good sources
+            if good_count >= MIN_GOOD_SOURCES and rate < 0.3:
+                print("  ⏭️  [%s] skip %s (rate %.0f%%, have %d sources)" % (
+                    slug, domain, rate * 100, good_count))
+                continue
+
+            print("  🔗 [%s] %s" % (slug, url[:70]))
+
+            # Try Crawl4AI
+            content, raw_html = crawl_url(url)
+            crawl_method = "crawl4ai"
+
+            # Quality check on Crawl4AI result
             if content:
-                crawl_method = "web_fetch"
-            else:
-                # Last resort: just fetch HTML head for date extraction
-                raw_html = fetch_html_head_only(url) or ""
-                crawl_method = None
+                q_score = content_quality_score(content)
+                if q_score < 40:
+                    print("    ⚠️ Crawl4AI quality low (%d/100), trying web_fetch..." % q_score)
+                    content = None
+                else:
+                    print("    📊 Quality: %d/100" % q_score)
 
-        if content:
-            snippet_data = {
-                "url": url,
-                "content": content[:MAX_CONTENT_LEN],
-                "raw_length": len(content),
-                "crawl_status": "ok",
-                "crawl_method": crawl_method,
-                "crawled_at": datetime.now(timezone.utc).isoformat(),
-            }
+            if not content:
+                if crawl_method == "crawl4ai":
+                    print("    ↩️ Crawl4AI failed, trying web_fetch fallback...")
+                wf_content, wf_html = web_fetch_fallback(url)
+                if wf_content:
+                    wf_score = content_quality_score(wf_content)
+                    print("    📊 web_fetch quality: %d/100" % wf_score)
+                    if wf_score >= 40:
+                        content = wf_content
+                        raw_html = wf_html or raw_html
+                        crawl_method = "web_fetch"
+                    else:
+                        print("    ⚠️ web_fetch also low quality")
+                        if not raw_html:
+                            raw_html = wf_html or ""
+                if not content:
+                    if not raw_html:
+                        raw_html = fetch_html_head_only(url) or ""
+                    crawl_method = None
 
-            # Extract publish date using multi-strategy extractor
-            # Priority: raw HTML (structured data) > URL path > article text
-            html_for_date = raw_html or ""
-            if not html_for_date:
-                # If Crawl4AI didn't return raw HTML, try fetching head separately
-                html_for_date = fetch_html_head_only(url)
-
-            pub_date = extract_publish_date(html_for_date, url) if html_for_date else None
-            if not pub_date:
-                # Fallback: extract from article text (less reliable)
-                pub_date = extract_publish_date(content[:3000], url)
-
-            if pub_date:
-                snippet_data["publishedDate"] = pub_date
-                print("    📅 Date: %s" % pub_date)
-
-            path.write_text(json.dumps(snippet_data, indent=2, ensure_ascii=False))
-            print("    ✅ %dc via %s" % (len(content), crawl_method))
-            success += 1
-        else:
-            snippet_data = {
-                "url": url,
-                "content": "",
-                "crawl_status": "failed",
-                "crawled_at": datetime.now(timezone.utc).isoformat(),
-            }
-            # Still try to extract date from HTML head
-            if raw_html:
-                pub_date = extract_publish_date(raw_html, url)
+            if content:
+                q_score = content_quality_score(content)
+                snippet_data = {
+                    "url": url,
+                    "content": content[:MAX_CONTENT_LEN],
+                    "raw_length": len(content),
+                    "crawl_status": "ok",
+                    "crawl_method": crawl_method,
+                    "quality_score": q_score,
+                    "crawled_at": datetime.now(timezone.utc).isoformat(),
+                }
+                html_for_date = raw_html or ""
+                if not html_for_date:
+                    html_for_date = fetch_html_head_only(url)
+                pub_date = extract_publish_date(html_for_date, url) if html_for_date else None
+                if not pub_date:
+                    pub_date = extract_publish_date(content[:3000], url)
                 if pub_date:
                     snippet_data["publishedDate"] = pub_date
-                    print("    📅 Date (from HTML head): %s" % pub_date)
-            path.write_text(json.dumps(snippet_data, indent=2, ensure_ascii=False))
-            print("    ❌ No content (date-only save)")
-            failed += 1
+                    print("    📅 Date: %s" % pub_date)
+                path.write_text(json.dumps(snippet_data, indent=2, ensure_ascii=False))
+                print("    ✅ %dc via %s" % (len(content), crawl_method))
+                success += 1
+                good_count += 1
+                update_domain(domain, True)
+            else:
+                snippet_data = {
+                    "url": url,
+                    "content": "",
+                    "crawl_status": "failed",
+                    "crawled_at": datetime.now(timezone.utc).isoformat(),
+                }
+                if raw_html:
+                    pub_date = extract_publish_date(raw_html, url)
+                    if pub_date:
+                        snippet_data["publishedDate"] = pub_date
+                        print("    📅 Date (from HTML head): %s" % pub_date)
+                path.write_text(json.dumps(snippet_data, indent=2, ensure_ascii=False))
+                print("    ❌ No content (date-only save)")
+                failed += 1
+                update_domain(domain, False)
 
-        time.sleep(1)  # rate limit
+            time.sleep(1)
 
     elapsed = time.time() - start
     print("\n✅ Crawl done in %.0fs — %d success, %d failed" % (elapsed, success, failed))
+
+    # Save domain stats
+    DOMAIN_STATS_FILE.write_text(json.dumps(domain_stats, indent=2, ensure_ascii=False))
+    print("  Domain stats saved (%d domains)" % len(domain_stats))
 
     # Update candidates with crawl status
     for c in candidate_list:
@@ -284,12 +400,22 @@ def main():
     all_directives = directives_data.get("directives", []) + directives_data.get("tracked", [])
     directives_map = {d["slug"]: d for d in all_directives}
 
-    # Search-result dates from topic_clusters
-    clusters = load_json(V9_DIR / "topic_clusters.json", {})
+    # Search-result dates from topic files
+    topics_dir = V9_DIR / "topics"
     search_dates = {}
+    if topics_dir.exists():
+        for tf in topics_dir.glob("*.json"):
+            if tf.name == "index.json":
+                continue
+            topic_data = load_json(tf, {})
+            for a in topic_data.get("articles", []):
+                if a.get("publishedDate"):
+                    search_dates[a["url"]] = a["publishedDate"]
+    # Also check legacy topic_clusters.json
+    clusters = load_json(V9_DIR / "topic_clusters.json", {})
     for slug, cluster in clusters.get("clusters", {}).items():
         for a in cluster.get("articles", []):
-            if a.get("publishedDate"):
+            if a.get("publishedDate") and a["url"] not in search_dates:
                 search_dates[a["url"]] = a["publishedDate"]
 
     for c in candidate_list:
@@ -301,10 +427,8 @@ def main():
 
         source_dates = {}
         for url in c.get("source_urls", []):
-            # From search results
             if url in search_dates:
                 source_dates[url] = {"publishedDate": search_dates[url], "date_source": "search"}
-            # From crawled snippet
             path = snippet_path_for_url(url)
             if path.exists():
                 snippet = load_json(path)
@@ -338,7 +462,7 @@ def main():
 
     rejected = [c for c in candidate_list if not c.get("has_fresh_source")]
     if rejected:
-        print("\n  ⚠️  %d candidates lack fresh sources and will be skipped in generation:" % len(rejected))
+        print("\n  ⚠️  %d candidates lack fresh sources:" % len(rejected))
         for c in rejected:
             print("    - %s" % c.get("matched_topic_slug", "?"))
 

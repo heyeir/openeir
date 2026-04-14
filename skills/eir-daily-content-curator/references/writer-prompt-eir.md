@@ -75,24 +75,29 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
 ### Content Quality
 5. **Do NOT set `l1.via`** — the pipeline auto-generates it from `sources[].name`.
 6. **`sources`**: include `url`, `title`, `name` (publisher), and `publish_time` for each source used. Use `""` if publish_time is unknown (never null).
-7. **`key_quote`**: pick the most insightful direct quote from the sources, or `""` if none.
+7. **`key_quote`**: must be a **string** (not an object). Pick the most insightful direct quote from the sources, or `""` if none.
 8. **`eir_take`** is **PUBLIC** (visible on share pages). Do NOT include user-specific info.
+9. **`eir_take`** should be sharp and specific, never generic platitudes. Connect to the reader's interests/context when possible. Bad: "这是一个值得全社会关注的问题。" Good: a concrete opinion that shows you actually understood the material.
 
 ### Content Style
-9. Tone: "a smart friend you trust" — not a news anchor, not an encyclopedia.
-10. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly". Apply equivalent rules for non-English output.
-11. Source attribution goes in `sources[]`, NEVER inline in prose as `[Source: XX]`.
-12. `l2.content`: Start where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
-13. `l2.context`: Be specific and reader-facing. Wrong: "This reveals a growing trend." Right: "If you're building agents today, your eval pipeline probably can't catch these failure modes."
-14. Be opinionated and curated — this is NOT a news summary, it's a knowledge signal.
+10. Tone: "a smart friend you trust" — not a news anchor, not an encyclopedia.
+11. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly". Apply equivalent rules for non-English output.
+12. Source attribution goes in `sources[]`, NEVER inline in prose as `[Source: XX]`.
+13. `l2.content`: Start where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
+14. `l2.context`: Be specific and reader-facing. Wrong: "This reveals a growing trend." Right: "If you're building agents today, your eval pipeline probably can't catch these failure modes."
+15. Be opinionated and curated — this is NOT a news summary, it's a knowledge signal.
+
+### Depth Scaling
+16. **When you have ≥2 rich sources (crawled content ≥ 500 chars each)**: you SHOULD generate l2.bullets, l2.context, and key_quote. There is enough material — use it.
+17. **When sources are thin (only snippets, <500 chars)**: l2.bullets, l2.context, key_quote may be omitted or empty. Don't fabricate depth.
 
 ### Interest Signals
-15. `interests.anchor` must contain the `topicSlug` (the directive slug).
-16. `interests.related` should have 2-5 adjacent topics. Slugs: lowercase-hyphenated. Labels: in `output_lang`.
-17. Related topics should be specific enough to be useful ("neural-architecture-search") but not too narrow ("bert-base-uncased-layer-12").
+18. `interests.anchor` must contain the `topicSlug` (the directive slug).
+19. `interests.related` should have 2-5 adjacent topics. Slugs: lowercase-hyphenated. Labels: in `output_lang`.
+20. Related topics should be specific enough to be useful ("neural-architecture-search") but not too narrow ("bert-base-uncased-layer-12").
 
 ### Output
-18. Only output the JSON. No other text, no markdown fences.
+21. Only output the JSON. No other text, no markdown fences.
 
 ## Field Constraints
 
