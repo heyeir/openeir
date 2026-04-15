@@ -78,7 +78,7 @@ Run manually first to verify the flow works:
 
 ### Architecture (2-Job Split)
 
-The pipeline runs as two separate cron jobs to avoid context overflow and enable parallel content generation:
+The pipeline runs as two separate cron jobs to avoid context overflow:
 
 ```
 Job A: eir-material-prep (07:00)
@@ -90,7 +90,7 @@ Job A: eir-material-prep (07:00)
   Output: data/v9/tasks/{content_slug}.json
 
 Job B: eir-content-gen (07:45)
-  For each task file → spawn isolated subagent:
+  For each task file → spawn isolated subagent (serial, one at a time):
     read task → generate content (LLM) → POST to API
   Output: content posted to Eir API
 ```
@@ -123,7 +123,7 @@ python3 -m pipeline.pack_tasks --dry-run
 - Source material (crawled snippets)
 - Candidate metadata (topic, angle, reason)
 
-The content-gen job spawns one subagent per task, each with a clean context.
+The content-gen job spawns one subagent per task **serially** (one at a time, wait for completion before next). Do NOT use sessions_yield or batch spawning.
 
 ### Task File Format
 

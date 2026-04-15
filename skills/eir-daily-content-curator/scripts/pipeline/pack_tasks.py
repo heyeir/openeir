@@ -189,6 +189,12 @@ def main():
 
     ensure_dirs()
     TASKS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Clean old task files before packing new ones
+    for old_task in TASKS_DIR.glob("*.json"):
+        if old_task.stem != "manifest":
+            old_task.unlink()
+
     print("📦 Pack Tasks")
 
     # Load candidates

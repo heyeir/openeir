@@ -256,12 +256,27 @@ def persist_used_urls(urls):
 
 
 def get_posted_topic_slugs():
-    """Get topic slugs already posted today."""
+    """Get topic slugs already posted (today + historical from pushed_titles).
+    This enables cross-day topic dedup to avoid repeating the same topic."""
+    topics = set()
+    
+    # 1. Today's run_state
     state = load_state()
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    if state.get("run_id") != today:
-        return set()
-    return {p["topic"] for p in state.get("posted_ids", []) if p.get("topic")}
+    if state.get("run_id") == today:
+        for p in state.get("posted_ids", []):
+            if p.get("topic"):
+                topics.add(p["topic"])
+    
+    # 2. Historical from pushed_titles.json
+    pushed = load_json(PUSHED_TITLES_FILE, [])
+    if isinstance(pushed, list):
+        for p in pushed:
+            ts = p.get("topic_slug")
+            if ts and ts != "":
+                topics.add(ts)
+    
+    return topics
 
 
 def get_error_for_notification():
