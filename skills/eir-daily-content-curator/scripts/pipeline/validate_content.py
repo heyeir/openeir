@@ -49,11 +49,8 @@ def validate_content(data, task_data=None, fix=False):
         if cat not in VALID_CATEGORIES:
             errors.append(f"dot.category '{cat}' not in {VALID_CATEGORIES}")
 
-        color = dot.get("color_hint", "")
         if color and color not in VALID_COLORS:
             errors.append(f"dot.color_hint '{color}' not in {VALID_COLORS}")
-        if not color:
-            warnings.append("dot.color_hint is empty")
 
     if not data.get("l1"):
         errors.append("missing l1 object")
@@ -119,7 +116,7 @@ def validate_content(data, task_data=None, fix=False):
     # --- sources ---
     sources = data.get("sources", [])
     if not sources:
-        warnings.append("sources is empty (at least 1 recommended)")
+        errors.append("sources is empty (at least 1 required)")
     elif len(sources) > 10:
         errors.append(f"sources has {len(sources)} items (max 10)")
     else:
