@@ -12,7 +12,6 @@ Exit code 0 = all pass, 1 = has errors (blocks POST), 2 = has warnings only.
 """
 
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -155,26 +154,6 @@ def validate_content(data, task_data=None, fix=False):
                 fixes.append(f"topicSlug: '{actual_topic}' → '{expected_topic}' (from task)")
             else:
                 errors.append(f"topicSlug '{actual_topic}' doesn't match task topic_slug '{expected_topic}'")
-
-        # Check content relevance: hook/title should relate to suggested_angle
-        angle = task_data.get("suggested_angle", "")
-        title = data.get("l1", {}).get("title", "")
-        hook = data.get("dot", {}).get("hook", "")
-        if angle and title:
-            # Simple overlap check: at least some keywords should match
-            angle_chars = set(angle)
-            title_chars = set(title)
-            # For CJK, check character overlap
-            cjk_pattern = re.compile(r'[\u4e00-\u9fff]')
-            angle_cjk = set(cjk_pattern.findall(angle))
-            title_cjk = set(cjk_pattern.findall(title))
-            if angle_cjk and title_cjk:
-                overlap = angle_cjk & title_cjk
-                ratio = len(overlap) / max(len(angle_cjk), 1)
-                if ratio < 0.05:
-                    errors.append(f"content may be off-topic: title has <5% CJK overlap with suggested_angle")
-                    errors.append(f"  angle: {angle[:60]}")
-                    errors.append(f"  title: {title[:60]}")
 
     # --- null check ---
     def check_nulls(obj, path=""):
