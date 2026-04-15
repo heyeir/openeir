@@ -91,7 +91,7 @@ Job A: eir-material-prep (07:00)
 
 Job B: eir-content-gen (07:45)
   For each task file → spawn isolated subagent (serial, one at a time):
-    read task → generate content (LLM) → POST to API
+    read task → generate content (LLM) → validate → POST to API
   Output: content posted to Eir API
 ```
 
@@ -116,6 +116,11 @@ python3 -m pipeline.crawl --dry-run
 # Pack tasks (bundles candidates into self-contained task files)
 python3 -m pipeline.pack_tasks
 python3 -m pipeline.pack_tasks --dry-run
+
+# Validate generated content before POST
+python3 -m pipeline.validate_content           # check all
+python3 -m pipeline.validate_content --fix      # auto-fix \n and topicSlug
+python3 -m pipeline.validate_content --file X   # check one file
 ```
 
 **Generate + POST** is agent-driven. Each task file contains everything needed:
@@ -153,9 +158,19 @@ See `references/content-spec.md` for full field constraints. Key rules:
 - `dot.hook` ≤10 CJK chars / ≤6 EN words
 - `dot.category`: `focus` | `attention` | `seed` | `whisper`
 - `l1.bullets` 3-4 items, each ≤20 CJK chars
+- `sources` must have at least 1 entry
 - Never set any field to `null` — use `""` or `[]`
 - Source attribution in `sources[]`, never inline in prose
-- Generate zh first, then translate to en (separate POST per language)
+- Only generate zh (no translation)
+
+**Pre-POST validation** (`pipeline/validate_content.py`) runs automatically inside `post_to_api()`. It blocks POST on:
+- Missing required fields (`lang`, `dot`, `l1.title`, `sources`)
+- Invalid enum values (`dot.category`)
+- Literal `\n` in `l2.content` (must be real newlines)
+- `topicSlug` mismatch with task's `topic_slug`
+- `null` values anywhere
+
+Use `--fix` to auto-repair fixable issues (escaped newlines, topicSlug).
 
 ### Writer Prompt
 
