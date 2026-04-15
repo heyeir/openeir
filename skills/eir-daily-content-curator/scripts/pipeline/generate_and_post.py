@@ -146,6 +146,13 @@ Output ONLY the JSON. No other text or markdown fences.""" % (
 
 def post_to_api(content_data, api_key):
     """POST content to Eir Content API. Returns (content_id, contentGroup) or raises."""
+    # Pre-POST validation
+    from .validate_content import validate_content
+    errors, warnings, _ = validate_content(content_data)
+    blocking = [e for e in errors if not e.startswith("  ")]  # skip indented sub-lines
+    if blocking:
+        raise RuntimeError("Pre-POST validation failed:\n" + "\n".join(errors))
+
     item = {
         "lang": content_data["lang"],
         "slug": content_data["slug"],
