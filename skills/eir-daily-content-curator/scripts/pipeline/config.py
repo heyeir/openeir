@@ -38,6 +38,15 @@ FRESHNESS_DAYS = {
     "1d": 1, "3d": 3, "7d": 7, "14d": 14, "30d": 30,
 }
 
+# Map freshness strings to SearXNG time_range parameter
+FRESHNESS_TO_TIME_RANGE = {
+    "1d": "day",
+    "3d": "week",
+    "7d": "week",
+    "14d": "month",
+    "30d": "month",
+}
+
 # Search config
 NEWS_MIN_RESULTS = 3  # if news returns fewer, supplement with general
 MAX_RESULTS_PER_QUERY = 10

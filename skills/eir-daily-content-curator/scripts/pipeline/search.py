@@ -24,7 +24,8 @@ from pathlib import Path
 
 from .config import (
     SEARXNG_URL, DIRECTIVES_FILE, PUSHED_TITLES_FILE, USED_SOURCE_URLS_FILE,
-    RAW_RESULTS_DIR, V9_DIR, FRESHNESS_DAYS, NEWS_MIN_RESULTS, MAX_RESULTS_PER_QUERY,
+    RAW_RESULTS_DIR, V9_DIR, FRESHNESS_DAYS, FRESHNESS_TO_TIME_RANGE,
+    NEWS_MIN_RESULTS, MAX_RESULTS_PER_QUERY,
     ensure_dirs, load_json, get_api_url, get_api_key,
 )
 
@@ -77,16 +78,21 @@ def _detect_query_language(query):
     return "zh" if cjk_count > len(query) * 0.2 else "en"
 
 
-def searxng_search(query, category="news", limit=MAX_RESULTS_PER_QUERY):
-    """Search SearXNG and return results list."""
+def searxng_search(query, category="news", limit=MAX_RESULTS_PER_QUERY, time_range=None):
+    """Search SearXNG and return results list.
+    time_range: 'day', 'week', 'month', or None (all time).
+    """
     lang = _detect_query_language(query)
-    params = urllib.parse.urlencode({
+    params_dict = {
         "q": query,
         "format": "json",
         "categories": category,
         "language": lang,
         "pageno": 1,
-    })
+    }
+    if time_range:
+        params_dict["time_range"] = time_range
+    params = urllib.parse.urlencode(params_dict)
     url = "%s/search?%s" % (SEARXNG_URL, params)
     try:
         req = urllib.request.Request(url)
@@ -342,12 +348,15 @@ def search_topic(directive, used_urls):
     all_results = []
     seen_urls = set()
 
+    # Determine SearXNG time_range from freshness
+    time_range = FRESHNESS_TO_TIME_RANGE.get(freshness)
+
     # Step 1: News search (all queries)
     news_results = []
     for qinfo in queries:
         q = qinfo["q"]
         print("    🔍 [news] %s" % q[:60])
-        results = searxng_search(q, category="news")
+        results = searxng_search(q, category="news", time_range=time_range)
         results = filter_by_freshness(results, freshness)
         for r in results:
             if r["url"] not in seen_urls and r["url"] not in used_urls:
@@ -358,18 +367,23 @@ def search_topic(directive, used_urls):
                 seen_urls.add(r["url"])
         time.sleep(0.5)  # rate limit
 
-    # Only keep fresh results from news
-    fresh_news = [r for r in news_results if r.get("freshness_status") == "fresh"]
-    print("    📰 News: %d results (%d fresh)" % (len(news_results), len(fresh_news)))
-    all_results.extend(fresh_news)
+    # Keep fresh results; when time_range is set, also keep unknown-date results
+    # (SearXNG already filtered by time, so undated results are likely recent)
+    if time_range:
+        usable_news = [r for r in news_results if r.get("freshness_status") in ("fresh", "unknown")]
+    else:
+        usable_news = [r for r in news_results if r.get("freshness_status") == "fresh"]
+    fresh_count = sum(1 for r in news_results if r.get("freshness_status") == "fresh")
+    print("    📰 News: %d results (%d fresh, %d usable)" % (len(news_results), fresh_count, len(usable_news)))
+    all_results.extend(usable_news)
 
-    # Step 2: General fallback if news < threshold
-    if len(fresh_news) < NEWS_MIN_RESULTS:
-        print("    📎 News insufficient (%d < %d), trying general..." % (len(fresh_news), NEWS_MIN_RESULTS))
+    # Step 2: General fallback if usable < threshold
+    if len(usable_news) < NEWS_MIN_RESULTS:
+        print("    📎 News insufficient (%d < %d), trying general..." % (len(usable_news), NEWS_MIN_RESULTS))
         for qinfo in queries[:2]:  # limit general queries
             q = qinfo["q"]
             print("    🔍 [general] %s" % q[:60])
-            results = searxng_search(q, category="general")
+            results = searxng_search(q, category="general", time_range=time_range)
             results = filter_by_freshness(results, freshness)
             for r in results:
                 if r["url"] not in seen_urls and r["url"] not in used_urls:
