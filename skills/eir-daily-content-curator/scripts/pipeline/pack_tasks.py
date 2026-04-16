@@ -235,9 +235,10 @@ def main():
             skipped += 1
             continue
 
-        # Skip if freshness gate failed
-        if not c.get("has_fresh_source", True):
-            print("  ⏭️  %s: no fresh source" % topic)
+        # Skip if freshness gate failed (strict check, default to False)
+        # has_fresh_source is set by crawl.py, must be True to proceed
+        if c.get("has_fresh_source") is not True:
+            print("  ⏭️  %s: no fresh source (freshness gate failed or missing)" % topic)
             skipped += 1
             continue
 

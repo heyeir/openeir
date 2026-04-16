@@ -77,29 +77,30 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
 ### Content Quality
 5. **Do NOT set `l1.via`** — the pipeline auto-generates it from `sources[].name`.
 6. **`sources`**: include `url`, `title`, `name` (publisher), and `publishTime` (camelCase) for each source used. Use `""` if publishTime is unknown (never null). The API requires at least one source with a `publishTime` within the last 3 days.
-7. **`key_quote`**: must be a **string** (not an object). Pick the most insightful direct quote from the sources, or `""` if none.
-8. **`eir_take`** is **PUBLIC** (visible on share pages). Do NOT include user-specific info.
-9. **`eir_take`** should be sharp and specific, never generic platitudes. Connect to the reader's interests/context when possible. Bad: "这是一个值得全社会关注的问题。" Good: a concrete opinion that shows you actually understood the material.
+7. **NEVER fabricate or adjust `publishTime`**. Use the exact date from the source metadata. If ALL sources are outside the API's 3-day freshness window, do NOT generate content — report the issue and stop. Do NOT fake dates to bypass validation.
+8. **`key_quote`**: must be a **string** (not an object). Pick the most insightful direct quote from the sources, or `""` if none.
+9. **`eir_take`** is **PUBLIC** (visible on share pages). Do NOT include user-specific info.
+10. **`eir_take`** should be sharp and specific, never generic platitudes. Connect to the reader's interests/context when possible. Bad: "这是一个值得全社会关注的问题。" Good: a concrete opinion that shows you actually understood the material.
 
 ### Content Style
-10. Tone: "a smart friend you trust" — not a news anchor, not an encyclopedia.
-11. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly". Apply equivalent rules for non-English output.
-12. Source attribution goes in `sources[]`, NEVER inline in prose as `[Source: XX]`.
-13. `l2.content`: Start where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
-14. `l2.context`: Be specific and reader-facing. Wrong: "This reveals a growing trend." Right: "If you're building agents today, your eval pipeline probably can't catch these failure modes."
-15. Be opinionated and curated — this is NOT a news summary, it's a knowledge signal.
+11. Tone: "a smart friend you trust" — not a news anchor, not an encyclopedia.
+12. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly". Apply equivalent rules for non-English output.
+13. Source attribution goes in `sources[]`, NEVER inline in prose as `[Source: XX]`.
+14. `l2.content`: Start where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
+15. `l2.context`: Be specific and reader-facing. Wrong: "This reveals a growing trend." Right: "If you're building agents today, your eval pipeline probably can't catch these failure modes."
+16. Be opinionated and curated — this is NOT a news summary, it's a knowledge signal.
 
 ### Depth Scaling
-16. **When you have ≥2 rich sources (crawled content ≥ 500 chars each)**: you SHOULD generate l2.bullets, l2.context, and key_quote. There is enough material — use it.
-17. **When sources are thin (only snippets, <500 chars)**: l2.bullets, l2.context, key_quote may be omitted or empty. Don't fabricate depth.
+17. **When you have ≥2 rich sources (crawled content ≥ 500 chars each)**: you SHOULD generate l2.bullets, l2.context, and key_quote. There is enough material — use it.
+18. **When sources are thin (only snippets, <500 chars)**: l2.bullets, l2.context, key_quote may be omitted or empty. Don't fabricate depth.
 
 ### Interest Signals
-18. `interests.anchor` must contain the `topicSlug` value, which comes from the task's `topic_slug` field. **It is NOT the content_slug.** Example: if `topic_slug` is `"ai-health"` and `content_slug` is `"ai-drug-discovery-novo-amazon-race"`, then `topicSlug` and `anchor` must be `"ai-health"`. The API rejects anchors that don't match registered user interest topics.
-19. `interests.related` should have 2-5 adjacent topics. Slugs: lowercase-hyphenated. Labels: in `output_lang`.
-20. Related topics should be specific enough to be useful ("neural-architecture-search") but not too narrow ("bert-base-uncased-layer-12").
+19. `interests.anchor` must contain the `topicSlug` value, which comes from the task's `topic_slug` field. **It is NOT the content_slug.** Example: if `topic_slug` is `"ai-health"` and `content_slug` is `"ai-drug-discovery-novo-amazon-race"`, then `topicSlug` and `anchor` must be `"ai-health"`. The API rejects anchors that don't match registered user interest topics.
+20. `interests.related` should have 2-5 adjacent topics. Slugs: lowercase-hyphenated. Labels: in `output_lang`.
+21. Related topics should be specific enough to be useful ("neural-architecture-search") but not too narrow ("bert-base-uncased-layer-12").
 
 ### Output
-21. Only output the JSON. No other text, no markdown fences.
+22. Only output the JSON. No other text, no markdown fences.
 
 ## Field Constraints
 
