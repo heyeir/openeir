@@ -279,6 +279,31 @@ def get_posted_topic_slugs():
     return topics
 
 
+def get_posted_content_slugs():
+    """Get content slugs already posted (all-time from pushed_titles).
+    Dedup by content_slug (not topic_slug) — same topic with different
+    angle/event is allowed; only identical content is blocked."""
+    slugs = set()
+    
+    # 1. Today's run_state
+    state = load_state()
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if state.get("run_id") == today:
+        for p in state.get("posted_ids", []):
+            if p.get("slug"):
+                slugs.add(p["slug"])
+    
+    # 2. Historical from pushed_titles.json
+    pushed = load_json(PUSHED_TITLES_FILE, [])
+    if isinstance(pushed, list):
+        for p in pushed:
+            s = p.get("slug")
+            if s and s != "":
+                slugs.add(s)
+    
+    return slugs
+
+
 def get_error_for_notification():
     """Get error info for user notification (if run is in error state)."""
     state = load_state()

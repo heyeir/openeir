@@ -213,14 +213,14 @@ def main():
     writer_prompt = load_writer_prompt()
     print("  Writer prompt: %d chars" % len(writer_prompt))
 
-    # Load used URLs for dedup
+    # Load used URLs and posted content slugs for dedup
     try:
-        from .run_state import get_all_used_urls, get_posted_topic_slugs
+        from .run_state import get_all_used_urls, get_posted_content_slugs
         used_urls = get_all_used_urls()
-        posted_topics = get_posted_topic_slugs()
+        posted_slugs = get_posted_content_slugs()
     except Exception:
         used_urls = set()
-        posted_topics = set()
+        posted_slugs = set()
 
     # Pack each candidate into a task
     packed = 0
@@ -241,9 +241,9 @@ def main():
             skipped += 1
             continue
 
-        # Skip if topic already posted today
-        if topic in posted_topics:
-            print("  ⏭️  %s: already posted today" % topic)
+        # Skip if this exact content_slug was already posted
+        if content_slug and sanitize_slug(content_slug) in posted_slugs:
+            print("  ⏭️  %s: content_slug already posted" % content_slug)
             skipped += 1
             continue
 
