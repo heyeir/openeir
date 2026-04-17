@@ -76,6 +76,38 @@ Use `primary_language` from user profile for label language. The server matches 
 5. **Broad enough to be useful** — "AI" is too broad, "GPT-4o mini tokenizer bug" is too narrow
 6. **Respect user privacy** — generalize private details into public topics
 
+## Merge & Retirement Awareness
+
+Before adding new interests, also evaluate existing ones for merge/retirement opportunities.
+
+### When to Suggest Merges
+
+During `GET /oc/interests` review, look for:
+- **Near-duplicate interests** — same topic at different granularity (e.g., "ai-code-review" + "ai-code-generation" → merge into "ai-assisted-development")
+- **Dead fine-grained interests** — heat=0 for extended periods, likely because content search can't find specific-enough results
+- **Overlapping interests** — where the same articles would serve both topics
+
+### Merge Strategy
+
+When merging fine-grained interests into coarser ones:
+1. Identify the coarser parent interest (same category, broader scope)
+2. If parent doesn't exist, consider creating it via `POST /oc/interests/add` first
+3. Use `POST /oc/interests/merge` with `source` → `target`
+4. The merge transfers heat and signals to the target interest
+
+### Retirement Criteria
+
+An interest is a candidate for retirement/merge when:
+- **heat = 0** for 7+ days AND no content has ever matched it
+- **Too narrow** — the label is so specific that generic search engines return poor results
+- **Subsumed** — a broader interest already covers the same content space
+- **One-off curiosity** — appeared from a single conversation, never reinforced
+
+### What NOT to Retire
+- **Tracked interests** — user explicitly follows these, never touch without asking
+- **Recently added** — give new interests at least 7 days before evaluating
+- **Temporarily cold** — seasonal or event-driven interests may revive (e.g., "WWDC" before June)
+
 ## Relationship to Content Interest Signals
 
 Interest extraction from conversations is separate from the `interests.anchor` and `interests.related` fields on content items.
