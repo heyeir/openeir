@@ -96,3 +96,5 @@ Server matches to dictionary. Unknown labels flagged for review.
 3. **Seed topics**: adjacent to existing interests, not random
 4. **Use `GET /oc/sources`** for URL dedup
 5. **Never override** user's explicit tracking decisions
+6. **Flag dead directives** — if a directive's searchHints consistently return zero quality results across multiple curation cycles, note it in the summary report. These topics may need broader search terms, merge into a coarser interest, or retirement
+7. **Prefer coarser interests** — when adding new interests, favor labels that are broad enough to reliably produce search results, while still being specific enough to be meaningful
