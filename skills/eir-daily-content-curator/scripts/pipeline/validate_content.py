@@ -49,6 +49,7 @@ def validate_content(data, task_data=None, fix=False):
         if cat not in VALID_CATEGORIES:
             errors.append(f"dot.category '{cat}' not in {VALID_CATEGORIES}")
 
+        color = dot.get("color_hint", "")
         if color and color not in VALID_COLORS:
             errors.append(f"dot.color_hint '{color}' not in {VALID_COLORS}")
 
