@@ -93,9 +93,9 @@ Returns curation directives for content collection.
 }
 ```
 
-**Tiers:** tracked → focus → explore → seed (by priority).
+**Tiers:** tracked → focus → explore → seed (informational labels; selection is score-based).
 
-**Server-side curation:** The API applies quotas per tier based on user engagement history. Topics in cooldown are filtered server-side.
+**Server-side curation:** The API handles topic selection, cooldown, and scoring internally. The agent just reads directives and finds content for them.
 
 See `eir-interest-rules.md` for curation guidelines.
 
@@ -160,6 +160,15 @@ Read back a content item.
 
 ### DELETE /oc/content/:id
 Delete by id or contentGroup.
+
+### POST /oc/curation/miss
+Report topics where you searched but found no quality content. This lowers their priority in future curation rounds.
+
+**Request:** `{ "slugs": ["topic-a", "topic-b"] }`
+
+**Response:** `{ "ok": true, "updated": 2 }`
+
+**When to call:** After finishing a curation round, if you searched for a topic's searchHints but found nothing worth pushing.
 
 ---
 
