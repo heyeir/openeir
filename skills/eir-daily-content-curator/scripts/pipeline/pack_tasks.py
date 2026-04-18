@@ -36,6 +36,31 @@ WRITER_PROMPT_PATH = SKILL_DIR / "references" / "writer-prompt-eir.md"
 MIN_CONTENT_LEN = 500
 
 
+def _report_misses(slugs):
+    """Report missed topic slugs to POST /oc/curation/miss."""
+    if not slugs:
+        return
+    try:
+        import urllib.request
+        api_url = get_api_url()
+        api_key = get_api_key()
+        payload = json.dumps({"slugs": slugs}).encode()
+        req = urllib.request.Request(
+            "%s/api/oc/curation/miss" % api_url,
+            data=payload,
+            headers={
+                "Authorization": "Bearer %s" % api_key,
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+        print("  📡 Reported %d missed topics: %s" % (len(slugs), ", ".join(slugs)))
+    except Exception as e:
+        print("  ⚠️ Failed to report misses: %s" % e)
+
+
 def extract_article_body(text, max_len=4000):
     """Extract the article body from crawled content, skipping nav/boilerplate.
 
@@ -282,6 +307,21 @@ def main():
         packed += 1
 
     print("\n📦 Packed %d tasks, skipped %d" % (packed, skipped))
+
+    # Report missed topics to API (lowers their future priority)
+    if not args.dry_run:
+        missed_slugs = []
+        for c in candidate_list:
+            topic = c.get("matched_topic_slug", "")
+            if not topic:
+                continue
+            # Topic missed if: no content, no fresh source, or no usable sources
+            if not c.get("has_content", False) or c.get("has_fresh_source") is not True:
+                if topic not in missed_slugs:
+                    missed_slugs.append(topic)
+        if missed_slugs:
+            _report_misses(missed_slugs)
+
     if packed > 0 and not args.dry_run:
         # Write manifest
         manifest = {
