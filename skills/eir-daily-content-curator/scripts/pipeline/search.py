@@ -145,8 +145,52 @@ def filter_by_freshness(results, freshness_str):
     return filtered
 
 
+# Stop words for query building — common verbs, prepositions, articles
+_QUERY_STOP_WORDS = {
+    "the", "a", "an", "and", "or", "of", "to", "in", "for", "with",
+    "is", "are", "was", "were", "that", "this", "from", "into", "its",
+    "has", "have", "had", "be", "been", "being", "do", "does", "did",
+    "will", "would", "could", "should", "may", "might", "can",
+    "while", "also", "just", "more", "less", "new", "says", "about",
+    "latest", "news", "update", "updates", "recent", "how", "what", "why",
+    # Description-style verbs that aren't useful as search terms
+    "tracks", "covers", "monitors", "follows", "explores", "discusses",
+    "examines", "investigates", "analyzes", "reviews", "focuses",
+    "including", "related", "general", "specific", "various",
+}
+
+
+def _extract_key_terms(text, max_terms=5):
+    """Extract key terms from text, prioritizing proper nouns and entities.
+
+    Returns a concise list ideal for search queries.
+    """
+    import re as _re
+    if not text:
+        return []
+    words = _re.sub(r"[^\w\s%]", " ", text).split()
+    # Separate proper nouns (capitalized) and numbers
+    proper = [w for w in words if w[0:1].isupper() and w.lower() not in _QUERY_STOP_WORDS and len(w) > 1]
+    numbers = [w for w in words if any(c.isdigit() for c in w)]
+    others = [w for w in words if w not in proper and w not in numbers
+              and w.lower() not in _QUERY_STOP_WORDS and len(w) > 2]
+    tokens = []
+    seen = set()
+    for w in proper + numbers + others:
+        if w.lower() not in seen:
+            seen.add(w.lower())
+            tokens.append(w)
+        if len(tokens) >= max_terms:
+            break
+    return tokens
+
+
 def build_queries(directive):
-    """Build search queries from a directive."""
+    """Build search queries from a directive.
+
+    Priority: searchHints (API) > entity-focused from description > topic name > keywords.
+    Produces 2-4 queries per topic, each concise and entity-rich.
+    """
     queries = []
     # API returns searchHints as string[] (camelCase)
     hints = directive.get("searchHints") or directive.get("search_hints") or []
@@ -159,28 +203,49 @@ def build_queries(directive):
     keywords = directive.get("keywords") or []
     freshness = directive.get("freshness", "7d")
 
-    # Use suggested queries from API
-    for q in suggested:
-        queries.append({"q": q, "freshness": freshness})
+    seen_queries = set()
+    def _add(q):
+        q = q.strip()
+        if q and q.lower() not in seen_queries:
+            seen_queries.add(q.lower())
+            queries.append({"q": q, "freshness": freshness})
 
-    # Generate from topic name if insufficient
-    if len(queries) < 2 and topic_name:
+    # 1. Use suggested queries from API (highest quality)
+    for q in suggested:
+        _add(q)
+
+    # 2. Entity-focused query from description
+    if description:
+        terms = _extract_key_terms(description, max_terms=5)
+        if terms:
+            _add(" ".join(terms))
+
+    # 3. Topic name query (combine with description terms, avoid duplication)
+    if len(queries) < 3 and topic_name:
         has_zh = any('\u4e00' <= c <= '\u9fff' for c in topic_name)
         if has_zh:
-            queries.append({"q": "%s 最新" % topic_name, "freshness": freshness})
+            _add("%s 最新" % topic_name)
         else:
-            queries.append({"q": "%s latest news" % topic_name, "freshness": freshness})
+            # Add description terms that aren't already in topic name
+            if description:
+                topic_lower = topic_name.lower()
+                desc_terms = [t for t in _extract_key_terms(description, max_terms=3)
+                              if t.lower() not in topic_lower]
+                if desc_terms:
+                    _add("%s %s" % (topic_name, " ".join(desc_terms)))
+                else:
+                    _add(topic_name)
+            else:
+                _add(topic_name)
 
-    # Generate from description keywords
-    if len(queries) < 2 and description:
-        desc_words = description.split()[:8]
-        queries.append({"q": " ".join(desc_words), "freshness": freshness})
-
-    # Generate from keywords
-    if len(queries) < 2 and keywords:
+    # 4. Keywords query
+    if len(queries) < 3 and keywords:
         kw = keywords[:4] if isinstance(keywords, list) else []
         if kw:
-            queries.append({"q": " ".join(kw), "freshness": freshness})
+            # Filter out stop words from keywords too
+            kw = [k for k in kw if k.lower() not in _QUERY_STOP_WORDS]
+            if kw:
+                _add(" ".join(kw))
 
     return queries
 

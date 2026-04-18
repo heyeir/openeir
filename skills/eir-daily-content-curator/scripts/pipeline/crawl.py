@@ -63,7 +63,8 @@ def is_error_page(content):
     if not content:
         return False
     # Only check first 2000 chars — error messages appear early
-    sample = content[:2000].lower()
+    # Normalize smart quotes to ASCII for matching
+    sample = content[:2000].lower().replace("\u2019", "'").replace("\u2018", "'")
     return any(p in sample for p in _ERROR_PAGE_PATTERNS)
 
 

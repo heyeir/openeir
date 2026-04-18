@@ -98,6 +98,7 @@ def _get_title_for_url(candidate, url):
 
 def load_candidate_sources(candidate):
     """Load crawled content for a candidate's source URLs."""
+    from .crawl import is_error_page
     sources = []
     # Get source_dates from candidate (written by crawl.py freshness gate)
     source_dates = candidate.get("source_dates", {})
@@ -107,7 +108,7 @@ def load_candidate_sources(candidate):
             continue
         snippet = load_json(path)
         content = snippet.get("content", "")
-        if len(content) < MIN_CONTENT_LEN:
+        if len(content) < MIN_CONTENT_LEN or is_error_page(content):
             continue
         # Get publishedDate: snippet first, then fallback to source_dates
         pub_date = snippet.get("publishedDate")
