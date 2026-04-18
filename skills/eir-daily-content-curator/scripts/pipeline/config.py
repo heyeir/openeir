@@ -58,6 +58,29 @@ def ensure_dirs():
         d.mkdir(parents=True, exist_ok=True)
 
 
+# Source quality tiers for domain-based crawl prioritization
+SOURCE_QUALITY = {
+    # Tier 1: Reliable, rarely blocked
+    "tier1": [
+        "arstechnica.com", "theregister.com", "techcrunch.com", "wired.com",
+        "theverge.com", "reuters.com", "apnews.com", "bbc.com",
+        "phys.org", "news-medical.net", "nature.com", "science.org",
+    ],
+    # Tier 2: Usually OK
+    "tier2": [
+        "venturebeat.com", "zdnet.com", "thenextweb.com", "aol.com",
+        "finance.yahoo.com", "businessinsider.com", "mashable.com",
+        "securityweek.com", "ithome.com", "36kr.com",
+    ],
+    # Tier 3: Unreliable — high fail rate, paywalls, or aggregator link rot
+    "tier3_unreliable": [
+        "msn.com", "msn.cn", "forbes.com", "cnbc.com", "nytimes.com",
+        "thehill.com", "politico.eu", "seekingalpha.com", "winbuzzer.com",
+        "techrepublic.com", "beckershospitalreview.com",
+    ],
+}
+
+
 def load_json(path, default=None):
     try:
         return json.loads(Path(path).read_text())
