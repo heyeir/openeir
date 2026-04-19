@@ -21,7 +21,7 @@ import hashlib
 import json
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -248,6 +248,10 @@ def main():
         used_urls = set()
         posted_slugs = set()
 
+    # API freshness window (stricter than search freshness)
+    API_FRESHNESS_DAYS = 2
+    api_cutoff = datetime.now(timezone.utc) - timedelta(days=API_FRESHNESS_DAYS)
+
     # Pack each candidate into a task
     packed = 0
     skipped = 0
@@ -268,13 +272,39 @@ def main():
             skipped += 1
             continue
 
+        # Skip if no source is within API freshness window (2 days)
+        source_dates = c.get("source_dates", {})
+        has_api_fresh = False
+        if source_dates:
+            try:
+                from dateutil import parser as dateparser
+                for url, info in source_dates.items():
+                    pd = info.get("publishedDate", "")
+                    if pd:
+                        pub_dt = dateparser.parse(pd)
+                        if pub_dt.tzinfo is None:
+                            pub_dt = pub_dt.replace(tzinfo=timezone.utc)
+                        if pub_dt >= api_cutoff:
+                            has_api_fresh = True
+                            break
+            except Exception:
+                has_api_fresh = True  # fail open if dateutil missing
+        else:
+            has_api_fresh = True  # no date info, fail open
+
+        if not has_api_fresh:
+            oldest = ", ".join(info.get("publishedDate", "?")[:10] for info in source_dates.values())
+            print("  ⏭️  %s: all sources older than %dd (dates: %s)" % (content_slug, API_FRESHNESS_DAYS, oldest))
+            skipped += 1
+            continue
+
         # Skip if this exact content_slug was already posted
         if content_slug and sanitize_slug(content_slug) in posted_slugs:
             print("  ⏭️  %s: content_slug already posted" % content_slug)
             skipped += 1
             continue
 
-        # Skip if ALL source URLs already used
+        # Skip if ALL source URLs already used (bloom filter + used_urls)
         source_urls = c.get("source_urls", [])
         fresh_urls = [u for u in source_urls if u not in used_urls]
         if source_urls and not fresh_urls:
