@@ -18,7 +18,6 @@ from pathlib import Path
 from .config import GENERATED_DIR, V9_DIR
 
 VALID_CATEGORIES = {"focus", "attention", "seed", "whisper"}
-VALID_COLORS = {"blue", "gold", "amber", "cyan", "green", "purple", "red"}
 
 
 def validate_content(data, task_data=None, fix=False):
@@ -49,9 +48,6 @@ def validate_content(data, task_data=None, fix=False):
         if cat not in VALID_CATEGORIES:
             errors.append(f"dot.category '{cat}' not in {VALID_CATEGORIES}")
 
-        color = dot.get("color_hint", "")
-        if color and color not in VALID_COLORS:
-            errors.append(f"dot.color_hint '{color}' not in {VALID_COLORS}")
 
     if not data.get("l1"):
         errors.append("missing l1 object")

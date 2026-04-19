@@ -13,7 +13,6 @@
 |-------|------|-------------|------------|-------|
 | `hook` | string | ≤10 CJK chars / ≤6 EN words | **100 chars** (API rejects) | Creates curiosity gap. No hype words ("Breaking", "Exciting"). Rendered as single-line label on the dot. |
 | `category` | enum | — | `focus` \| `attention` \| `seed` \| `whisper` | Determines dot visual style. Whispers always use `whisper`. |
-| `color_hint` | enum | — | `blue` \| `gold` \| `amber` \| `cyan` \| `green` \| `purple` \| `red` | Whispers always use `amber`. |
 
 ### l1 (card — what the user sees first)
 
@@ -99,7 +98,6 @@ Whispers share the same dot/l1/l2 structure but with different field semantics:
 | Field | Whisper value | Notes |
 |-------|--------------|-------|
 | `dot.category` | Always `"whisper"` | Server overrides to whisper |
-| `dot.color_hint` | Always `"amber"` | Server overrides to amber |
 | `dot.hook` | ≤10 CJK chars / ≤6 EN words | Same as content recommended limit |
 | `l1.participants` | `"user+eir"` | Server defaults if omitted |
 | `l1.via` | `["OpenClaw"]` | Server defaults if omitted |
@@ -129,7 +127,6 @@ Whispers share the same dot/l1/l2 structure but with different field semantics:
 - `dot` missing or not an object
 - `dot.hook` empty or >100 chars
 - `dot.category` not in allowed enum
-- `dot.color_hint` not in allowed enum
 - `l1` missing or not an object
 - `l1.title` empty or >200 chars
 - `l1.via` present but not an array

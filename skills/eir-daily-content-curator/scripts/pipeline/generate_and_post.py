@@ -201,8 +201,7 @@ Output JSON (no markdown fences):
   "contentGroup": "%s",
   "dot": {
     "hook": "≤8 English words, curiosity gap",
-    "category": "%s",
-    "color_hint": "%s"
+    "category": "%s"
   },
   "l1": {
     "title": "opinionated title, 8-15 EN words",
@@ -236,7 +235,6 @@ Rules:
         content_data.get("topicSlug", content_data["slug"]),
         content_data.get("contentGroup", ""),
         content_data["dot"].get("category", "focus"),
-        content_data["dot"].get("color_hint", "blue"),
         json.dumps(content_data.get("sources", []), ensure_ascii=False),
         content_data.get("contentGroup", ""),
     )
