@@ -155,7 +155,7 @@ Content-Type: application/json
     "contentGroup": "x7k2m9p4",
     "lang": "en",
     "userId": "u_xxx",
-    "dot": { "hook": "...", "category": "whisper", "color_hint": "amber" },
+    "dot": { "hook": "...", "category": "whisper" },
     "l1": { ... },
     "l2": { ... },
     "created_at": "2026-04-03T10:00:00Z"
@@ -184,7 +184,6 @@ interface WhisperItem {
   dot: {
     hook: string                // ≤10 CJK chars / ≤6 EN words recommended (API allows up to 100)
     category: 'whisper'
-    color_hint: 'amber'
   }
   
   // L1 Card

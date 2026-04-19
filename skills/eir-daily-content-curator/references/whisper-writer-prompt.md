@@ -136,7 +136,6 @@ Whisper-specific constraints:
 |-------|-----------|
 | `dot.hook` | **≤10 CJK chars or ≤6 English words** (recommended, API allows up to 100). Shorter is better. |
 | `dot.category` | Always `"whisper"` (auto-set by API) |
-| `dot.color_hint` | Always `"amber"` (auto-set by API) |
 | `l1.summary` | 80-120 words. Tighter than curated content (50-80). |
 | `l1.participants` | Always `"user+eir"` |
 | `l2.content` | 300-600 words. More depth than curated content (150-300). |
@@ -165,7 +164,7 @@ Whisper-specific fields (`l2.tension`, `l2.thinking_path`, `l2.eir_role`, `l2.un
 
 - Whispers are stored in `whispers_v2` container (no TTL, permanent).
 - ID format: `{8-char contentGroup}_{lang}` (e.g., `x7k2m9p4_en`).
-- The API auto-sets `dot.category`, `dot.color_hint`, and `visibility` — you don't need to include these.
+- The API auto-sets `dot.category` and `visibility` — you don't need to include these.
 - If `conversationId` is provided, the API clears the `whisperCandidate` flag on that conversation.
 
 ---

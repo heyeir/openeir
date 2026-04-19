@@ -30,7 +30,6 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
   "dot": {
     "hook": "<≤10 CJK chars or ≤6 English words, in output_lang>",
     "category": "<choose: focus | attention | seed>",
-    "color_hint": "<color_hint from task>"
   },
   "sources": [
     {

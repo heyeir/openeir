@@ -120,7 +120,6 @@ Push generated content.
       "dot": {
         "hook": "MCP 2.0 Released",
         "category": "focus",
-        "color_hint": "blue"
       },
       "l1": {
         "title": "MCP Protocol v2.0",
