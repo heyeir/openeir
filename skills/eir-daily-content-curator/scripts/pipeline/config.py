@@ -35,12 +35,14 @@ SEARCH_GATEWAY_URL = _search_cfg.get("search_gateway_url") or "http://localhost:
 
 # Freshness mapping: directive string → days
 FRESHNESS_DAYS = {
-    "1d": 1, "3d": 3, "7d": 7, "14d": 14, "30d": 30,
+    "24h": 1, "1d": 1, "2d": 2, "3d": 3, "7d": 7, "14d": 14, "30d": 30,
 }
 
 # Map freshness strings to SearXNG time_range parameter
 FRESHNESS_TO_TIME_RANGE = {
+    "24h": "day",
     "1d": "day",
+    "2d": "day",
     "3d": "week",
     "7d": "week",
     "14d": "month",
