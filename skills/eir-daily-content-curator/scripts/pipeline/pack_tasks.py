@@ -34,6 +34,7 @@ from .eir_config import SKILL_DIR
 TASKS_DIR = V9_DIR / "tasks"
 WRITER_PROMPT_PATH = SKILL_DIR / "references" / "writer-prompt-eir.md"
 WRITER_PROMPT_STANDALONE_PATH = SKILL_DIR / "references" / "writer-prompt-standalone.md"
+READER_CONTEXT_PATH = SKILL_DIR / "config" / "reader_context.md"
 MIN_CONTENT_LEN = 500
 
 
@@ -161,6 +162,17 @@ def load_writer_prompt():
     if WRITER_PROMPT_PATH.exists():
         return WRITER_PROMPT_PATH.read_text()
     return "Generate a structured content summary from the sources below."
+
+
+def _load_reader_context():
+    """Load reader context for personalizing l2.context and eir_take.
+    
+    Reads from config/reader_context.md. This tells the writer WHO the reader is,
+    what they do, and what they care about — so context and takes feel personal.
+    """
+    if READER_CONTEXT_PATH.exists():
+        return READER_CONTEXT_PATH.read_text().strip()
+    return ""
     return "Generate content for Eir. Output JSON only."
 
 
@@ -206,6 +218,7 @@ def pack_single_task(candidate, sources, writer_prompt, directives_map):
         "suggested_angle": candidate.get("suggested_angle", ""),
         "reason": candidate.get("reason", ""),
         "priority": candidate.get("priority", "medium"),
+        "reader_context": _load_reader_context(),
         "source_meta": source_meta,
         "source_text": source_text,
         "writer_prompt": writer_prompt,

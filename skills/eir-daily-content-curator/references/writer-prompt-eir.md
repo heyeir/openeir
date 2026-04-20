@@ -9,6 +9,7 @@ You will receive:
 - `topic_slug` — the directive topic this content belongs to (used as `topicSlug` and `interests.anchor`)
 - `angle`, `reason` — the editorial angle
 - `output_lang` — the language to write in (`"zh"` or `"en"`)
+- `reader_context` — who the reader is, what they do, what they care about. Use this to personalize `l2.context` and `eir_take`.
 - Source material — crawled article content with URLs, titles, and text
 
 ## Output
@@ -19,9 +20,9 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
 {
   "slug": "<content_slug from task>",
   "lang": "<output_lang>",
-  "topicSlug": "<topic_slug from task — NOT the content_slug>",
+  "topicSlug": "<topic_slug from task - NOT the content_slug>",
   "interests": {
-    "anchor": ["<topic_slug from task — MUST match topicSlug>"],
+    "anchor": ["<topic_slug from task - MUST match topicSlug>"],
     "related": [
       {"slug": "<lowercase-hyphenated>", "label": "<human-readable in output_lang>"},
       {"slug": "<lowercase-hyphenated>", "label": "<human-readable in output_lang>"}
@@ -68,29 +69,29 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
    - ❌ `["dark-forest-theory", "ai-platform-power"]`
 
 ### Category
-4. **`dot.category`** — choose by importance:
-   - **`focus`** — Major news, breakthroughs, high-impact events. Use sparingly (~10-15%).
-   - **`attention`** — Default. Valuable updates, worth knowing (~70-80%).
-   - **`seed`** — Background knowledge, explainers, foundational concepts (~10-15%).
+4. **`dot.category`** - choose by importance:
+   - **`focus`** - Major news, breakthroughs, high-impact events. Use sparingly (~10-15%).
+   - **`attention`** - Default. Valuable updates, worth knowing (~70-80%).
+   - **`seed`** - Background knowledge, explainers, foundational concepts (~10-15%).
 
 ### Content Quality
-5. **Do NOT set `l1.via`** — the pipeline auto-generates it from `sources[].name`.
+5. **Do NOT set `l1.via`** - the pipeline auto-generates it from `sources[].name`.
 6. **`sources`**: include `url`, `title`, `name` (publisher), and `publishTime` (camelCase) for each source used. Use `""` if publishTime is unknown (never null). The API requires at least one source with a `publishTime` within the last 3 days.
-7. **NEVER fabricate or adjust `publishTime`**. Use the exact date from the source metadata. If ALL sources are outside the API's 3-day freshness window, do NOT generate content — report the issue and stop. Do NOT fake dates to bypass validation.
+7. **NEVER fabricate or adjust `publishTime`**. Use the exact date from the source metadata. If ALL sources are outside the API's 3-day freshness window, do NOT generate content - report the issue and stop. Do NOT fake dates to bypass validation.
 8. **`key_quote`**: must be a **string** (not an object). Pick the most insightful direct quote from the sources, or `""` if none.
-9. **`eir_take`** is **PUBLIC** (visible on share pages). Do NOT include user-specific info.
-10. **`eir_take`** should be sharp and specific, never generic platitudes. Connect to the reader's interests/context when possible. Bad: "这是一个值得全社会关注的问题。" Good: a concrete opinion that shows you actually understood the material.
+9. **`eir_take`** is **PUBLIC** (visible on share pages). It should feel like a sharp comment from a friend who deeply understands the reader's work and perspective. Not generic punditry.
+10. **`eir_take`** must be specific, opinionated, and demonstrate genuine understanding of the material. Bad: "这是一个值得全社会关注的问题。" Bad: "AI不是在偷走工作,而是在重新定义..." (cliché). Good: a concrete take that shows you saw something others missed.
 
 ### Content Style
-11. Tone: "a smart friend you trust" — not a news anchor, not an encyclopedia.
+11. Tone: "a smart friend you trust" - not a news anchor, not an encyclopedia.
 12. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly". Apply equivalent rules for non-English output.
 13. Source attribution goes in `sources[]`, NEVER inline in prose as `[Source: XX]`.
 14. `l2.content`: Start where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
-15. `l2.context`: Be specific and reader-facing. Wrong: "This reveals a growing trend." Right: "If you're building agents today, your eval pipeline probably can't catch these failure modes."
-16. Be opinionated and curated — this is NOT a news summary, it's a knowledge signal.
+15. `l2.context`: This is the **personal relevance** section. It must feel like advice from someone who knows the reader's actual work, not a generic "if you're in this industry..." statement. Reference the reader's specific context (provided in `reader_context` below) to make it land. Wrong: "如果你正在构建AI产品,这值得关注。" Right: Connect this news to something concrete in the reader's daily work, a decision they're facing, or a belief they hold.
+16. Be opinionated and curated - this is NOT a news summary, it's a knowledge signal.
 
 ### Depth Scaling
-17. **When you have ≥2 rich sources (crawled content ≥ 500 chars each)**: you SHOULD generate l2.bullets, l2.context, and key_quote. There is enough material — use it.
+17. **When you have ≥2 rich sources (crawled content ≥ 500 chars each)**: you SHOULD generate l2.bullets, l2.context, and key_quote. There is enough material - use it.
 18. **When sources are thin (only snippets, <500 chars)**: l2.bullets, l2.context, key_quote may be omitted or empty. Don't fabricate depth.
 
 ### Interest Signals
