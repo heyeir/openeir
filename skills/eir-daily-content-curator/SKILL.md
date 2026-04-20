@@ -74,6 +74,26 @@ Run manually first to verify the flow works:
 
 ---
 
+## Quality Feedback Handling
+
+The curation API (`GET /oc/curation`) may return a `qualityFeedback` array containing user reports about poor content quality. Each entry has:
+
+- `contentId` — the specific content item
+- `contentGroup` — the content group identifier  
+- `slug` — the anchor topic slug
+- `label` — the topic display label
+- `createdAt` — timestamp of the feedback
+
+When `qualityFeedback` is present in the curation response:
+1. Review the reported content groups to understand what the user found low quality
+2. Consider adjusting search strategy for those topics (different sources, stricter selection criteria)
+3. Log the feedback for trend analysis — if a topic consistently gets quality complaints, it may need different search hints or source preferences
+4. The feedback is automatically consumed (deleted from server) after being returned once — no action needed to clear it
+
+Note: Only private (user-specific) content quality feedback is surfaced here. Public content quality reports are recorded server-side separately.
+
+---
+
 ## Eir Mode Pipeline
 
 ### Architecture (2-Job Split)
@@ -231,7 +251,7 @@ openclaw cron add --name "eir-daily" --cron "0 8 * * *" --tz "Asia/Shanghai" \
 
 ### Infrastructure
 
-Self-hosted search and crawl services are optional. See `references/infrastructure-setup.md` for Docker setup.
+Self-hosted search and crawl services are optional fallbacks. The pipeline defaults to the configured Grounding API (Brave, Tavily, or similar).
 
 ### References
 
@@ -244,7 +264,6 @@ Self-hosted search and crawl services are optional. See `references/infrastructu
 | `references/eir-interest-rules.md` | Curation tier guidelines |
 | `references/whisper-api.md` | Whisper extraction API |
 | `references/whisper-writer-prompt.md` | Whisper generation prompt |
-| `references/infrastructure-setup.md` | SearXNG + Crawl4AI Docker setup |
 
 ### Version Check
 
