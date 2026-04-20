@@ -274,12 +274,18 @@ def main():
 
     # Load used URLs and posted content slugs for dedup
     try:
-        from .run_state import get_all_used_urls, get_posted_content_slugs
+        from .run_state import get_all_used_urls, get_posted_content_slugs, get_recent_topic_counts
         used_urls = get_all_used_urls()
         posted_slugs = get_posted_content_slugs()
+        recent_topics = get_recent_topic_counts(cooldown_days=2)
     except Exception:
         used_urls = set()
         posted_slugs = set()
+        recent_topics = {}
+
+    # Topic cooldown: max 2 posts per topic in the last 2 days
+    TOPIC_MAX_RECENT = 2
+    topic_packed_today = {}  # track within this run too
 
     # Pack each candidate into a task
     packed = 0
@@ -304,6 +310,14 @@ def main():
         # Skip if this exact content_slug was already posted
         if content_slug and sanitize_slug(content_slug) in posted_slugs:
             print("  ⏭️  %s: content_slug already posted" % content_slug)
+            skipped += 1
+            continue
+
+        # Topic cooldown: skip if this topic already has enough recent posts
+        topic_recent = recent_topics.get(topic, 0) + topic_packed_today.get(topic, 0)
+        if topic and topic_recent >= TOPIC_MAX_RECENT:
+            print("  ⏭️  %s: topic '%s' already has %d recent posts (max %d)" % (
+                content_slug, topic, topic_recent, TOPIC_MAX_RECENT))
             skipped += 1
             continue
 
@@ -334,6 +348,7 @@ def main():
             print("  [dry-run] Would pack: %s.json (%d sources, %d chars)" % (
                 slug, len(sources), len(task["source_text"])))
             packed += 1
+            topic_packed_today[topic] = topic_packed_today.get(topic, 0) + 1
             continue
 
         # Write task file
@@ -342,6 +357,7 @@ def main():
         print("  ✅ %s.json (%d sources, angle: %s)" % (
             slug, len(sources), task["suggested_angle"][:50]))
         packed += 1
+        topic_packed_today[topic] = topic_packed_today.get(topic, 0) + 1
 
     print("\n📦 Packed %d tasks, skipped %d" % (packed, skipped))
 

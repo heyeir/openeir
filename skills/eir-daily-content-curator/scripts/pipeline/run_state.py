@@ -279,6 +279,30 @@ def get_posted_topic_slugs():
     return topics
 
 
+def get_recent_topic_counts(cooldown_days=2):
+    """Return dict of topic_slug -> count of posts in the last `cooldown_days` days.
+    Used to throttle over-represented topics."""
+    from datetime import timedelta
+    counts = {}
+    cutoff = datetime.now(timezone.utc) - timedelta(days=cooldown_days)
+    
+    # From run_state posted_ids (has topic + at)
+    state = load_state()
+    for p in state.get("posted_ids", []):
+        topic = p.get("topic", "")
+        at_str = p.get("at", "")
+        if not topic or not at_str:
+            continue
+        try:
+            at = datetime.fromisoformat(at_str)
+            if at >= cutoff:
+                counts[topic] = counts.get(topic, 0) + 1
+        except (ValueError, TypeError):
+            continue
+    
+    return counts
+
+
 def get_posted_content_slugs():
     """Get content slugs already posted (all-time from pushed_titles).
     Dedup by content_slug (not topic_slug) — same topic with different
