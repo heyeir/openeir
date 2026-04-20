@@ -4,6 +4,7 @@
   "supported_schema_versions": ["2"],
   "max_items_per_day": 10,
   "local_storage": "data/",
+  "user_md_path": "",
 
   "search": {
     "grounding_base_url": "https://api.example-grounding.com/v3",

@@ -35,7 +35,6 @@ from .eir_config import SKILL_DIR
 TASKS_DIR = V9_DIR / "tasks"
 WRITER_PROMPT_PATH = SKILL_DIR / "references" / "writer-prompt-eir.md"
 WRITER_PROMPT_STANDALONE_PATH = SKILL_DIR / "references" / "writer-prompt-standalone.md"
-READER_CONTEXT_PATH = Path(os.environ.get("OPENCLAW_WORKSPACE", Path.home() / ".openclaw" / "workspace-content")) / "USER.md"
 MIN_CONTENT_LEN = 500
 
 
@@ -165,14 +164,26 @@ def load_writer_prompt():
     return "Generate a structured content summary from the sources below."
 
 
+def _get_user_md_path():
+    """Resolve USER.md path from settings or default workspace."""
+    settings = load_json(SKILL_DIR / "config" / "settings.json", {})
+    path = settings.get("user_md_path", "")
+    if path:
+        return Path(path)
+    # Default: OPENCLAW_WORKSPACE env or ~/.openclaw/workspace-content
+    ws = os.environ.get("OPENCLAW_WORKSPACE", str(Path.home() / ".openclaw" / "workspace-content"))
+    return Path(ws) / "USER.md"
+
+
 def _load_reader_context():
-    """Load reader context from USER.md in the workspace.
+    """Load reader context from USER.md.
     
     USER.md contains the user's profile, interests, and current focus.
     Used to personalize l2.context and eir_take.
     """
-    if READER_CONTEXT_PATH.exists():
-        return READER_CONTEXT_PATH.read_text().strip()
+    p = _get_user_md_path()
+    if p.exists():
+        return p.read_text().strip()
     return ""
     return "Generate content for Eir. Output JSON only."
 
