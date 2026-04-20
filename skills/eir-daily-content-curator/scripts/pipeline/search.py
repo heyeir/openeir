@@ -31,6 +31,35 @@ from .config import (
 from . import grounding
 
 
+def load_local_interests():
+    """Load interests from local config/interests.json (standalone mode).
+    Converts to directive format for pipeline compatibility."""
+    from .config import CONFIG_DIR
+    interests_file = CONFIG_DIR / "interests.json"
+    if not interests_file.exists():
+        return None
+    try:
+        data = json.loads(interests_file.read_text())
+        topics = data.get("topics", [])
+        if not topics:
+            return None
+        directives = []
+        for t in topics:
+            directives.append({
+                "slug": t.get("label", "").lower().replace(" ", "-"),
+                "label": t.get("label", ""),
+                "topic": t.get("label", ""),
+                "description": ", ".join(t.get("keywords", [])),
+                "keywords": t.get("keywords", []),
+                "freshness": t.get("freshness", "7d"),
+                "tier": "focus",
+                "searchHints": t.get("search_hints", []),
+            })
+        return {"directives": directives, "tracked": []}
+    except Exception:
+        return None
+
+
 def fetch_directives_from_api():
     """Fetch fresh directives from Eir API."""
     api_key = get_api_key()
@@ -47,7 +76,13 @@ def fetch_directives_from_api():
 
 
 def load_directives():
-    """Load directives - fetch from API, fallback to cache."""
+    """Load directives.
+
+    Resolution order:
+      1. Eir API (if configured)
+      2. Cached directives.json
+      3. Local interests.json (standalone mode)
+    """
     try:
         data = fetch_directives_from_api()
         n = len(data.get("directives", [])) + len(data.get("tracked", []))
@@ -55,10 +90,19 @@ def load_directives():
         return data
     except Exception as e:
         print("  ⚠️ API fetch failed: %s" % e, file=sys.stderr)
-        if DIRECTIVES_FILE.exists():
-            print("  Using cached directives.json")
-            return load_json(DIRECTIVES_FILE)
-        raise
+
+    if DIRECTIVES_FILE.exists():
+        print("  Using cached directives.json")
+        return load_json(DIRECTIVES_FILE)
+
+    # Fallback: local interests (standalone mode)
+    local = load_local_interests()
+    if local:
+        n = len(local.get("directives", []))
+        print("  ✅ Loaded %d topics from local interests.json" % n)
+        return local
+
+    raise RuntimeError("No directives available. Create config/interests.json or configure Eir API.")
 
 
 def load_used_urls():
@@ -408,7 +452,6 @@ def main():
 
     # Search each topic
     all_results = []
-    layered_signals = {}
     for directive in all_directives:
         slug = directive["slug"]
         print("\n📌 %s [%s, freshness=%s]" % (

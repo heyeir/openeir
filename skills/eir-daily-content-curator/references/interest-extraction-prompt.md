@@ -4,9 +4,12 @@
 
 ## Your Job
 
-Analyze user conversations → extract genuine interests → `POST /oc/interests/add` with labels.
+Analyze user conversations → extract genuine interests.
 
-**You decide WHAT the user is interested in. The server handles strength, heat, and scoring.**
+**Standalone mode**: Save to `config/interests.json`
+**Eir mode**: `POST /oc/interests/add` with labels
+
+**You decide WHAT the user is interested in.**
 
 ## Core Principle: Infer Interests from Behavior
 
@@ -40,7 +43,11 @@ Ask: *"Someone doing this work — what public content would they find valuable?
 ## Extraction Steps
 
 ### 1. Read current interests
-`GET /oc/interests` → see what's already tracked. Don't add duplicates.
+
+**Standalone**: Read `config/interests.json` — see what's already tracked.
+**Eir**: `GET /oc/interests` — see what's already tracked.
+
+Don't add duplicates.
 
 ### 2. Analyze conversations
 Look for genuine interest signals — curiosity, depth, repeated engagement.
@@ -55,6 +62,20 @@ Private contexts → universal, publicly-searchable labels.
 | "Debugging our RAG pipeline" | AI Retrieval & RAG |
 
 ### 4. Submit new interests
+
+**Standalone mode** — update `config/interests.json`:
+```json
+{
+  "topics": [
+    {"label": "AI Retrieval & RAG", "keywords": ["RAG", "vector search", "retrieval"], "freshness": "7d"},
+    {"label": "Embedding Models", "keywords": ["embeddings", "semantic search"], "freshness": "7d"}
+  ],
+  "language": "en",
+  "max_items_per_day": 8
+}
+```
+
+**Eir mode** — POST to API:
 ```
 POST {EIR_API_URL}/oc/interests/add
 Authorization: Bearer {EIR_API_KEY}
@@ -65,7 +86,7 @@ Authorization: Bearer {EIR_API_KEY}
 }
 ```
 
-Use `primary_language` from user profile for label language. The server matches labels against the topic dictionary (~216 topics). Unmatched labels are created as "unknown" for admin review.
+Use `primary_language` from user profile for label language.
 
 ## Rules
 
