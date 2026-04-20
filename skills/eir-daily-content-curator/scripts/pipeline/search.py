@@ -28,6 +28,7 @@ from .config import (
     NEWS_MIN_RESULTS, MAX_RESULTS_PER_QUERY,
     ensure_dirs, load_json, get_api_url, get_api_key,
 )
+from . import grounding
 
 
 def fetch_directives_from_api():
@@ -77,6 +78,48 @@ def _detect_query_language(query):
     cjk_count = sum(1 for c in query if '\u4e00' <= c <= '\u9fff')
     return "zh" if cjk_count > len(query) * 0.2 else "en"
 
+
+def _lang_to_region(lang):
+    """Map detected language to region code for grounding API."""
+    return "CN" if lang == "zh" else "US"
+
+
+def grounding_search(query, category="news", limit=MAX_RESULTS_PER_QUERY):
+    """Search via grounding API. Returns results in the same format as searxng_search.
+    
+    category: 'news' uses news endpoint, anything else uses web endpoint.
+    """
+    if not grounding.is_available():
+        return []
+    lang = _detect_query_language(query)
+    region = _lang_to_region(lang)
+    try:
+        if category == "news":
+            raw = grounding.search_news(query, max_results=min(limit, 10),
+                                        language=lang, region=region, max_length=5000)
+        else:
+            raw = grounding.search_web(query, max_results=limit,
+                                       language=lang, region=region,
+                                       content_format="passage", max_length=3000)
+        results = []
+        for r in raw:
+            results.append({
+                "url": r.get("url", ""),
+                "title": r.get("title", ""),
+                "snippet": r.get("snippet") or r.get("content", "")[:300],
+                "publishedDate": r.get("publishedDate"),
+                "engines": [r.get("source_api", "grounding")],
+                "score": 1.0,
+                "category": category,
+                "source_api": r.get("source_api", "grounding"),
+                "full_content": r.get("content", ""),
+                "thumbnail": r.get("thumbnail"),
+                "source_name": r.get("source_name", ""),
+            })
+        return results
+    except Exception as e:
+        print("    ⚠️ Grounding %s search failed: %s" % (category, e))
+        return []
 
 def searxng_search(query, category="news", limit=MAX_RESULTS_PER_QUERY, time_range=None):
     """Search SearXNG and return results list.
@@ -327,12 +370,17 @@ def search_topic_layered_pass1(directive, used_urls):
     for qinfo in original_queries:
         q = qinfo["q"]
         if q not in broad_queries:
-            print("    \U0001f50d [P1 topic] %s" % q[:60])
-            results = searxng_search(q, category="news")
+            results = []
+            if grounding.is_available():
+                print("    \U0001f50d [P1 grounding] %s" % q[:60])
+                results = grounding_search(q, category="news", limit=MAX_RESULTS_PER_QUERY)
+            if not results:
+                print("    \U0001f50d [P1 searxng] %s" % q[:60])
+                results = searxng_search(q, category="news")
             results = filter_by_freshness(results, freshness)
             _add(results, q)
             pass1_raw.extend(results)
-            time.sleep(0.5)
+            time.sleep(0.3)
 
     # Build signal for agent: unique titles with dates
     seen_titles = set()
@@ -362,9 +410,15 @@ def search_topic_layered_pass2(directive, pass2_queries, used_urls, existing_url
     seen_urls = set(existing_urls)
 
     print("    \U0001f50e [Pass 2] %d agent-generated queries" % len(pass2_queries))
+    use_grounding = grounding.is_available()
     for q in pass2_queries:
-        print("    \U0001f50d [P2 news] %s" % q[:60])
-        results = searxng_search(q, category="news")
+        results = []
+        if use_grounding:
+            print("    \U0001f50d [P2 grounding] %s" % q[:60])
+            results = grounding_search(q, category="news", limit=MAX_RESULTS_PER_QUERY)
+        if not results:
+            print("    \U0001f50d [P2 searxng] %s" % q[:60])
+            results = searxng_search(q, category="news")
         results = filter_by_freshness(results, freshness)
         for r in results:
             if r["url"] not in seen_urls and r["url"] not in used_urls:
@@ -380,8 +434,13 @@ def search_topic_layered_pass2(directive, pass2_queries, used_urls, existing_url
     if len(fresh) < NEWS_MIN_RESULTS:
         print("    \U0001f4ce Still low (%d), trying general..." % len(fresh))
         for q in pass2_queries[:2]:
-            print("    \U0001f50d [general] %s" % q[:60])
-            results = searxng_search(q, category="general")
+            results = []
+            if use_grounding:
+                print("    \U0001f50d [P2 grounding web] %s" % q[:60])
+                results = grounding_search(q, category="general", limit=MAX_RESULTS_PER_QUERY)
+            if not results:
+                print("    \U0001f50d [general] %s" % q[:60])
+                results = searxng_search(q, category="general")
             results = filter_by_freshness(results, freshness)
             for r in results:
                 if r["url"] not in seen_urls and r["url"] not in used_urls:
@@ -411,7 +470,7 @@ def _post_filter(results):
 
 
 def search_topic(directive, used_urls):
-    """Search for a single topic: news first, general fallback."""
+    """Search for a single topic: grounding API first, SearXNG fallback."""
     slug = directive["slug"]
     topic_name = directive.get("label") or directive.get("topic", slug)
     freshness = directive.get("freshness", "7d")
@@ -426,13 +485,22 @@ def search_topic(directive, used_urls):
 
     # Determine SearXNG time_range from freshness
     time_range = FRESHNESS_TO_TIME_RANGE.get(freshness)
+    use_grounding = grounding.is_available()
 
-    # Step 1: News search (all queries)
+    # Step 1: News search (all queries) — grounding first, SearXNG fallback
     news_results = []
     for qinfo in queries:
         q = qinfo["q"]
-        print("    🔍 [news] %s" % q[:60])
-        results = searxng_search(q, category="news", time_range=time_range)
+        results = []
+        if use_grounding:
+            print("    🔍 [grounding news] %s" % q[:60])
+            results = grounding_search(q, category="news", limit=MAX_RESULTS_PER_QUERY)
+            if not results:
+                print("    ↩️ Grounding returned 0, trying web...")
+                results = grounding_search(q, category="general", limit=MAX_RESULTS_PER_QUERY)
+        if not results:
+            print("    🔍 [searxng news] %s" % q[:60])
+            results = searxng_search(q, category="news", time_range=time_range)
         results = filter_by_freshness(results, freshness)
         for r in results:
             if r["url"] not in seen_urls and r["url"] not in used_urls:
@@ -441,14 +509,13 @@ def search_topic(directive, used_urls):
                 r["search_query"] = q
                 news_results.append(r)
                 seen_urls.add(r["url"])
-        time.sleep(0.5)  # rate limit
+        time.sleep(0.3)
 
     # Keep fresh results; when time_range is set, also keep unknown-date results
     # but cap undated results to avoid noise dominating
     fresh_results = [r for r in news_results if r.get("freshness_status") == "fresh"]
     unknown_results = [r for r in news_results if r.get("freshness_status") == "unknown"]
     if time_range:
-        # Cap undated results: at most same count as dated results, min 2
         max_unknown = max(len(fresh_results), 2)
         usable_news = fresh_results + unknown_results[:max_unknown]
     else:
@@ -462,10 +529,15 @@ def search_topic(directive, used_urls):
     # Step 2: General fallback if usable < threshold
     if len(usable_news) < NEWS_MIN_RESULTS:
         print("    📎 News insufficient (%d < %d), trying general..." % (len(usable_news), NEWS_MIN_RESULTS))
-        for qinfo in queries[:2]:  # limit general queries
+        for qinfo in queries[:2]:
             q = qinfo["q"]
-            print("    🔍 [general] %s" % q[:60])
-            results = searxng_search(q, category="general", time_range=time_range)
+            results = []
+            if use_grounding:
+                print("    🔍 [grounding web] %s" % q[:60])
+                results = grounding_search(q, category="general", limit=MAX_RESULTS_PER_QUERY)
+            if not results:
+                print("    🔍 [searxng general] %s" % q[:60])
+                results = searxng_search(q, category="general", time_range=time_range)
             results = filter_by_freshness(results, freshness)
             for r in results:
                 if r["url"] not in seen_urls and r["url"] not in used_urls:
@@ -474,7 +546,7 @@ def search_topic(directive, used_urls):
                     r["search_query"] = q
                     all_results.append(r)
                     seen_urls.add(r["url"])
-            time.sleep(0.5)
+            time.sleep(0.3)
 
     # Post-filter
     all_results = _post_filter(all_results)

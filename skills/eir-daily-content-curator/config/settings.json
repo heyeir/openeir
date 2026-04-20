@@ -6,9 +6,11 @@
   "local_storage": "data/",
 
   "search": {
+    "grounding_base_url": "https://api.example-grounding.com/v3",
+    "grounding_api_key": "YOUR_API_KEY_HERE",
     "providers": ["tavily", "brave"],
-    "searxng_url": null,
-    "crawl4ai_url": null,
+    "searxng_url": "http://localhost:8888",
+    "crawl4ai_url": "http://localhost:11235",
     "search_gateway_url": null
   },
 

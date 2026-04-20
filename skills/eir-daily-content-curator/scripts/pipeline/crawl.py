@@ -25,6 +25,7 @@ from .config import (
     ensure_dirs, load_json,
 )
 from .date_extractor import extract_publish_date
+from . import grounding
 
 CRAWL_TIMEOUT = 30          # HTTP client timeout (seconds)
 PAGE_TIMEOUT_MS = 20000     # Crawl4AI Playwright navigation timeout (ms)
@@ -32,6 +33,9 @@ MIN_CONTENT_LEN = 500
 MAX_CONTENT_LEN = 8000
 
 DOMAIN_STATS_FILE = DATA_DIR / "domain_stats.json"
+
+# Module-level cache for grounding search content (populated in main())
+_search_content_cache = {}
 
 # Build reverse lookup: domain -> tier rank (0=tier1, 1=tier2, 3=tier3, 2=unknown)
 _DOMAIN_TIER = {}
@@ -334,6 +338,22 @@ def main():
     # Load domain stats
     domain_stats = load_json(DOMAIN_STATS_FILE, {})
 
+    # Build cache of grounding search results (URL -> {full_content, publishedDate})
+    # from latest search results, so crawl can skip already-fetched content
+    _search_content_cache_local = {}
+    latest_search = load_json(V9_DIR / "latest_search.json", {})
+    for r in latest_search.get("results", []):
+        fc = r.get("full_content", "")
+        if fc and len(fc) >= MIN_CONTENT_LEN:
+            _search_content_cache_local[r["url"]] = {
+                "full_content": fc,
+                "publishedDate": r.get("publishedDate"),
+            }
+    if _search_content_cache_local:
+        print("  📦 %d URLs with grounding inline content" % len(_search_content_cache_local))
+    global _search_content_cache
+    _search_content_cache = _search_content_cache_local
+
     def get_domain(url):
         return urlparse(url).netloc.replace("www.", "")
 
@@ -403,9 +423,46 @@ def main():
 
             print("  🔗 [%s] %s" % (slug, url[:70]))
 
-            # Try Crawl4AI
-            content, raw_html = crawl_url(url)
-            crawl_method = "crawl4ai"
+            # Check if grounding search already provided full_content for this URL
+            content = None
+            raw_html = None
+            crawl_method = None
+            pub_date_from_search = None
+
+            # Look for pre-fetched content from grounding search results
+            search_result = _search_content_cache.get(url)
+            if search_result and len(search_result.get("full_content", "")) >= MIN_CONTENT_LEN:
+                content = search_result["full_content"][:MAX_CONTENT_LEN]
+                crawl_method = "grounding_inline"
+                pub_date_from_search = search_result.get("publishedDate")
+                q_score = content_quality_score(content)
+                if q_score < 40 or is_error_page(content):
+                    print("    ⚠️ Grounding inline content low quality (%d), will crawl" % q_score)
+                    content = None
+                    crawl_method = None
+                else:
+                    print("    📊 Grounding inline: %dc, quality %d/100" % (len(content), q_score))
+
+            # Try grounding browse API
+            if not content and grounding.is_available():
+                print("    🔍 [grounding browse] %s" % url[:60])
+                browse_result = grounding.browse_url(url, max_length=50000)
+                if browse_result:
+                    bc = browse_result.get("content", "")
+                    if len(bc) >= MIN_CONTENT_LEN:
+                        q_score = content_quality_score(bc)
+                        if q_score >= 40 and not is_error_page(bc):
+                            content = bc[:MAX_CONTENT_LEN]
+                            crawl_method = "grounding_browse"
+                            pub_date_from_search = browse_result.get("publishedDate") or pub_date_from_search
+                            print("    📊 Grounding browse: %dc, quality %d/100" % (len(content), q_score))
+                        else:
+                            print("    ⚠️ Grounding browse low quality (%d)" % q_score)
+
+            # Fallback: Try Crawl4AI
+            if not content:
+                content, raw_html = crawl_url(url)
+                crawl_method = "crawl4ai"
 
             # Error page detection (before quality check)
             if content and is_error_page(content):
@@ -455,7 +512,9 @@ def main():
                 html_for_date = raw_html or ""
                 if not html_for_date:
                     html_for_date = fetch_html_head_only(url)
-                pub_date = extract_publish_date(html_for_date, url) if html_for_date else None
+                pub_date = pub_date_from_search  # prefer grounding date
+                if not pub_date:
+                    pub_date = extract_publish_date(html_for_date, url) if html_for_date else None
                 if not pub_date:
                     pub_date = extract_publish_date(content[:3000], url)
                 if pub_date:
