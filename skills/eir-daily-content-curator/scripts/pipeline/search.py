@@ -337,6 +337,19 @@ def build_queries(directive):
     return queries
 
 
+def _post_filter(results):
+    """Common post-processing: skip junk URLs, short titles, sort."""
+    skip_patterns = [".pdf", ".zip", ".mp4", "youtube.com/watch", "twitter.com/", "x.com/"]
+    results = [r for r in results if not any(p in r["url"].lower() for p in skip_patterns)]
+    results = [r for r in results if len(r.get("title", "")) >= 10]
+
+    def sort_key(r):
+        fresh = 0 if r.get("freshness_status") == "fresh" else 1
+        return (fresh, -r.get("score", 0))
+    results.sort(key=sort_key)
+    return results
+
+
 def search_topic(directive, used_urls):
     """Search for a single topic: grounding API first, SearXNG fallback."""
     slug = directive["slug"]

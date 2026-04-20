@@ -33,6 +33,7 @@ from .eir_config import SKILL_DIR
 
 TASKS_DIR = V9_DIR / "tasks"
 WRITER_PROMPT_PATH = SKILL_DIR / "references" / "writer-prompt-eir.md"
+WRITER_PROMPT_STANDALONE_PATH = SKILL_DIR / "references" / "writer-prompt-standalone.md"
 MIN_CONTENT_LEN = 500
 
 
@@ -150,9 +151,16 @@ def load_candidate_sources(candidate):
 
 
 def load_writer_prompt():
-    """Load writer prompt from references/writer-prompt-eir.md."""
+    """Load writer prompt based on mode (eir or standalone)."""
+    settings = load_json(SKILL_DIR / "config" / "settings.json", {})
+    mode = settings.get("mode", "standalone")
+    if mode == "eir" and WRITER_PROMPT_PATH.exists():
+        return WRITER_PROMPT_PATH.read_text()
+    if WRITER_PROMPT_STANDALONE_PATH.exists():
+        return WRITER_PROMPT_STANDALONE_PATH.read_text()
     if WRITER_PROMPT_PATH.exists():
         return WRITER_PROMPT_PATH.read_text()
+    return "Generate a structured content summary from the sources below."
     return "Generate content for Eir. Output JSON only."
 
 
