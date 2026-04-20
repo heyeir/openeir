@@ -284,7 +284,11 @@ def _extract_entities(results):
 def search_topic_layered_pass1(directive, used_urls):
     """Pass 1 of layered search: broad discovery.
     Returns (pass1_results_added, pass1_signal) where pass1_signal is a list
-    of {title, url, date} for the agent to analyze."""
+    of {title, url, date} for the agent to analyze.
+    
+    IMPORTANT: Broad queries ("AI industry news today") are ONLY used for
+    entity extraction (Pass 2 signal). Only topic-specific queries contribute
+    results attributed to this topic."""
     slug = directive["slug"]
     topic_name = directive.get("label") or directive.get("topic", slug)
     freshness = directive.get("freshness", "7d")
@@ -310,18 +314,25 @@ def search_topic_layered_pass1(directive, used_urls):
         "AI\u884c\u4e1a\u65b0\u95fb \u4eca\u65e5",
     ]
     original_queries = build_queries(directive)
-    for qinfo in original_queries:
-        if qinfo["q"] not in broad_queries:
-            broad_queries.append(qinfo["q"])
 
+    # Broad queries: search for entity extraction only, do NOT add to topic results
     pass1_raw = []
     for q in broad_queries:
-        print("    \U0001f50d [P1 news] %s" % q[:60])
+        print("    \U0001f50d [P1 broad] %s (entity-only)" % q[:60])
         results = searxng_search(q, category="news")
         pass1_raw.extend(results)
-        results = filter_by_freshness(results, freshness)
-        _add(results, q)
         time.sleep(0.5)
+
+    # Topic-specific queries: these DO count as topic results
+    for qinfo in original_queries:
+        q = qinfo["q"]
+        if q not in broad_queries:
+            print("    \U0001f50d [P1 topic] %s" % q[:60])
+            results = searxng_search(q, category="news")
+            results = filter_by_freshness(results, freshness)
+            _add(results, q)
+            pass1_raw.extend(results)
+            time.sleep(0.5)
 
     # Build signal for agent: unique titles with dates
     seen_titles = set()
@@ -433,13 +444,19 @@ def search_topic(directive, used_urls):
         time.sleep(0.5)  # rate limit
 
     # Keep fresh results; when time_range is set, also keep unknown-date results
-    # (SearXNG already filtered by time, so undated results are likely recent)
+    # but cap undated results to avoid noise dominating
+    fresh_results = [r for r in news_results if r.get("freshness_status") == "fresh"]
+    unknown_results = [r for r in news_results if r.get("freshness_status") == "unknown"]
     if time_range:
-        usable_news = [r for r in news_results if r.get("freshness_status") in ("fresh", "unknown")]
+        # Cap undated results: at most same count as dated results, min 2
+        max_unknown = max(len(fresh_results), 2)
+        usable_news = fresh_results + unknown_results[:max_unknown]
     else:
-        usable_news = [r for r in news_results if r.get("freshness_status") == "fresh"]
-    fresh_count = sum(1 for r in news_results if r.get("freshness_status") == "fresh")
-    print("    📰 News: %d results (%d fresh, %d usable)" % (len(news_results), fresh_count, len(usable_news)))
+        usable_news = fresh_results
+    fresh_count = len(fresh_results)
+    unknown_kept = len(usable_news) - fresh_count
+    print("    📰 News: %d results (%d fresh, %d unknown kept/%d total, %d usable)" % (
+        len(news_results), fresh_count, unknown_kept, len(unknown_results), len(usable_news)))
     all_results.extend(usable_news)
 
     # Step 2: General fallback if usable < threshold
