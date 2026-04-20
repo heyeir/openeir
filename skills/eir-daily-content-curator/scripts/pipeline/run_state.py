@@ -279,28 +279,47 @@ def get_posted_topic_slugs():
     return topics
 
 
-def get_recent_topic_counts(cooldown_days=2):
-    """Return dict of topic_slug -> count of posts in the last `cooldown_days` days.
-    Used to throttle over-represented topics."""
+def get_recent_posted_events(days=3):
+    """Return list of {slug, title, topic} for posts in the last `days` days.
+    Used for event-level semantic dedup."""
+    import glob
     from datetime import timedelta
-    counts = {}
-    cutoff = datetime.now(timezone.utc) - timedelta(days=cooldown_days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    events = []
     
-    # From run_state posted_ids (has topic + at)
     state = load_state()
     for p in state.get("posted_ids", []):
-        topic = p.get("topic", "")
         at_str = p.get("at", "")
-        if not topic or not at_str:
+        if not at_str:
             continue
         try:
             at = datetime.fromisoformat(at_str)
-            if at >= cutoff:
-                counts[topic] = counts.get(topic, 0) + 1
+            if at < cutoff:
+                continue
         except (ValueError, TypeError):
             continue
+        events.append({
+            "slug": p.get("slug", ""),
+            "topic": p.get("topic", ""),
+            "title": "",  # run_state doesn't have title, will enrich below
+        })
     
-    return counts
+    # Enrich with titles from posted/ and generated/ directories
+    posted_dir = V9_DIR / "posted"
+    generated_dir = V9_DIR / "generated"
+    for ev in events:
+        slug = ev["slug"]
+        for d in [posted_dir, generated_dir]:
+            path = d / ("%s_zh.json" % slug)
+            if path.exists():
+                try:
+                    data = load_json(path, {})
+                    ev["title"] = data.get("l1", {}).get("title", "")
+                    break
+                except Exception:
+                    pass
+    
+    return events
 
 
 def get_posted_content_slugs():

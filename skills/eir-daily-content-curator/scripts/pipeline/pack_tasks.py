@@ -240,6 +240,62 @@ def pack_single_task(candidate, sources, writer_prompt, directives_map):
     return task
 
 
+def _tokenize_for_dedup(text):
+    """Extract meaningful tokens from a slug or title for dedup.
+    Handles both English (space/hyphen split) and CJK (character bigrams)."""
+    import re
+    text = text.lower()
+    tokens = set()
+    
+    # English tokens: split on non-alnum, keep 3+ chars
+    en_tokens = set(re.findall(r'[a-z]{3,}', text))
+    stop = {'the','and','for','with','from','new','that','this','are','was',
+            'has','have','been','will','can','not','but','its','more',
+            'than','into','how','what','why','who','about','after',
+            'big','tech','race','boom','wave','shift','impact','risk',
+            'reality','check','debate','crisis'}
+    tokens |= en_tokens - stop
+    
+    # CJK character bigrams
+    cjk_chars = re.findall(r'[\u4e00-\u9fff]', text)
+    for i in range(len(cjk_chars) - 1):
+        tokens.add(cjk_chars[i] + cjk_chars[i+1])
+    
+    return tokens
+
+
+def _event_similarity(slug_a, title_a, slug_b, title_b):
+    """Compute event similarity. Uses token overlap count (not Jaccard)
+    because events are identified by shared key entities, not overall similarity."""
+    # Combine slug + title tokens for each side
+    a_tokens = _tokenize_for_dedup(slug_a) | _tokenize_for_dedup(title_a)
+    b_tokens = _tokenize_for_dedup(slug_b) | _tokenize_for_dedup(title_b)
+    
+    if not a_tokens or not b_tokens:
+        return 0.0
+    
+    shared = a_tokens & b_tokens
+    # Score: shared count normalized by the SMALLER set (asymmetric — 
+    # if a short slug matches most of a longer one, it's a dup)
+    min_size = min(len(a_tokens), len(b_tokens))
+    return len(shared) / min_size if min_size > 0 else 0.0
+
+
+def _find_duplicate_event(content_slug, title, topic, recent_events):
+    """Check if this candidate covers an event already in recent_events.
+    Returns the slug of the duplicate, or None.
+    Only compares within same topic (different topics = different events)."""
+    THRESHOLD = 0.35  # tuned: catches 'ai-drug-discovery-*' variants
+    for ev in recent_events:
+        if ev.get("topic") != topic:
+            continue
+        sim = _event_similarity(content_slug, title,
+                                ev.get("slug", ""), ev.get("title", ""))
+        if sim >= THRESHOLD:
+            return ev.get("slug", "?")
+    return None
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Pack Tasks")
@@ -274,18 +330,17 @@ def main():
 
     # Load used URLs and posted content slugs for dedup
     try:
-        from .run_state import get_all_used_urls, get_posted_content_slugs, get_recent_topic_counts
+        from .run_state import get_all_used_urls, get_posted_content_slugs, get_recent_posted_events
         used_urls = get_all_used_urls()
         posted_slugs = get_posted_content_slugs()
-        recent_topics = get_recent_topic_counts(cooldown_days=2)
+        recent_events = get_recent_posted_events(days=3)
     except Exception:
         used_urls = set()
         posted_slugs = set()
-        recent_topics = {}
+        recent_events = []
 
-    # Topic cooldown: max 2 posts per topic in the last 2 days
-    TOPIC_MAX_RECENT = 2
-    topic_packed_today = {}  # track within this run too
+    # Build event fingerprints for semantic dedup
+    packed_events = []  # track within this run too
 
     # Pack each candidate into a task
     packed = 0
@@ -313,11 +368,12 @@ def main():
             skipped += 1
             continue
 
-        # Topic cooldown: skip if this topic already has enough recent posts
-        topic_recent = recent_topics.get(topic, 0) + topic_packed_today.get(topic, 0)
-        if topic and topic_recent >= TOPIC_MAX_RECENT:
-            print("  ⏭️  %s: topic '%s' already has %d recent posts (max %d)" % (
-                content_slug, topic, topic_recent, TOPIC_MAX_RECENT))
+        # Event-level semantic dedup: skip if same event already covered recently
+        candidate_title = c.get("title", "") or c.get("suggested_angle", "")
+        dup_of = _find_duplicate_event(content_slug, candidate_title, topic,
+                                       recent_events + packed_events)
+        if dup_of:
+            print("  ⏭️  %s: duplicate event (similar to '%s')" % (content_slug, dup_of))
             skipped += 1
             continue
 
@@ -348,7 +404,7 @@ def main():
             print("  [dry-run] Would pack: %s.json (%d sources, %d chars)" % (
                 slug, len(sources), len(task["source_text"])))
             packed += 1
-            topic_packed_today[topic] = topic_packed_today.get(topic, 0) + 1
+            packed_events.append({"slug": content_slug, "title": candidate_title, "topic": topic})
             continue
 
         # Write task file
@@ -357,7 +413,7 @@ def main():
         print("  ✅ %s.json (%d sources, angle: %s)" % (
             slug, len(sources), task["suggested_angle"][:50]))
         packed += 1
-        topic_packed_today[topic] = topic_packed_today.get(topic, 0) + 1
+        packed_events.append({"slug": content_slug, "title": candidate_title, "topic": topic})
 
     print("\n📦 Packed %d tasks, skipped %d" % (packed, skipped))
 

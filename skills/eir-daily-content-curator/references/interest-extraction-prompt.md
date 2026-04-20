@@ -1,6 +1,6 @@
 # Interest Extraction Prompt
 
-> Used by the OpenClaw agent to discover interests from conversations and update the user profile.
+> Used by main agent's interest-sync cron to update the reader profile and interest system.
 
 ## Your Job
 
@@ -40,11 +40,18 @@ Ask: *"Someone doing this work — what public content would they find valuable?
 ## Extraction Steps
 
 ### 1. Read USER.md
-Read the workspace `USER.md` to understand the user's current profile, interests, and context. This is the single source of truth for who the user is.
+Read the content workspace `USER.md` — this is the reader profile that content generation reads. It lives at the path specified in the cron prompt.
+
+Also read main agent's `USER.md` (workspace/USER.md) for richer context about work style, communication preferences, and API notes — but **don't copy those sections** into the content USER.md.
 
 ### 2. Analyze conversations
-Look for genuine interest signals — curiosity, depth, repeated engagement.
-Also look for **context signals** — role changes, new projects, shifts in perspective.
+Read recent session transcripts (~48h) across **all agents** (main, creative, dev, work, content).
+
+Look for:
+- **Interest signals** — curiosity, depth, repeated engagement with a topic
+- **Context signals** — role changes, new projects, new tools adopted
+- **Focus shifts** — what's consuming attention this week vs last month
+- **Perspective signals** — strong opinions, frameworks, mental models expressed
 
 ### 3. Generalize to searchable topics
 Private contexts → universal, publicly-searchable labels.
@@ -57,18 +64,21 @@ Private contexts → universal, publicly-searchable labels.
 
 ### 4. Update USER.md
 
-Update the `USER.md` file with new information. The file has these sections:
+The content USER.md has this structure:
 
 ```markdown
-# USER.md
+# USER.md — Reader Profile
 
 - **Name:** ...
 - **Timezone:** ...
-- **Communication style:** ...
+- **Languages:** zh (primary), en (native-level reading)
 
 ## Role & Context
 - [What they do, what they're building]
-- [Current focus areas]
+- [Current org/team context]
+
+### Current Focus (YYYY-MM)
+- [What's consuming attention right now — update monthly]
 
 ## Interests
 - [Active interests — topics they want content about]
@@ -77,14 +87,27 @@ Update the `USER.md` file with new information. The file has these sections:
 - [How they think, what they value, what makes content land for them]
 ```
 
-**Rules for updating USER.md:**
-- **Append/update, never delete** existing info unless explicitly outdated
-- **Keep it concise** — each section should be 3-8 bullet points max
+**Update rules:**
+- **Current Focus** — replace items that are done/stale, add new ones. Date the section header (YYYY-MM)
+- **Interests** — target 8-15 items. Add new ones, **demote stale ones** (no signal in 30+ days → remove to make room)
+- **Role & Context** — only update on significant changes (new product, role shift)
+- **Perspective** — only update when conversations reveal a new mental model or value shift
+- **Keep it concise** — total file should stay under ~50 lines
 - **Merge similar items** — don't let lists bloat with near-duplicates
-- **Date major shifts** — if their role or focus changes significantly, note when
 - **Don't over-infer** — only add things with clear signal from conversations
 
 ### 5. Submit interests to system
+
+**Eir mode** — POST to API:
+```
+POST {EIR_API_URL}/oc/interests/add
+Authorization: Bearer {EIR_API_KEY}
+
+{
+  "labels": ["AI Retrieval & RAG", "Embedding Models"],
+  "lang": "en"
+}
+```
 
 **Standalone mode** — update `config/interests.json`:
 ```json
@@ -98,23 +121,13 @@ Update the `USER.md` file with new information. The file has these sections:
 }
 ```
 
-**Eir mode** — POST to API:
-```
-POST {EIR_API_URL}/oc/interests/add
-Authorization: Bearer {EIR_API_KEY}
-
-{
-  "labels": ["AI Retrieval & RAG", "Embedding Models"],
-  "lang": "en"
-}
-```
-
 ## Rules
 
-1. **Quality over quantity** — 1-3 genuine interests per session, not 10 vague ones
+1. **Quality over quantity** — 1-3 genuine new interests per sync, not 10 vague ones
 2. **Content-value test** — every label must match quality external content
 3. **Don't duplicate** — check USER.md interests first
 4. **Broad enough to be useful** — "AI" is too broad, "GPT-4o mini tokenizer bug" is too narrow
 5. **Respect user privacy** — generalize private details into public topics
 6. **USER.md is the source of truth** — content generation reads this to personalize output
-7. **Avoid bloat** — if USER.md exceeds ~40 lines, consolidate older/less-relevant items
+7. **Demote stale interests** — if an interest has no signal in 30+ days, remove it to keep the list fresh
+8. **Bilingual labels OK** — use the language that matches the best public content for that topic
