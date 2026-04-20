@@ -19,6 +19,7 @@ Usage:
 
 import hashlib
 import json
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -34,7 +35,7 @@ from .eir_config import SKILL_DIR
 TASKS_DIR = V9_DIR / "tasks"
 WRITER_PROMPT_PATH = SKILL_DIR / "references" / "writer-prompt-eir.md"
 WRITER_PROMPT_STANDALONE_PATH = SKILL_DIR / "references" / "writer-prompt-standalone.md"
-READER_CONTEXT_PATH = SKILL_DIR / "config" / "reader_context.md"
+READER_CONTEXT_PATH = Path(os.environ.get("OPENCLAW_WORKSPACE", Path.home() / ".openclaw" / "workspace-content")) / "USER.md"
 MIN_CONTENT_LEN = 500
 
 
@@ -165,10 +166,10 @@ def load_writer_prompt():
 
 
 def _load_reader_context():
-    """Load reader context for personalizing l2.context and eir_take.
+    """Load reader context from USER.md in the workspace.
     
-    Reads from config/reader_context.md. This tells the writer WHO the reader is,
-    what they do, and what they care about — so context and takes feel personal.
+    USER.md contains the user's profile, interests, and current focus.
+    Used to personalize l2.context and eir_take.
     """
     if READER_CONTEXT_PATH.exists():
         return READER_CONTEXT_PATH.read_text().strip()

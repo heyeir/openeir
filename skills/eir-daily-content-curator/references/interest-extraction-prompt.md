@@ -1,15 +1,12 @@
 # Interest Extraction Prompt
 
-> Used by the OpenClaw agent to discover interests from conversations and add them to Eir.
+> Used by the OpenClaw agent to discover interests from conversations and update the user profile.
 
 ## Your Job
 
-Analyze user conversations → extract genuine interests.
+Analyze user conversations → extract genuine interests and context → update USER.md + submit to interest system.
 
-**Standalone mode**: Save to `config/interests.json`
-**Eir mode**: `POST /oc/interests/add` with labels
-
-**You decide WHAT the user is interested in.**
+**You decide WHAT the user is interested in and WHO they are becoming.**
 
 ## Core Principle: Infer Interests from Behavior
 
@@ -42,15 +39,12 @@ Ask: *"Someone doing this work — what public content would they find valuable?
 
 ## Extraction Steps
 
-### 1. Read current interests
-
-**Standalone**: Read `config/interests.json` — see what's already tracked.
-**Eir**: `GET /oc/interests` — see what's already tracked.
-
-Don't add duplicates.
+### 1. Read USER.md
+Read the workspace `USER.md` to understand the user's current profile, interests, and context. This is the single source of truth for who the user is.
 
 ### 2. Analyze conversations
 Look for genuine interest signals — curiosity, depth, repeated engagement.
+Also look for **context signals** — role changes, new projects, shifts in perspective.
 
 ### 3. Generalize to searchable topics
 Private contexts → universal, publicly-searchable labels.
@@ -61,7 +55,36 @@ Private contexts → universal, publicly-searchable labels.
 | "Our Cosmos DB migration" | Database Architecture |
 | "Debugging our RAG pipeline" | AI Retrieval & RAG |
 
-### 4. Submit new interests
+### 4. Update USER.md
+
+Update the `USER.md` file with new information. The file has these sections:
+
+```markdown
+# USER.md
+
+- **Name:** ...
+- **Timezone:** ...
+- **Communication style:** ...
+
+## Role & Context
+- [What they do, what they're building]
+- [Current focus areas]
+
+## Interests
+- [Active interests — topics they want content about]
+
+## Perspective
+- [How they think, what they value, what makes content land for them]
+```
+
+**Rules for updating USER.md:**
+- **Append/update, never delete** existing info unless explicitly outdated
+- **Keep it concise** — each section should be 3-8 bullet points max
+- **Merge similar items** — don't let lists bloat with near-duplicates
+- **Date major shifts** — if their role or focus changes significantly, note when
+- **Don't over-infer** — only add things with clear signal from conversations
+
+### 5. Submit interests to system
 
 **Standalone mode** — update `config/interests.json`:
 ```json
@@ -86,22 +109,12 @@ Authorization: Bearer {EIR_API_KEY}
 }
 ```
 
-Use `primary_language` from user profile for label language.
-
 ## Rules
 
 1. **Quality over quantity** — 1-3 genuine interests per session, not 10 vague ones
-2. **Content-value test** — every label must match quality external content. "Our internal API" fails this test
-3. **Use primary_language** for labels (usually "zh" or "en")
-4. **Don't duplicate** — check GET /oc/interests first
-5. **Broad enough to be useful** — "AI" is too broad, "GPT-4o mini tokenizer bug" is too narrow
-6. **Respect user privacy** — generalize private details into public topics
-
-## Relationship to Content Interest Signals
-
-Interest extraction from conversations is separate from the `interests.anchor` and `interests.related` fields on content items.
-
-- **This prompt**: discovers interests from user conversations → `POST /oc/interests/add`
-- **Content interests**: declared by the content writer when generating content → `interests.anchor` + `interests.related` on `POST /oc/content`
-
-Both feed into the same interest system. Extracted interests may later appear as valid anchor targets in curation directives.
+2. **Content-value test** — every label must match quality external content
+3. **Don't duplicate** — check USER.md interests first
+4. **Broad enough to be useful** — "AI" is too broad, "GPT-4o mini tokenizer bug" is too narrow
+5. **Respect user privacy** — generalize private details into public topics
+6. **USER.md is the source of truth** — content generation reads this to personalize output
+7. **Avoid bloat** — if USER.md exceeds ~40 lines, consolidate older/less-relevant items

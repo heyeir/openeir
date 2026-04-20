@@ -9,7 +9,7 @@ You will receive:
 - `topic_slug` — the directive topic this content belongs to (used as `topicSlug` and `interests.anchor`)
 - `angle`, `reason` — the editorial angle
 - `output_lang` — the language to write in (`"zh"` or `"en"`)
-- `reader_context` — who the reader is, what they do, what they care about. Use this to personalize `l2.context` and `eir_take`.
+- `reader_context` — the user's profile from USER.md (role, interests, perspective). Use this to personalize `l2.context` and `eir_take`.
 - Source material — crawled article content with URLs, titles, and text
 
 ## Output
