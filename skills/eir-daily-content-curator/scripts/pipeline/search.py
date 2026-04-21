@@ -277,6 +277,7 @@ def build_queries(directive):
 
     Priority: searchHints (API) > entity-focused from description > topic name > keywords.
     Produces 2-4 queries per topic, each concise and entity-rich.
+    For explore/seed tiers, adds event-oriented modifiers to find concrete stories.
     """
     queries = []
     # API returns searchHints as string[] (camelCase)
@@ -286,9 +287,12 @@ def build_queries(directive):
     else:
         suggested = hints  # already a list of query strings
     topic_name = directive.get("label") or directive.get("topic") or directive.get("slug") or ""
+    if isinstance(topic_name, list):
+        topic_name = topic_name[0] if topic_name else ""
     description = directive.get("description") or ""
     keywords = directive.get("keywords") or []
     freshness = directive.get("freshness", "7d")
+    tier = directive.get("tier", "")
 
     seen_queries = set()
     def _add(q):
@@ -297,6 +301,10 @@ def build_queries(directive):
             seen_queries.add(q.lower())
             queries.append({"q": q, "freshness": freshness})
 
+    # For explore/seed: supplement hints with event-oriented queries
+    # These modifiers turn generic topics into queries that find specific news
+    is_seed = tier in ("explore", "seed")
+    
     # 1. Use suggested queries from API (highest quality)
     for q in suggested:
         _add(q)
@@ -334,6 +342,21 @@ def build_queries(directive):
             if kw:
                 _add(" ".join(kw))
 
+    # 5. For seed/explore: enhance queries with specificity modifiers
+    if is_seed and len(queries) < 5:
+        # Add year to existing hint for time-anchoring ("ML advances" → "ML advances 2026")
+        from datetime import datetime as _dt
+        year = str(_dt.now().year)
+        for hint in suggested[:1]:
+            q_with_year = "%s %s" % (hint, year)
+            _add(q_with_year)
+        # Add event-oriented query in topic's primary language
+        has_zh = any('\u4e00' <= c <= '\u9fff' for c in topic_name)
+        if has_zh:
+            _add("%s 突破 发布" % topic_name)
+        else:
+            _add("%s new launch announce %s" % (topic_name, year))
+
     return queries
 
 
@@ -348,6 +371,85 @@ def _post_filter(results):
         return (fresh, -r.get("score", 0))
     results.sort(key=sort_key)
     return results
+
+
+def _extract_entities_from_titles(results, max_entities=5):
+    """Extract specific entities from search result titles for refinement search.
+    Focus on proper nouns that appear across multiple titles."""
+    import re as _re
+    from collections import Counter
+    
+    entity_counts = Counter()
+    for r in results:
+        title = r.get("title", "")
+        # Multi-word proper noun phrases: "John Snow Labs", "Netflix AI"
+        for m in _re.finditer(r'(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)', title):
+            entity_counts[m.group()] += 1
+        # Single capitalized words not at sentence start (likely brand/org)
+        words = title.split()
+        for idx, w in enumerate(words):
+            if (idx > 0 and w[0:1].isupper() and len(w) >= 3
+                and w.lower() not in _QUERY_STOP_WORDS
+                and w.isalpha()):
+                entity_counts[w] += 1
+        # Alphanumeric product names: "GPT-4", "A2UI", "Win11"
+        for m in _re.finditer(r'[A-Z][A-Za-z]*[-]?\d[\w.]*', title):
+            entity_counts[m.group()] += 1
+        # CJK proper nouns (2-4 chars, skip generic)
+        _skip_cjk = {
+            '最新', '技术', '研究', '发展', '应用', '系统', '方法', '分析',
+            '报告', '趋势', '未来', '全球', '行业', '领域', '设计',
+            '平台', '模型', '数据', '产品', '服务', '开发', '管理',
+            '发布', '更新', '内容', '用户', '市场', '企业', '关注',
+            '智能', '学习', '网络', '人工', '语言', '处理', '中国',
+        }
+        for m in _re.finditer(r'[\u4e00-\u9fff]{2,4}', title):
+            w = m.group()
+            if w not in _skip_cjk:
+                entity_counts[w] += 1
+    
+    # Only keep entities appearing 2+ times (cross-title confirmation)
+    entities = [e for e, c in entity_counts.most_common(max_entities) if c >= 2]
+    return entities
+
+
+def _entity_refinement_pass(initial_results, slug, topic_name, freshness,
+                            time_range, seen_urls, used_urls):
+    """2-pass refinement: extract entities from initial results, search again
+    with entity-specific queries for better, more concrete results."""
+    entities = _extract_entities_from_titles(initial_results)
+    if not entities:
+        return []
+    
+    print("    🔬 Refinement pass: extracted entities: %s" % ", ".join(entities[:5]))
+    
+    refined = []
+    use_grounding = grounding.is_available()
+    
+    # Build 2-3 targeted queries from entities
+    queries = []
+    for entity in entities[:3]:
+        queries.append(entity if len(entity) > 6 else "%s %s" % (entity, topic_name))
+    
+    for q in queries:
+        results = []
+        if use_grounding:
+            results = grounding_search(q, category="news", limit=5)
+        if not results:
+            results = searxng_search(q, category="news", time_range=time_range)
+        results = filter_by_freshness(results, freshness)
+        for r in results:
+            if r["url"] not in seen_urls and r["url"] not in used_urls:
+                r["topic_slug"] = slug
+                r["topic_name"] = topic_name
+                r["search_query"] = q
+                refined.append(r)
+                seen_urls.add(r["url"])
+        time.sleep(0.3)
+    
+    if refined:
+        print("    🔬 Refinement: +%d results from entity queries" % len(refined))
+    return refined
 
 
 def search_topic(directive, used_urls):
@@ -431,6 +533,16 @@ def search_topic(directive, used_urls):
 
     # Post-filter
     all_results = _post_filter(all_results)
+
+    # Step 3: Entity refinement for seed/explore topics with thin results
+    tier = directive.get("tier", "")
+    if tier in ("explore", "seed") and len(all_results) < 8 and all_results:
+        refined = _entity_refinement_pass(all_results, slug, topic_name,
+                                          freshness, time_range, seen_urls, used_urls)
+        if refined:
+            all_results.extend(refined)
+            all_results = _post_filter(all_results)
+
     print("    ✅ %s: %d results after filtering" % (slug, len(all_results)))
     return all_results
 
