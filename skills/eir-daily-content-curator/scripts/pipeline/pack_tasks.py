@@ -38,15 +38,32 @@ WRITER_PROMPT_STANDALONE_PATH = SKILL_DIR / "references" / "writer-prompt-standa
 MIN_CONTENT_LEN = 500
 
 
-def _report_misses(slugs):
-    """Report missed topic slugs to POST /oc/curation/miss."""
-    if not slugs:
+def _report_misses(misses):
+    """Report missed topic slugs to POST /oc/curation/miss.
+    
+    Args:
+        misses: list of {slug, reason} dicts, or list of slug strings (legacy)
+    """
+    if not misses:
+        return
+    # Normalize to [{slug, reason}]
+    normalized = []
+    for m in misses:
+        if isinstance(m, str):
+            normalized.append({"slug": m, "reason": "no usable content"})
+        else:
+            normalized.append({"slug": m.get("slug", ""), "reason": m.get("reason", "no usable content")})
+    normalized = [m for m in normalized if m["slug"]]
+    if not normalized:
         return
     try:
         import urllib.request
         api_url = get_api_url()
         api_key = get_api_key()
-        payload = json.dumps({"slugs": slugs}).encode()
+        payload = json.dumps({
+            "slugs": [m["slug"] for m in normalized],
+            "details": normalized,
+        }).encode()
         req = urllib.request.Request(
             "%s/api/oc/curation/miss" % api_url,
             data=payload,
@@ -58,7 +75,8 @@ def _report_misses(slugs):
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read())
-        print("  📡 Reported %d missed topics: %s" % (len(slugs), ", ".join(slugs)))
+        slugs_str = ", ".join(m["slug"] for m in normalized)
+        print("  📡 Reported %d missed topics: %s" % (len(normalized), slugs_str))
     except Exception as e:
         print("  ⚠️ Failed to report misses: %s" % e)
 
@@ -419,23 +437,29 @@ def main():
 
     # Report missed topics to API (lowers their future priority)
     if not args.dry_run:
-        missed_slugs = []
-        # 1. Topics skipped at candidate_selector stage (no candidate generated)
+        misses = []
+        seen_slugs = set()
+        # 1. Topics skipped at candidate_selector stage (search results too low quality)
         candidates_data = load_json(CANDIDATES_FILE, {})
         for st in candidates_data.get("skipped_topics", []):
             slug = st.get("slug", "")
-            if slug and slug not in missed_slugs:
-                missed_slugs.append(slug)
+            if slug and slug not in seen_slugs:
+                misses.append({"slug": slug, "reason": st.get("reason", "skipped at selection")})
+                seen_slugs.add(slug)
         # 2. Candidates that failed crawl/freshness
         for c in candidate_list:
             topic = c.get("matched_topic_slug", "")
             if not topic:
                 continue
             if not c.get("has_content", False) or c.get("has_fresh_source") is not True:
-                if topic not in missed_slugs:
-                    missed_slugs.append(topic)
-        if missed_slugs:
-            _report_misses(missed_slugs)
+                if topic not in seen_slugs:
+                    reason = "no fresh source" if c.get("has_content") else "crawl failed"
+                    misses.append({"slug": topic, "reason": reason})
+                    seen_slugs.add(topic)
+        # 3. Topics skipped by event dedup
+        # (already printed during pack, not critical to report)
+        if misses:
+            _report_misses(misses)
 
     if packed > 0 and not args.dry_run:
         # Write manifest
