@@ -420,11 +420,17 @@ def main():
     # Report missed topics to API (lowers their future priority)
     if not args.dry_run:
         missed_slugs = []
+        # 1. Topics skipped at candidate_selector stage (no candidate generated)
+        candidates_data = load_json(CANDIDATES_FILE, {})
+        for st in candidates_data.get("skipped_topics", []):
+            slug = st.get("slug", "")
+            if slug and slug not in missed_slugs:
+                missed_slugs.append(slug)
+        # 2. Candidates that failed crawl/freshness
         for c in candidate_list:
             topic = c.get("matched_topic_slug", "")
             if not topic:
                 continue
-            # Topic missed if: no content, no fresh source, or no usable sources
             if not c.get("has_content", False) or c.get("has_fresh_source") is not True:
                 if topic not in missed_slugs:
                     missed_slugs.append(topic)
