@@ -1,6 +1,6 @@
 # Eir API Reference
 
-**Base URL**: `https://api.heyeir.com/api`
+**Base URL**: `https://api.heyeir.com/api` (override with `EIR_API_URL` environment variable)
 
 **Authentication**: `Authorization: Bearer <EIR_API_KEY>` for all `/oc/*` endpoints.
 

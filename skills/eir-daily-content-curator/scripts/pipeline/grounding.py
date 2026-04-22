@@ -1,12 +1,12 @@
 """
-External Search Grounding API client.
+External search API client.
 
-Wraps a configurable search grounding service that provides web search,
+Wraps a configurable search service that provides web search,
 news search, and URL browsing with inline content.
 
 Configuration (in settings.json under "search"):
-  grounding_base_url: API base URL (e.g. "https://api.example.com/v3")
-  grounding_api_key:  API key for authentication
+  search_base_url: API base URL (e.g. "https://api.example.com/v3")
+  search_api_key:  API key for authentication
 
 The API is expected to expose:
   POST {base}/search/web   — web search with inline content
@@ -31,8 +31,8 @@ def _get_grounding_config():
     if _settings_cache is None:
         _settings_cache = load_settings().get("search", {})
     return (
-        _settings_cache.get("grounding_base_url", "").rstrip("/"),
-        _settings_cache.get("grounding_api_key", ""),
+        _settings_cache.get("search_base_url", "").rstrip("/"),
+        _settings_cache.get("search_api_key", ""),
     )
 
 
@@ -45,7 +45,7 @@ def _post(endpoint, body, timeout=20):
     """POST JSON to grounding API endpoint, return parsed response."""
     base, key = _get_grounding_config()
     if not base or not key:
-        raise RuntimeError("Grounding API not configured (set grounding_base_url + grounding_api_key in settings.json)")
+        raise RuntimeError("Search API not configured (set search_base_url + search_api_key in settings.json)")
     url = "%s/%s" % (base, endpoint.lstrip("/"))
     data = json.dumps(body).encode()
     req = urllib.request.Request(url, data=data, headers={

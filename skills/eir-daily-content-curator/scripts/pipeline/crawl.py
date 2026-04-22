@@ -338,7 +338,7 @@ def main():
     # Load domain stats
     domain_stats = load_json(DOMAIN_STATS_FILE, {})
 
-    # Build cache of grounding search results (URL -> {full_content, publishedDate})
+    # Build cache of search API results (URL -> {full_content, publishedDate})
     # from latest search results, so crawl can skip already-fetched content
     _search_content_cache_local = {}
     latest_search = load_json(V9_DIR / "latest_search.json", {})
@@ -350,7 +350,7 @@ def main():
                 "publishedDate": r.get("publishedDate"),
             }
     if _search_content_cache_local:
-        print("  📦 %d URLs with grounding inline content" % len(_search_content_cache_local))
+        print("  📦 %d URLs with search inline content" % len(_search_content_cache_local))
     global _search_content_cache
     _search_content_cache = _search_content_cache_local
 
@@ -423,29 +423,29 @@ def main():
 
             print("  🔗 [%s] %s" % (slug, url[:70]))
 
-            # Check if grounding search already provided full_content for this URL
+            # Check if search API already provided full_content for this URL
             content = None
             raw_html = None
             crawl_method = None
             pub_date_from_search = None
 
-            # Look for pre-fetched content from grounding search results
+            # Look for pre-fetched content from search API results
             search_result = _search_content_cache.get(url)
             if search_result and len(search_result.get("full_content", "")) >= MIN_CONTENT_LEN:
                 content = search_result["full_content"][:MAX_CONTENT_LEN]
-                crawl_method = "grounding_inline"
+                crawl_method = "search_inline"
                 pub_date_from_search = search_result.get("publishedDate")
                 q_score = content_quality_score(content)
                 if q_score < 40 or is_error_page(content):
-                    print("    ⚠️ Grounding inline content low quality (%d), will crawl" % q_score)
+                    print("    ⚠️ Search inline content low quality (%d), will crawl" % q_score)
                     content = None
                     crawl_method = None
                 else:
-                    print("    📊 Grounding inline: %dc, quality %d/100" % (len(content), q_score))
+                    print("    📊 Search inline: %dc, quality %d/100" % (len(content), q_score))
 
-            # Try grounding browse API
+            # Try search browse API
             if not content and grounding.is_available():
-                print("    🔍 [grounding browse] %s" % url[:60])
+                print("    🔍 [search browse] %s" % url[:60])
                 browse_result = grounding.browse_url(url, max_length=50000)
                 if browse_result:
                     bc = browse_result.get("content", "")
@@ -453,11 +453,11 @@ def main():
                         q_score = content_quality_score(bc)
                         if q_score >= 40 and not is_error_page(bc):
                             content = bc[:MAX_CONTENT_LEN]
-                            crawl_method = "grounding_browse"
+                            crawl_method = "search_browse"
                             pub_date_from_search = browse_result.get("publishedDate") or pub_date_from_search
-                            print("    📊 Grounding browse: %dc, quality %d/100" % (len(content), q_score))
+                            print("    📊 Search browse: %dc, quality %d/100" % (len(content), q_score))
                         else:
-                            print("    ⚠️ Grounding browse low quality (%d)" % q_score)
+                            print("    ⚠️ Search browse low quality (%d)" % q_score)
 
             # Fallback: Try Crawl4AI
             if not content:
@@ -512,7 +512,7 @@ def main():
                 html_for_date = raw_html or ""
                 if not html_for_date:
                     html_for_date = fetch_html_head_only(url)
-                pub_date = pub_date_from_search  # prefer grounding date
+                pub_date = pub_date_from_search  # prefer search API date
                 if not pub_date:
                     pub_date = extract_publish_date(html_for_date, url) if html_for_date else None
                 if not pub_date:
