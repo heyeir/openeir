@@ -2,4 +2,5 @@ __pycache__/
 *.pyc
 data/
 config/eir.json
+config/settings.json
 .env*
