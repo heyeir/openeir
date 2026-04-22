@@ -23,7 +23,7 @@ Curates personalized content based on your interests. Supports two modes:
 ### Flow
 
 ```
-1. Extract interests    → scan conversations, save to config/interests.json
+1. Extract interests    → Scan conversations, save to config/interests.json
 2. Search              → Search API for each interest topic
 3. Select + Crawl      → LLM picks best candidates, fetches full content
 4. Generate            → LLM writes structured summaries
@@ -100,9 +100,9 @@ Content saved to `data/output/{date}/`. Daily brief compiles the top 3-5 items:
 Full curation with delivery to the [Eir](https://heyeir.com) app via a 3-job pipeline:
 
 ```
-Job A: material-prep     → search → select → crawl → pack tasks
-Job B: content-gen       → spawn subagents → generate → POST to Eir
-Job C: daily-brief       → check status → fill gaps → compile brief → POST + deliver
+Job A: material-prep     → Search → Select → Crawl → Pack tasks
+Job B: content-gen       → Spawn subagents → Generate → POST to Eir
+Job C: daily-brief       → Check status → Fill gaps → Compile brief → POST + Deliver
 ```
 
 **Setup:** `node scripts/connect.mjs <PAIRING_CODE>`, then set `"mode": "eir"`.

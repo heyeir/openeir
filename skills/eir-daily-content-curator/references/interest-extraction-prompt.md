@@ -4,7 +4,7 @@
 
 ## Your Job
 
-Analyze user conversations → extract genuine interests and context → update USER.md + submit to interest system.
+Analyze user conversations → Extract genuine interests and context → Update USER.md + submit to interest system.
 
 **You decide WHAT the user is interested in and WHO they are becoming.**
 
