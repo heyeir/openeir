@@ -45,7 +45,7 @@ Curates personalized content based on your interests. Supports two modes:
 
 Recommended providers: Brave Search API, Tavily API, or any compatible search service.
 
-> **Optional fallback services:** Add `searxng_url` and/or `crawl4ai_url` to the search config for fallback search/crawl. Neither is required.
+> **Want richer results?** If you don't have a search API key, or want broader coverage, install [SearXNG](https://docs.searxng.org/) and/or [Crawl4AI](https://github.com/unclecode/crawl4ai) locally. Add `searxng_url` and `crawl4ai_url` to your search config — they work as fallback or primary search/crawl providers.
 
 **2. Set up interests** — create `config/interests.json`:
 ```json
