@@ -1,12 +1,12 @@
 ---
 name: eir-daily-content-curator
-description: "Daily AI news curation — learns interests from conversations, searches RSS + web, delivers summaries. Use when: 'set up daily news', 'curate content for me', 'what should I read today', 'personalized news briefing'."
+description: "Daily AI news curation — learns interests from conversations, searches the web, delivers structured summaries and daily briefs. Use when: 'set up daily news', 'curate content for me', 'what should I read today', 'personalized news briefing', 'daily digest', 'news summary', 'content pipeline', 'interest tracking', 'automated content curation'."
 metadata:
   {
     "openclaw":
       {
         "emoji": "📰",
-        "requires": { "bins": ["python3", "curl"] },
+        "requires": { "bins": ["python3"] },
       },
   }
 ---
@@ -16,48 +16,42 @@ metadata:
 Curates personalized content based on your interests. Supports two modes:
 
 - **Standalone** — works locally, no external account needed
-- **Eir** — full AI-powered curation with heyeir.com delivery
-
----
+- **Eir** — full AI-powered curation with [heyeir.com](https://heyeir.com) delivery
 
 ## Standalone Mode
-
-A complete local curation pipeline. No Eir account required.
 
 ### Flow
 
 ```
 1. Extract interests    → scan conversations, save to config/interests.json
-2. Search              → Grounding API + RSS for each interest topic
+2. Search              → Search API for each interest topic
 3. Select + Crawl      → LLM picks best candidates, fetches full content
-4. Generate            → LLM writes structured summaries to data/output/
-5. Digest              → Compile daily digest from generated items
+4. Generate            → LLM writes structured summaries
+5. Daily Brief         → Compile brief from generated items
 ```
 
 ### Quick Start
 
-**Step 1: Configure search provider**
-
-Edit `config/settings.json`:
+**1. Configure search provider** — edit `config/settings.json`:
 ```json
 {
   "mode": "standalone",
   "search": {
-    "grounding_base_url": "https://api.your-provider.com/v3",
-    "grounding_api_key": "YOUR_KEY"
+    "search_base_url": "https://api.your-provider.com/v3",
+    "search_api_key": "YOUR_KEY"
   }
 }
 ```
 
-Recommended providers: Brave Search API, Tavily API, or any compatible grounding service.
+Recommended providers: Brave Search API, Tavily API, or any compatible search service.
 
-**Step 2: Set up interests**
+> **Optional fallback services:** Add `searxng_url` and/or `crawl4ai_url` to the search config for fallback search/crawl. Neither is required.
 
-Option A — Manual: create `config/interests.json`:
+**2. Set up interests** — create `config/interests.json`:
 ```json
 {
   "topics": [
-    {"label": "AI Agents", "keywords": ["autonomous agents", "tool use", "agent frameworks"]},
+    {"label": "AI Agents", "keywords": ["autonomous agents", "tool use"], "freshness": "7d"},
     {"label": "Prompt Engineering", "keywords": ["prompting", "chain-of-thought"]}
   ],
   "language": "en",
@@ -65,225 +59,82 @@ Option A — Manual: create `config/interests.json`:
 }
 ```
 
-Option B — Auto-extract from conversations (agent-driven):
-```
-Read references/interest-extraction-prompt.md, then scan recent conversations
-and write discovered topics to config/interests.json
-```
+Or auto-extract from conversations: read `references/interest-extraction-prompt.md`.
 
-**Step 3: Run the pipeline**
-
+**3. Run the pipeline:**
 ```bash
-# Full pipeline (agent-driven, recommended)
-# Agent reads this SKILL.md, runs each step in sequence
-
-# Or run individual steps:
+cd scripts
 python3 -m pipeline.search              # search for each topic
-python3 -m pipeline.candidate_selector  # prepare topics for judgment
+python3 -m pipeline.candidate_selector  # LLM picks candidates
 python3 -m pipeline.crawl               # fetch full content
 python3 -m pipeline.pack_tasks          # bundle into task files
-
-# Generate is agent-driven (LLM writes content from task files)
-# Digest is agent-driven (LLM compiles daily summary)
+# Generate + brief are agent-driven (LLM writes from task files)
 ```
 
-**Step 4: Schedule daily cron**
-
+**4. Schedule daily cron:**
 ```bash
 openclaw cron add --name "daily-curate" \
   --cron "0 8 * * *" --tz "Asia/Shanghai" \
   --session isolated \
-  --message "Run the standalone content curation pipeline from eir-daily-content-curator skill. Follow SKILL.md Standalone Mode steps: search → select → crawl → pack → generate → digest. Deliver the digest summary to me."
+  --message "Run eir-daily-content-curator: search → select → crawl → pack → generate → daily brief."
 ```
 
 ### Output
 
-Generated content is saved to `data/output/{date}/`:
-```
-data/output/2026-04-20/
-  meta-layoffs-ai.json          # individual content items
-  china-ai-regulation.json
-  digest.md                     # compiled daily digest
-```
+Content saved to `data/output/{date}/`. Daily brief compiles the top 3-5 items:
 
-Each item follows this format:
-```json
-{
-  "title": "...",
-  "summary": "2-3 sentences",
-  "body": "2-4 paragraphs with analysis",
-  "sources": [{"name": "...", "url": "...", "published": "..."}],
-  "topic": "AI Industry",
-  "generated_at": "2026-04-20T08:30:00Z"
-}
-```
-
-### Digest Format
-
-The daily digest is a markdown file combining all items:
 ```markdown
-# Daily Digest — 2026-04-20
+# Daily Brief — 2026-04-20
 
-## 🔴 Focus
-- **Meta cuts 8,000 jobs for AI pivot** — ...
-
-## 🟡 Interesting
-- **China bans AI companions for minors** — ...
-
-## 🌱 Seeds
-- **New prompt engineering benchmark** — ...
+🔥 **Meta cuts 8,000 jobs for AI pivot** — ...
+📡 **China bans AI companions for minors** — ...
+🌱 **New prompt engineering benchmark** — ...
 ```
 
 ---
 
 ## Eir Mode
 
-Full AI-powered curation with delivery to the Eir app (heyeir.com).
-
-### Flow
+Full curation with delivery to the [Eir](https://heyeir.com) app via a 3-job pipeline:
 
 ```
-1. Fetch directives    → GET /oc/curation (topics + search hints from API)
-2. Search              → Grounding API + SearXNG for each directive
-3. Select + Crawl      → LLM picks candidates, fetches full content
-4. Pack tasks          → Bundle into self-contained task files
-5. Generate + POST     → LLM writes content, POST to Eir Content API
+Job A: material-prep     → search → select → crawl → pack tasks
+Job B: content-gen       → spawn subagents → generate → POST to Eir
+Job C: daily-brief       → check status → fill gaps → compile brief → POST + deliver
 ```
 
-### Setup
+**Setup:** `node scripts/connect.mjs <PAIRING_CODE>`, then set `"mode": "eir"`.
 
-1. Connect Eir account: `node scripts/connect.mjs <PAIRING_CODE>`
-2. Configure `config/eir.json` with API credentials
-3. Set `"mode": "eir"` in `config/settings.json`
-
-### Architecture (2-Job Split)
-
-```
-Job A: eir-material-prep (07:00)
-  search → select → crawl → pack
-  Output: data/v9/tasks/{content_slug}.json
-
-Job B: eir-content-gen (07:45)
-  For each task → spawn subagent → generate → POST
-  Output: content posted to Eir API
-```
-
-### Cron Setup
-
-```bash
-# Material preparation
-openclaw cron add --name "eir-material-prep" \
-  --cron "0 7 * * *" --tz "Asia/Shanghai" \
-  --session isolated \
-  --message "Run eir-daily-content-curator material prep: search → select → crawl → pack tasks."
-
-# Content generation
-openclaw cron add --name "eir-content-gen" \
-  --cron "45 7 * * *" --tz "Asia/Shanghai" \
-  --session isolated \
-  --message "Run eir-daily-content-curator content generation: read task files, generate content, POST to API."
-```
-
-### Content Quality Rules
-
-- `dot.hook` ≤10 CJK chars / ≤6 EN words
-- `dot.category`: `focus` | `attention` | `seed` | `whisper`
-- `l1.bullets` 3-4 items, each ≤20 CJK chars
-- `sources` must have at least 1 entry
-- Never set any field to `null` — use `""` or `[]`
-- Only generate zh (no translation)
-
-See `references/content-spec.md` for full field constraints.
-See `references/writer-prompt-eir.md` for the generation prompt.
-
-### Validation
-
-```bash
-python3 -m pipeline.validate_content           # check all generated files
-python3 -m pipeline.validate_content --fix     # auto-fix common issues
-```
+For full Eir setup, cron configuration, content rules, and API details, see `references/eir-setup.md`.
 
 ---
 
-## Shared Components
+## Pipeline Modules
 
-Both modes use these pipeline modules:
+All in `scripts/pipeline/`:
 
 | Module | Purpose |
 |--------|---------|
-| `pipeline/search.py` | Search via Grounding API (Brave/Tavily), SearXNG fallback |
-| `pipeline/crawl.py` | Fetch full content via Grounding Browse, Crawl4AI fallback |
-| `pipeline/grounding.py` | Generic grounding API client (configurable baseURL + key) |
-| `pipeline/candidate_selector.py` | Group results by topic, prepare for LLM selection |
-| `pipeline/pack_tasks.py` | Bundle candidates into self-contained task files |
-| `pipeline/config.py` | Shared configuration and path resolution |
-| `pipeline/date_extractor.py` | Extract publish dates from HTML |
+| `search.py` | Search via configurable API, SearXNG fallback |
+| `crawl.py` | Fetch content via Browse API, Crawl4AI fallback |
+| `grounding.py` | Configurable search API client |
+| `candidate_selector.py` | Group results, prepare for LLM selection |
+| `pack_tasks.py` | Bundle candidates into task files |
+| `validate_content.py` | Validate generated content against spec |
+| `config.py` | Shared configuration and path resolution |
+| `eir_config.py` | Workspace and credential resolution |
 
 ### Search Fallback Chain
 
 ```
-Grounding API (primary) → SearXNG (fallback) → Crawl4AI/web_fetch (content)
+Search API (primary) → SearXNG (optional) → Crawl4AI/web_fetch (content)
 ```
 
-### Configuration
+### Dependencies
 
-`config/settings.json`:
-```json
-{
-  "mode": "standalone",
-  "search": {
-    "grounding_base_url": "https://api.your-provider.com/v3",
-    "grounding_api_key": "YOUR_KEY",
-    "searxng_url": "http://localhost:8888",
-    "crawl4ai_url": "http://localhost:11235"
-  },
-  "max_items_per_day": 8
-}
-```
+**Required:** Python 3.10+ (standard library only). Node.js 18+ for Eir connect script.
 
-- `grounding_base_url` + `grounding_api_key`: Primary search provider
-- `searxng_url`: Optional local SearXNG instance (fallback)
-- `crawl4ai_url`: Optional local Crawl4AI instance (fallback)
-
----
-
-## Interest Management
-
-### Standalone: Local Interest Extraction
-
-The agent extracts interests from recent conversations and saves to `config/interests.json`. See `references/interest-extraction-prompt.md` for extraction rules.
-
-```json
-{
-  "topics": [
-    {"label": "AI Agents", "keywords": ["autonomous agents", "tool use"], "freshness": "7d"},
-    {"label": "华为汽车", "keywords": ["鸿蒙智行", "问界"], "freshness": "3d"}
-  ],
-  "language": "zh",
-  "max_items_per_day": 8
-}
-```
-
-### Eir: API-Synced Interests
-
-Interests are managed via the Eir API (`GET /oc/curation` returns directives with search hints). See `references/eir-interest-rules.md` for tier guidelines.
-
----
-
-## RSS Sources
-
-Both modes can supplement search with RSS feeds. Configure in `config/sources.json`:
-
-```json
-{
-  "rss": [
-    {"name": "Techmeme", "url": "https://www.techmeme.com/feed.xml", "rating": "S", "lang": "en"},
-    {"name": "TechCrunch", "url": "https://techcrunch.com/feed/", "rating": "A", "lang": "en"}
-  ]
-}
-```
-
-Ratings: S (check every 4h), A (8h), B (24h).
+**Optional:** [SearXNG](https://docs.searxng.org/) (fallback search), [Crawl4AI](https://github.com/unclecode/crawl4ai) (fallback crawl).
 
 ---
 
@@ -291,12 +142,15 @@ Ratings: S (check every 4h), A (8h), B (24h).
 
 | File | Contents |
 |------|----------|
+| `references/eir-setup.md` | Eir mode setup, cron, API endpoints |
 | `references/content-spec.md` | Field types, limits, validation rules |
-| `references/eir-api.md` | Eir API endpoints and payloads |
-| `references/writer-prompt-eir.md` | Eir mode content generation prompt |
-| `references/writer-prompt-standalone.md` | Standalone mode generation prompt |
+| `references/eir-api.md` | Full Eir API reference |
+| `references/writer-prompt-eir.md` | Eir content generation prompt |
+| `references/writer-prompt-standalone.md` | Standalone generation prompt |
 | `references/eir-interest-rules.md` | Curation tier guidelines |
 | `references/interest-extraction-prompt.md` | Interest extraction from conversations |
+| `references/whisper-api.md` | Whisper extraction API |
+| `references/whisper-writer-prompt.md` | Whisper generation prompt |
 
 ---
 
@@ -304,10 +158,11 @@ Ratings: S (check every 4h), A (8h), B (24h).
 
 | Task | Command |
 |------|---------|
+| Setup workspace | `python3 scripts/setup.py --init --settings '{...}'` |
+| Check setup | `python3 scripts/setup.py --check` |
 | Search | `python3 -m pipeline.search` |
-| Search (single topic) | `python3 -m pipeline.search --topic ai-health` |
 | Select candidates | `python3 -m pipeline.candidate_selector` |
 | Crawl | `python3 -m pipeline.crawl` |
 | Pack tasks | `python3 -m pipeline.pack_tasks` |
 | Validate | `python3 -m pipeline.validate_content` |
-| Standalone curate (legacy) | `python3 scripts/standalone/curate.py` |
+| Connect Eir | `node scripts/connect.mjs <PAIRING_CODE>` |

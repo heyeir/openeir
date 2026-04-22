@@ -2,6 +2,15 @@
 
 > For OpenClaw skill to extract and create Whispers from conversations.
 
+## Contents
+
+- [Endpoint 1: List Conversations](#endpoint-1-list-conversations)
+- [Endpoint 2: Get Conversation Detail](#endpoint-2-get-conversation-detail)
+- [Endpoint 3: Create Whisper](#endpoint-3-create-whisper)
+- [Data Model](#data-model)
+- [Authentication](#authentication)
+- [Workflow](#workflow)
+
 ---
 
 ## Endpoint 1: List Conversations

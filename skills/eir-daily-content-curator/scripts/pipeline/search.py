@@ -124,12 +124,12 @@ def _detect_query_language(query):
 
 
 def _lang_to_region(lang):
-    """Map detected language to region code for grounding API."""
+    """Map detected language to region code for search API."""
     return "CN" if lang == "zh" else "US"
 
 
 def grounding_search(query, category="news", limit=MAX_RESULTS_PER_QUERY):
-    """Search via grounding API. Returns results in the same format as searxng_search.
+    """Search via search API. Returns results in the same format as searxng_search.
     
     category: 'news' uses news endpoint, anything else uses web endpoint.
     """
@@ -152,17 +152,17 @@ def grounding_search(query, category="news", limit=MAX_RESULTS_PER_QUERY):
                 "title": r.get("title", ""),
                 "snippet": r.get("snippet") or r.get("content", "")[:300],
                 "publishedDate": r.get("publishedDate"),
-                "engines": [r.get("source_api", "grounding")],
+                "engines": [r.get("source_api", "search")],
                 "score": 1.0,
                 "category": category,
-                "source_api": r.get("source_api", "grounding"),
+                "source_api": r.get("source_api", "search"),
                 "full_content": r.get("content", ""),
                 "thumbnail": r.get("thumbnail"),
                 "source_name": r.get("source_name", ""),
             })
         return results
     except Exception as e:
-        print("    ⚠️ Grounding %s search failed: %s" % (category, e))
+        print("    ⚠️ Search API %s failed: %s" % (category, e))
         return []
 
 def searxng_search(query, category="news", limit=MAX_RESULTS_PER_QUERY, time_range=None):
@@ -453,7 +453,7 @@ def _entity_refinement_pass(initial_results, slug, topic_name, freshness,
 
 
 def search_topic(directive, used_urls):
-    """Search for a single topic: grounding API first, SearXNG fallback."""
+    """Search for a single topic: search API first, SearXNG fallback."""
     slug = directive["slug"]
     topic_name = directive.get("label") or directive.get("topic", slug)
     freshness = directive.get("freshness", "7d")
@@ -470,16 +470,16 @@ def search_topic(directive, used_urls):
     time_range = FRESHNESS_TO_TIME_RANGE.get(freshness)
     use_grounding = grounding.is_available()
 
-    # Step 1: News search (all queries) — grounding first, SearXNG fallback
+    # Step 1: News search (all queries) — search API first, SearXNG fallback
     news_results = []
     for qinfo in queries:
         q = qinfo["q"]
         results = []
         if use_grounding:
-            print("    🔍 [grounding news] %s" % q[:60])
+            print("    🔍 [search news] %s" % q[:60])
             results = grounding_search(q, category="news", limit=MAX_RESULTS_PER_QUERY)
             if not results:
-                print("    ↩️ Grounding returned 0, trying web...")
+                print("    ↩️ Search API returned 0, trying web...")
                 results = grounding_search(q, category="general", limit=MAX_RESULTS_PER_QUERY)
         if not results:
             print("    🔍 [searxng news] %s" % q[:60])
@@ -516,7 +516,7 @@ def search_topic(directive, used_urls):
             q = qinfo["q"]
             results = []
             if use_grounding:
-                print("    🔍 [grounding web] %s" % q[:60])
+                print("    🔍 [search web] %s" % q[:60])
                 results = grounding_search(q, category="general", limit=MAX_RESULTS_PER_QUERY)
             if not results:
                 print("    🔍 [searxng general] %s" % q[:60])

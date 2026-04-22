@@ -1,8 +1,16 @@
 # Eir API Reference
 
-**Base URL**: `https://api.heyeir.com/api`
+**Base URL**: `https://api.heyeir.com/api` (override with `EIR_API_URL` environment variable)
 
 **Authentication**: `Authorization: Bearer <EIR_API_KEY>` for all `/oc/*` endpoints.
+
+## Contents
+
+- [Connection](#connection) — Register/disconnect/rotate keys
+- [Interests](#interests) — Manage user interests
+- [Curation](#curation) — Fetch directives, report misses
+- [Content](#content) — Push/read/delete content items
+- [Conversations & Whispers](#conversations--whispers) — Whisper extraction
 
 ---
 

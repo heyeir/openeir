@@ -7,15 +7,12 @@
   "user_md_path": "",
 
   "search": {
-    "grounding_base_url": "https://api.example-grounding.com/v3",
-    "grounding_api_key": "YOUR_API_KEY_HERE",
+    "search_base_url": "",
+    "search_api_key": "",
     "providers": ["tavily", "brave"],
     "searxng_url": "http://localhost:8888",
-    "crawl4ai_url": "http://localhost:11235",
-    "search_gateway_url": null
+    "crawl4ai_url": "http://localhost:11235"
   },
-
-  "rss_sources": "config/sources.json",
 
   "cron": {
     "schedule": "0 8 * * *",
