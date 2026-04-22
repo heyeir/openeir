@@ -19,16 +19,16 @@ Then set `"mode": "eir"` in `config/settings.json`.
 
 ```
 Job A: material-prep
-  search → select → crawl → pack
+  Search → Select → Crawl → Pack
   Output: data/v9/tasks/{content_slug}.json
 
 Job B: content-gen (runs after Job A)
-  For each task → spawn subagent → generate → validate → POST
+  For each task → Spawn subagent → Generate → Validate → POST
   Output: content posted to Eir Content API
 
 Job C: daily-brief (runs after Job B completes)
-  Check execution status → complete missing tasks →
-  compile brief → POST to Eir Brief API → deliver summary
+  Check execution status → Complete missing tasks →
+  Compile brief → POST to Eir Brief API → Deliver summary
 ```
 
 ## Cron Setup
