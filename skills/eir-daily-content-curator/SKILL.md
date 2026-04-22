@@ -61,7 +61,7 @@ Recommended providers: Brave Search API, Tavily API, or any compatible search se
 
 Or auto-extract from conversations: read `references/interest-extraction-prompt.md`.
 
-**3. Run the pipeline:**
+**3. Run the pipeline** (from the `scripts/` directory):
 ```bash
 cd scripts
 python3 -m pipeline.search              # search for each topic
@@ -70,6 +70,8 @@ python3 -m pipeline.crawl               # fetch full content
 python3 -m pipeline.pack_tasks          # bundle into task files
 # Generate + brief are agent-driven (LLM writes from task files)
 ```
+
+> All `python3 -m pipeline.*` commands must be run from the `scripts/` directory.
 
 **4. Schedule daily cron:**
 ```bash
