@@ -4,6 +4,14 @@
 
 **Authentication**: `Authorization: Bearer <EIR_API_KEY>` for all `/oc/*` endpoints.
 
+## Contents
+
+- [Connection](#connection) — Register/disconnect/rotate keys
+- [Interests](#interests) — Manage user interests
+- [Curation](#curation) — Fetch directives, report misses
+- [Content](#content) — Push/read/delete content items
+- [Conversations & Whispers](#conversations--whispers) — Whisper extraction
+
 ---
 
 ## Connection

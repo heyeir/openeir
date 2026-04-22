@@ -3,6 +3,17 @@
 > Single source of truth for all content field constraints and quality criteria.
 > Used by: writer prompts, API validation, front-end rendering.
 
+## Contents
+
+- [Field Reference](#field-reference) — dot, l1, l2, sources fields
+- [via vs sources](#via-vs-sources) — Attribution handling
+- [lang field](#lang-field) — Language requirements
+- [Whisper-specific overrides](#whisper-specific-overrides)
+- [Null handling](#null-handling)
+- [Validation summary](#validation-summary)
+- [Content vs Whisper: ID format](#content-vs-whisper-id-format)
+- [Interest Signals](#interest-signals)
+
 ---
 
 ## Field Reference
