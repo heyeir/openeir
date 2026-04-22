@@ -56,7 +56,7 @@ If you prefer to configure everything yourself:
 {
   "mode": "standalone",
   "search": {
-    "search_base_url": "https://api.your-provider.com/v3",
+    "search_base_url": "YOUR_BASE_URL",
     "search_api_key": "YOUR_KEY"
   }
 }
