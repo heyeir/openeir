@@ -94,6 +94,14 @@ Interests → Search → Select + Crawl → Generate → Daily Brief
 4. **Generate** — Writes structured summaries from source material
 5. **Daily Brief** — Compiles top items into an opinionated briefing personalized to you
 
+## Security & Data Flow
+
+This skill makes outbound network requests to:
+- **Your search API** (Brave/Tavily) — search queries only
+- **heyeir.com** (Eir mode only, opt-in) — generated summaries, not raw conversations
+
+No data leaves your machine in standalone mode unless you configure a search provider. Credentials stored locally in `config/eir.json` (gitignored).
+
 ## Documentation
 
 | File | Contents |

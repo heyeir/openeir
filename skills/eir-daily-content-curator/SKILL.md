@@ -156,6 +156,22 @@ Search API (primary) → SearXNG (optional) → Crawl4AI/web_fetch (content)
 
 ---
 
+## Security & Data Flow
+
+This skill makes outbound network requests to:
+
+- **Your configured search API** (e.g. Brave, Tavily) — sends search queries based on your interest topics
+- **heyeir.com API** (Eir mode only, opt-in) — sends generated content summaries and interest signals
+
+What is **NOT** sent externally:
+- Raw conversation transcripts
+- Environment variables or system credentials
+- Any data in standalone mode (unless you configure a search API)
+
+Credentials are stored locally in `config/eir.json` (gitignored). No data leaves your machine without explicit mode configuration.
+
+---
+
 ## Quick Reference
 
 | Task | Command |

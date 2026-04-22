@@ -11,8 +11,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const CONFIG_DIR = path.join(__dirname, '..', 'config')
 const CONFIG_PATH = path.join(CONFIG_DIR, 'eir.json')
 
-// Default to production API if not set
-const BASE_URL = process.env.EIR_API_URL || 'https://api.heyeir.com'
+// Read API URL from config/settings.json or fall back to production
+function resolveBaseUrl() {
+  const settingsPath = path.join(CONFIG_DIR, 'settings.json')
+  try {
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
+    if (settings?.eir?.api_url) return settings.eir.api_url
+  } catch { /* no settings file, use default */ }
+  return 'https://api.heyeir.com'
+}
+const BASE_URL = resolveBaseUrl()
 
 // Ensure config directory exists
 try {
