@@ -16,7 +16,7 @@ metadata:
 Curates personalized content based on your interests. Supports two modes:
 
 - **Standalone** — works locally, no external account needed
-- **Eir** — full AI-powered curation with [heyeir.com](https://heyeir.com) delivery
+- **Eir** — full AI-powered curation with [heyeir.com](https://www.heyeir.com) delivery
 
 ## Standalone Mode
 
@@ -37,7 +37,7 @@ Curates personalized content based on your interests. Supports two modes:
 {
   "mode": "standalone",
   "search": {
-    "search_base_url": "https://api.your-provider.com/v3",
+    "search_base_url": "YOUR_BASE_URL",
     "search_api_key": "YOUR_KEY"
   }
 }
@@ -97,7 +97,7 @@ Content saved to `data/output/{date}/`. Daily brief compiles the top 3-5 items:
 
 ## Eir Mode
 
-Full curation with delivery to the [Eir](https://heyeir.com) app via a 3-job pipeline:
+Full curation with delivery to the [Eir](https://www.heyeir.com) app via a 3-job pipeline:
 
 ```
 Job A: material-prep     → Search → Select → Crawl → Pack tasks
