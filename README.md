@@ -11,14 +11,14 @@ Built as an [OpenClaw](https://github.com/openclaw/openclaw) skill. Part of the 
 ```markdown
 # Daily Brief — Apr 22
 
-🔥 Anthropic 发布 Claude 4.5 — 多模态推理能力大幅提升，首次支持实时视频理解。
-   对 Eir 的启示：内容理解从文本扩展到视频，curation pipeline 需要新的输入通道。
+🔥 Anthropic launches Claude 4.5 — Major leap in multimodal reasoning, first to support real-time video understanding.
+   Why it matters: Content understanding expands from text to video. Curation pipelines need new input channels.
 
-📡 欧盟 AI Act 执行细则落地 — 高风险系统必须在 6 个月内完成合规审计。
-   值得关注：开源模型的合规路径仍不明确，可能影响 agent 生态。
+📡 EU AI Act enforcement rules finalized — High-risk systems must complete compliance audits within 6 months.
+   Worth watching: Compliance path for open-source models remains unclear, could reshape the agent ecosystem.
 
-🌱 Cursor 推出 Background Agents — 在云端沙盒里自动完成开发任务。
-   Builder's lens：Agent-as-a-service 从 chat 走向 async task，和 Eir 的方向一致。
+🌱 Cursor ships Background Agents — Cloud-sandboxed agents that complete dev tasks asynchronously.
+   Builder's lens: Agent-as-a-service is moving from chat to async tasks — aligned with where Eir is heading.
 ```
 
 Each item is personalized to your interests, with context on *why it matters to you*.
