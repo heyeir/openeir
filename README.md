@@ -68,7 +68,7 @@ See [SKILL.md](skills/eir-daily-content-curator/SKILL.md) for full setup instruc
 
 **Search providers:** [Brave Search API](https://brave.com/search/api/), [Tavily](https://tavily.com/), or any compatible service.
 
-**Optional fallbacks:** Run a local [SearXNG](https://github.com/searxng/searxng) for search redundancy or [Crawl4AI](https://github.com/unclecode/crawl4ai) for content fetching. Neither is required.
+**Want richer results?** If you don't have a search API key, or want broader coverage, install [SearXNG](https://github.com/searxng/searxng) and/or [Crawl4AI](https://github.com/unclecode/crawl4ai) locally. They work as fallback or primary search/crawl providers.
 
 ## Eir mode (optional)
 
