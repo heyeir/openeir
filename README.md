@@ -1,47 +1,55 @@
 # OpenEir 📰
 
-> AI reads the internet so you can think about what matters.
+> Your AI agent already knows what you care about. OpenEir turns that into a daily briefing.
 
-Learns your interests from conversations. Searches the web daily. Delivers a briefing that respects your time.
+No manual topic setup. No feed subscriptions. No algorithm gaming for clicks. Your agent reads the internet, picks what matters to *you*, and explains why.
 
 Built as an [OpenClaw](https://github.com/openclaw/openclaw) skill. Part of the [Eir](https://www.heyeir.com) ecosystem.
 
-## Why
+## What it looks like
 
-You're drowning in information. Twitter is chaos. Google News doesn't know you.
+```markdown
+# Daily Brief — Apr 22
 
-OpenEir learns what you actually care about from your conversations, searches for the latest on those topics, and delivers a daily briefing with only the things worth your attention.
+🔥 Anthropic 发布 Claude 4.5 — 多模态推理能力大幅提升，首次支持实时视频理解。
+   对 Eir 的启示：内容理解从文本扩展到视频，curation pipeline 需要新的输入通道。
 
-No algorithms optimizing for clicks. No infinite scroll. Just signal.
+📡 欧盟 AI Act 执行细则落地 — 高风险系统必须在 6 个月内完成合规审计。
+   值得关注：开源模型的合规路径仍不明确，可能影响 agent 生态。
+
+🌱 Cursor 推出 Background Agents — 在云端沙盒里自动完成开发任务。
+   Builder's lens：Agent-as-a-service 从 chat 走向 async task，和 Eir 的方向一致。
+```
+
+Each item is personalized to your interests, with context on *why it matters to you*.
 
 ## What you get
 
 - 🎯 **Interest-aware** — Learns what you care about from conversations, not clicks or likes
 - 🔍 **Smart curation** — Configurable search API with fallback chain, semantic dedup, relevance scoring
 - 📋 **Daily Brief** — Opinionated summary of the day's most important signals
+- 🔓 **Zero lock-in** — Works standalone with any search API. No account required.
 - 🌐 **Multilingual** — Read in your language, sourced from the world
-- ✨ **[Eir](https://www.heyeir.com)** — Optional. Adds a visual reading canvas, interest visualization, Whisper journaling, and content history
+- ✨ **[Eir mode](https://www.heyeir.com)** — Optional. Adds a visual reading canvas, interest visualization, Whisper journaling, and content history
 
 ## Quick Start
 
 ```bash
 # Install via ClawHub
 clawhub install eir-daily-content-curator
-
-# Or clone directly
-git clone https://github.com/heyeir/openeir.git
-# Skill is at skills/eir-daily-content-curator/
 ```
 
-Then tell your agent: *"Set up daily news for me"*
+Then tell your agent:
 
-See [SKILL.md](skills/eir-daily-content-curator/SKILL.md) for full setup instructions.
+> *"Set up daily news for me"*
 
-## Configuration
+The agent will walk you through configuration — which search provider to use, what topics you care about, and when to deliver your briefing. That's it.
 
-### Standalone mode (default)
+### Manual setup
 
-Edit `config/settings.json` with your search provider:
+If you prefer to configure everything yourself:
+
+1. Edit `config/settings.json` with your search provider:
 ```json
 {
   "mode": "standalone",
@@ -52,11 +60,20 @@ Edit `config/settings.json` with your search provider:
 }
 ```
 
-Recommended: Brave Search API, Tavily API, or any compatible search service.
+2. Create `config/interests.json` or let the agent extract interests from your conversations.
 
-### Eir mode (optional)
+3. Run the pipeline or set up a daily cron.
 
-Connect to Eir for interest tracking, content delivery, and daily briefs:
+See [SKILL.md](skills/eir-daily-content-curator/SKILL.md) for full setup instructions.
+
+**Search providers:** [Brave Search API](https://brave.com/search/api/), [Tavily](https://tavily.com/), or any compatible service.
+
+**Optional fallbacks:** Run a local [SearXNG](https://github.com/searxng/searxng) for search redundancy or [Crawl4AI](https://github.com/unclecode/crawl4ai) for content fetching. Neither is required.
+
+## Eir mode (optional)
+
+Connect to [Eir](https://www.heyeir.com) for interest tracking, a visual reading canvas, and content delivery:
+
 ```bash
 node skills/eir-daily-content-curator/scripts/connect.mjs <PAIRING_CODE>
 ```
@@ -69,11 +86,11 @@ See [references/eir-setup.md](skills/eir-daily-content-curator/references/eir-se
 Interests → Search → Select + Crawl → Generate → Daily Brief
 ```
 
-1. **Interest Extraction** — Scans conversations, builds topic list
-2. **Search** — Queries search API for each topic (with SearXNG/Crawl4AI fallbacks)
-3. **Select + Crawl** — LLM picks best candidates, fetches full content
+1. **Interest Extraction** — Scans conversations, builds a topic list automatically
+2. **Search** — Queries search API for each topic (with optional SearXNG fallback)
+3. **Select + Crawl** — LLM picks the best candidates, fetches full content
 4. **Generate** — Writes structured summaries from source material
-5. **Daily Brief** — Compiles top items into an opinionated briefing
+5. **Daily Brief** — Compiles top items into an opinionated briefing personalized to you
 
 ## Documentation
 
@@ -103,7 +120,7 @@ clawhub publish ./skills/eir-daily-content-curator \
   --slug eir-daily-content-curator \
   --name "Daily Content Curator" \
   --version 1.0.0 \
-  --changelog "Initial release: dual-mode curation (standalone + Eir), 3-job pipeline, configurable search API, daily brief generation"
+  --changelog "Initial release: dual-mode curation (standalone + Eir), configurable search API, daily brief generation"
 
 # Subsequent updates
 clawhub publish ./skills/eir-daily-content-curator \
