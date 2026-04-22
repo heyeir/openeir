@@ -30,7 +30,9 @@ Each item is personalized to your interests, with context on *why it matters to 
 - 📋 **Daily Brief** — Opinionated summary of the day's most important signals
 - 🔓 **Zero lock-in** — Works standalone with any search API. No account required.
 - 🌐 **Multilingual** — Read in your language, sourced from the world
-- ✨ **[Eir mode](https://www.heyeir.com)** — Optional. Adds a visual reading canvas, interest visualization, Whisper journaling, and content history
+- ✨ **[Eir mode](https://www.heyeir.com)** — Optional but recommended. Adds a visual reading canvas, interest visualization, Whisper journaling, and content history
+<img width="1607" height="963" alt="image" src="https://github.com/user-attachments/assets/55ad726e-0b24-4bab-ab85-68a479263090" />
+
 
 ## Quick Start
 
