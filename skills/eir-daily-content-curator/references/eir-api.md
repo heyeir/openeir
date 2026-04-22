@@ -10,7 +10,6 @@
 - [Interests](#interests) — Manage user interests
 - [Curation](#curation) — Fetch directives, report misses
 - [Content](#content) — Push/read/delete content items, daily briefs
-- [Conversations & Whispers](#conversations--whispers) — Whisper extraction
 
 ---
 
@@ -193,41 +192,3 @@ Push a daily brief (compiled summary of the day's content).
 **Response:** `{ "ok": true }`
 
 **When to call:** After content generation is complete, typically from the daily-brief cron job.
-
----
-
-## Conversations & Whispers
-
-### GET /oc/conversations
-List conversations.
-
-**Query:** `?limit=20&whisper_candidates=true&since=2026-04-01T00:00:00Z`
-
-### GET /oc/conversations/:id
-Get full conversation.
-
-### POST /oc/whispers
-Create a whisper.
-
-**Request:**
-```json
-{
-  "dot": { "hook": "≤50 chars" },
-  "l1": {
-    "title": "Core tension",
-    "summary": "80-120 words",
-    "participants": "user+eir",
-    "via": ["OpenClaw"]
-  },
-  "l2": {
-    "content": "300-600 words",
-    "tension": "X vs Y",
-    "unresolved": "Open question",
-    "thinking_path": ["node1", "node2"],
-    "eir_role": "challenger|extender|mirror|catalyst",
-    "related_topics": ["topic-slug"]
-  },
-  "conversationId": "conv_abc123",
-  "source": "openclaw"
-}
-```
