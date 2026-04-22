@@ -51,15 +51,16 @@ The agent will walk you through configuration — which search provider to use, 
 
 If you prefer to configure everything yourself:
 
-1. Edit `config/settings.json` with your search provider:
-```json
-{
+1. Initialize workspace:
+```bash
+python3 scripts/setup.py --init --settings '{
   "mode": "standalone",
   "search": {
-    "search_base_url": "YOUR_BASE_URL",
+    "search_base_url": "https://api.search.brave.com/res/v1",
     "search_api_key": "YOUR_KEY"
   }
-}
+}'
+```
 ```
 
 2. Create `config/interests.json` or let the agent extract interests from your conversations.
