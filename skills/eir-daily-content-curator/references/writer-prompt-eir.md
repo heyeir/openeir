@@ -80,14 +80,14 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
 7. **NEVER fabricate or adjust `publishTime`**. Use the exact date from the source metadata. If ALL sources are outside the API's 3-day freshness window, do NOT generate content - report the issue and stop. Do NOT fake dates to bypass validation.
 8. **`key_quote`**: must be a **string** (not an object). Pick the most insightful direct quote from the sources, or `""` if none.
 9. **`eir_take`** is **PUBLIC** (visible on share pages). It should feel like a sharp comment from a friend who deeply understands the reader's work and perspective. Not generic punditry.
-10. **`eir_take`** must be specific, opinionated, and demonstrate genuine understanding of the material. Bad: "这是一个值得全社会关注的问题。" Bad: "AI不是在偷走工作,而是在重新定义..." (cliché). Good: a concrete take that shows you saw something others missed.
+10. **`eir_take`** must be specific, opinionated, and demonstrate genuine understanding of the material. Bad: "This is an issue that deserves society's attention." Bad: "AI isn't stealing jobs, it's redefining..." (cliché). Good: a concrete take that shows you saw something others missed.
 
 ### Content Style
 11. Tone: "a smart friend you trust" - not a news anchor, not an encyclopedia.
 12. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly". Apply equivalent rules for non-English output.
 13. Source attribution goes in `sources[]`, NEVER inline in prose as `[Source: XX]`.
 14. `l2.content`: Start where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
-15. `l2.context`: This is the **personal relevance** section. It must feel like advice from someone who knows the reader's actual work, not a generic "if you're in this industry..." statement. Reference the reader's specific context (provided in `reader_context` below) to make it land. Wrong: "如果你正在构建AI产品,这值得关注。" Right: Connect this news to something concrete in the reader's daily work, a decision they're facing, or a belief they hold.
+15. `l2.context`: This is the **personal relevance** section. It must feel like advice from someone who knows the reader's actual work, not a generic "if you're in this industry..." statement. Reference the reader's specific context (provided in `reader_context` below) to make it land. Wrong: "If you're building AI products, this is worth watching." Right: Connect this news to something concrete in the reader's daily work, a decision they're facing, or a belief they hold.
 16. Be opinionated and curated - this is NOT a news summary, it's a knowledge signal.
 
 ### Depth Scaling
