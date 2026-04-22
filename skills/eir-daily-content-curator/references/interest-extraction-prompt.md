@@ -4,7 +4,7 @@
 
 ## Your Job
 
-Analyze user conversations → Extract genuine interests and context → Update USER.md + submit to interest system.
+Analyze user activity → Extract genuine interests and context → Update USER.md + submit to interest system.
 
 **You decide WHAT the user is interested in and WHO they are becoming.**
 
@@ -44,8 +44,8 @@ Read the content workspace `USER.md` — this is the reader profile that content
 
 Also read main agent's `USER.md` (workspace/USER.md) for richer context about work style, communication preferences, and API notes — but **don't copy those sections** into the content USER.md.
 
-### 2. Analyze conversations
-Read recent session transcripts (~48h) across **all agents** (main, creative, dev, work, content).
+### 2. Analyze recent activity
+Review the user's recent interactions and work context.
 
 Look for:
 - **Interest signals** — curiosity, depth, repeated engagement with a topic

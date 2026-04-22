@@ -58,7 +58,7 @@ openclaw cron add --name "eir-daily-brief" \
 ## Content Quality Rules
 
 - `dot.hook` ≤10 CJK chars / ≤6 EN words
-- `dot.category`: `focus` | `attention` | `seed` | `whisper`
+- `dot.category`: `focus` | `attention` | `seed`
 - `l1.bullets` 3-4 items, each ≤20 CJK chars
 - `sources` must have at least 1 entry
 - Never set any field to `null` — use `""` or `[]`

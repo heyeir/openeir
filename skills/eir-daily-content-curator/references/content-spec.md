@@ -8,10 +8,9 @@
 - [Field Reference](#field-reference) — dot, l1, l2, sources fields
 - [via vs sources](#via-vs-sources) — Attribution handling
 - [lang field](#lang-field) — Language requirements
-- [Whisper-specific overrides](#whisper-specific-overrides)
 - [Null handling](#null-handling)
 - [Validation summary](#validation-summary)
-- [Content vs Whisper: ID format](#content-vs-whisper-id-format)
+- [Content ID format](#content-id-format)
 - [Interest Signals](#interest-signals)
 
 ---
@@ -23,7 +22,7 @@
 | Field | Type | Recommended | Hard Limit | Notes |
 |-------|------|-------------|------------|-------|
 | `hook` | string | ≤10 CJK chars / ≤6 EN words | **100 chars** (API rejects) | Creates curiosity gap. No hype words ("Breaking", "Exciting"). Rendered as single-line label on the dot. |
-| `category` | enum | — | `focus` \| `attention` \| `seed` \| `whisper` | Determines dot visual style. Whispers always use `whisper`. |
+| `category` | enum | — | `focus` \| `attention` \| `seed` | Determines dot visual style. |
 
 ### l1 (card — what the user sees first)
 
@@ -102,23 +101,6 @@
 
 ---
 
-## Whisper-specific overrides
-
-Whispers share the same dot/l1/l2 structure but with different field semantics:
-
-| Field | Whisper value | Notes |
-|-------|--------------|-------|
-| `dot.category` | Always `"whisper"` | Server overrides to whisper |
-| `dot.hook` | ≤10 CJK chars / ≤6 EN words | Same as content recommended limit |
-| `l1.participants` | `"user+eir"` | Server defaults if omitted |
-| `l1.via` | `["OpenClaw"]` | Server defaults if omitted |
-| `l2.tension` | Required | "X vs Y" format |
-| `l2.unresolved` | Required | Open question from conversation |
-| `l2.thinking_path` | Required, 3-5 items | Nodes of reasoning progression |
-| `l2.eir_role` | Required | `"challenger"` \| `"extender"` \| `"mirror"` \| `"catalyst"` |
-
----
-
 ## Null handling
 
 **Never set any field to `null`.** The front-end renders null as literal "placeholder" text.
@@ -160,7 +142,7 @@ Whispers share the same dot/l1/l2 structure but with different field semantics:
 
 ---
 
-## Content vs Whisper: ID format
+## Content ID format
 
 Both use the same ID scheme:
 

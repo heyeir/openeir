@@ -2,7 +2,11 @@
 
 ## Credential Storage
 
-All credentials are stored locally in `config/eir.json` (gitignored). No secrets are hardcoded or read from environment variables.
+All credentials are stored locally in config files (gitignored). No secrets are hardcoded or read from environment variables.
+
+Required credentials (stored in `config/eir.json` and `config/settings.json`):
+- `apiKey` — Eir API key (Eir mode only)
+- `search_api_key` — Search provider API key
 
 | File | Contains | Committed |
 |------|----------|-----------|
@@ -24,7 +28,7 @@ All standalone flows, plus:
 - **Inbound**: Curation directives ← `api.heyeir.com`
 
 ### What is NOT sent externally
-- Raw conversation transcripts
+- Local files or conversation history
 - System credentials or environment variables
 - Local file paths or machine identifiers
 - Any data without explicit mode configuration

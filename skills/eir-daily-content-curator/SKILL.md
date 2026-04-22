@@ -1,6 +1,6 @@
 ---
 name: eir-daily-content-curator
-description: "Daily AI news curation — learns interests from conversations, searches the web, delivers structured summaries and daily briefs. Use when: 'set up daily news', 'curate content for me', 'what should I read today', 'personalized news briefing', 'daily digest', 'news summary', 'content pipeline', 'interest tracking', 'automated content curation'."
+description: "Daily AI news curation — learns interests from your profile, searches the web, delivers structured summaries and daily briefs. Use when: 'set up daily news', 'curate content for me', 'what should I read today', 'personalized news briefing', 'daily digest', 'news summary', 'content pipeline', 'interest tracking', 'automated content curation'."
 metadata:
   {
     "openclaw":
@@ -23,7 +23,7 @@ Curates personalized content based on your interests. Supports two modes:
 ### Flow
 
 ```
-1. Extract interests    → Scan conversations, save to config/interests.json
+1. Extract interests    → Define topics in config/interests.json or via Eir API
 2. Search              → Search API for each interest topic
 3. Select + Crawl      → LLM picks best candidates, fetches full content
 4. Generate            → LLM writes structured summaries
@@ -59,7 +59,7 @@ Recommended providers: Brave Search API, Tavily API, or any compatible search se
 }
 ```
 
-Or auto-extract from conversations: read `references/interest-extraction-prompt.md`.
+Interests can also be auto-extracted from conversations — see `references/interest-extraction-prompt.md`.
 
 **3. Run the pipeline** (from the `scripts/` directory):
 ```bash
@@ -151,8 +151,6 @@ Search API (primary) → SearXNG (optional) → Crawl4AI/web_fetch (content)
 | `references/writer-prompt-standalone.md` | Standalone generation prompt |
 | `references/eir-interest-rules.md` | Curation tier guidelines |
 | `references/interest-extraction-prompt.md` | Interest extraction from conversations |
-| `references/whisper-api.md` | Whisper extraction API |
-| `references/whisper-writer-prompt.md` | Whisper generation prompt |
 
 ---
 
@@ -164,7 +162,7 @@ This skill makes outbound network requests to:
 - **heyeir.com API** (Eir mode only, opt-in) — sends generated content summaries and interest signals
 
 What is **NOT** sent externally:
-- Raw conversation transcripts
+- Local files or conversation history
 - Environment variables or system credentials
 - Any data in standalone mode (unless you configure a search API)
 
