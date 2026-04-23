@@ -268,7 +268,7 @@ def _find_duplicate_event(content_slug, title, topic, recent_events):
     """Check if this candidate covers an event already in recent_events.
     Returns the slug of the duplicate, or None.
     Only compares within same topic (different topics = different events)."""
-    THRESHOLD = 0.35  # tuned: catches 'ai-drug-discovery-*' variants
+    THRESHOLD = 0.30  # lowered: catches 'claude-design-*' variants (0.33 was slipping through at 0.35)
     for ev in recent_events:
         if ev.get("topic") != topic:
             continue

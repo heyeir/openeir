@@ -281,12 +281,20 @@ def get_posted_topic_slugs():
 
 def get_recent_posted_events(days=3):
     """Return list of {slug, title, topic} for posts in the last `days` days.
-    Used for event-level semantic dedup."""
-    import glob
+    Used for event-level semantic dedup.
+    
+    Sources (union, deduplicated by slug):
+    1. run_state.json posted_ids (today's run)
+    2. generated/ directory files by mtime (cross-day coverage)
+    """
     from datetime import timedelta
+    import os
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff_ts = cutoff.timestamp()
+    seen_slugs = set()
     events = []
     
+    # 1. From run_state posted_ids
     state = load_state()
     for p in state.get("posted_ids", []):
         at_str = p.get("at", "")
@@ -298,16 +306,49 @@ def get_recent_posted_events(days=3):
                 continue
         except (ValueError, TypeError):
             continue
-        events.append({
-            "slug": p.get("slug", ""),
-            "topic": p.get("topic", ""),
-            "title": "",  # run_state doesn't have title, will enrich below
-        })
+        slug = p.get("slug", "")
+        if slug and slug not in seen_slugs:
+            seen_slugs.add(slug)
+            events.append({
+                "slug": slug,
+                "topic": p.get("topic", ""),
+                "title": "",
+            })
     
-    # Enrich with titles from posted/ and generated/ directories
-    posted_dir = V9_DIR / "posted"
+    # 2. Scan generated/ directory — covers cross-day events that
+    #    run_state.json loses on daily reset.
     generated_dir = V9_DIR / "generated"
+    if generated_dir.exists():
+        for f in generated_dir.iterdir():
+            if not f.name.endswith(".json"):
+                continue
+            try:
+                if f.stat().st_mtime < cutoff_ts:
+                    continue
+            except OSError:
+                continue
+            # Extract content_slug from filename (strip _zh/_en suffix)
+            stem = f.stem  # e.g. "claude-design-vs-figma-generative-ui_zh"
+            content_slug = stem.rsplit("_", 1)[0] if "_" in stem else stem
+            if content_slug in seen_slugs:
+                continue
+            seen_slugs.add(content_slug)
+            # Try to read topic + title from file
+            topic = ""
+            title = ""
+            try:
+                data = load_json(f, {})
+                topic = data.get("topicSlug", "") or data.get("topic_slug", "")
+                title = data.get("l1", {}).get("title", "")
+            except Exception:
+                pass
+            events.append({"slug": content_slug, "topic": topic, "title": title})
+    
+    # 3. Enrich titles for run_state entries that lack them
+    posted_dir = V9_DIR / "posted"
     for ev in events:
+        if ev["title"]:
+            continue
         slug = ev["slug"]
         for d in [posted_dir, generated_dir]:
             path = d / ("%s_zh.json" % slug)

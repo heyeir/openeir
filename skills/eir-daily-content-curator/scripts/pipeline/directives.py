@@ -39,15 +39,49 @@ def load_local_interests():
 
 
 def load_directives():
-    """Load directives - local resolution only.
+    """Load directives with staleness check.
 
     Resolution order:
-      1. Cached directives.json (from previous fetch)
-      2. Local interests.json (standalone mode)
+      1. Cached directives.json — if < 24h old, use directly
+      2. Fresh fetch from API (with interests fallback)
+      3. Stale cache (if fetch fails)
+      4. Local interests.json (standalone mode)
     """
-    if DIRECTIVES_FILE.exists():
-        print("  Using cached directives.json")
-        return load_json(DIRECTIVES_FILE)
+    import os
+    from datetime import datetime, timezone
+
+    stale_threshold = 24 * 3600  # 24 hours in seconds
+    cache_exists = DIRECTIVES_FILE.exists()
+    is_stale = True
+
+    if cache_exists:
+        try:
+            age = datetime.now(timezone.utc).timestamp() - os.path.getmtime(DIRECTIVES_FILE)
+            is_stale = age > stale_threshold
+        except OSError:
+            pass
+
+    if cache_exists and not is_stale:
+        data = load_json(DIRECTIVES_FILE)
+        n = len(data.get("directives", []))
+        print("  Using cached directives.json (%d topics)" % n)
+        return data
+
+    # Cache is stale or missing — try fresh fetch
+    if is_stale:
+        try:
+            from .eir_sync import fetch_directives
+            data = fetch_directives()
+            return data
+        except Exception as e:
+            print("  ⚠️  Failed to refresh directives: %s" % e)
+            # Fall through to stale cache
+
+    if cache_exists:
+        data = load_json(DIRECTIVES_FILE)
+        n = len(data.get("directives", []))
+        print("  ⚠️  Using STALE directives.json (%d topics, >24h old)" % n)
+        return data
 
     # Fallback: local interests (standalone mode)
     local = load_local_interests()
