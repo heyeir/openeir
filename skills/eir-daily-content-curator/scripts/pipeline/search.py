@@ -23,86 +23,22 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from .config import (
-    SEARXNG_URL, DIRECTIVES_FILE, PUSHED_TITLES_FILE, USED_SOURCE_URLS_FILE,
+    SEARXNG_URL, PUSHED_TITLES_FILE, USED_SOURCE_URLS_FILE,
     RAW_RESULTS_DIR, V9_DIR, FRESHNESS_DAYS, FRESHNESS_TO_TIME_RANGE,
     NEWS_MIN_RESULTS, MAX_RESULTS_PER_QUERY,
-    ensure_dirs, load_json, get_api_url, get_api_key,
+    ensure_dirs, load_json,
 )
+from .directives import load_directives
 from . import grounding
 
 
-def load_local_interests():
-    """Load interests from local config/interests.json (standalone mode).
-    Converts to directive format for pipeline compatibility."""
-    from .config import CONFIG_DIR
-    interests_file = CONFIG_DIR / "interests.json"
-    if not interests_file.exists():
-        return None
-    try:
-        data = json.loads(interests_file.read_text())
-        topics = data.get("topics", [])
-        if not topics:
-            return None
-        directives = []
-        for t in topics:
-            directives.append({
-                "slug": t.get("label", "").lower().replace(" ", "-"),
-                "label": t.get("label", ""),
-                "topic": t.get("label", ""),
-                "description": ", ".join(t.get("keywords", [])),
-                "keywords": t.get("keywords", []),
-                "freshness": t.get("freshness", "7d"),
-                "tier": "focus",
-                "searchHints": t.get("search_hints", []),
-            })
-        return {"directives": directives, "tracked": []}
-    except Exception:
-        return None
+# Directive loading functions moved to directives.py
 
 
-def fetch_directives_from_api():
-    """Fetch fresh directives from Eir API."""
-    api_key = get_api_key()
-    req = urllib.request.Request(
-        "%s/api/oc/curation" % get_api_url(),
-        headers={"Authorization": "Bearer %s" % api_key},
-    )
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        data = json.loads(resp.read())
-    data["_fetched_at"] = datetime.now(timezone.utc).isoformat()
-    DIRECTIVES_FILE.parent.mkdir(parents=True, exist_ok=True)
-    DIRECTIVES_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False))
-    return data
+# API directive fetching moved to eir_sync.py
 
 
-def load_directives():
-    """Load directives.
-
-    Resolution order:
-      1. Eir API (if configured)
-      2. Cached directives.json
-      3. Local interests.json (standalone mode)
-    """
-    try:
-        data = fetch_directives_from_api()
-        n = len(data.get("directives", [])) + len(data.get("tracked", []))
-        print("  ✅ Fetched %d directives from API" % n)
-        return data
-    except Exception as e:
-        print("  ⚠️ API fetch failed: %s" % e, file=sys.stderr)
-
-    if DIRECTIVES_FILE.exists():
-        print("  Using cached directives.json")
-        return load_json(DIRECTIVES_FILE)
-
-    # Fallback: local interests (standalone mode)
-    local = load_local_interests()
-    if local:
-        n = len(local.get("directives", []))
-        print("  ✅ Loaded %d topics from local interests.json" % n)
-        return local
-
-    raise RuntimeError("No directives available. Create config/interests.json or configure Eir API.")
+# Directive loading moved to directives.py
 
 
 def load_used_urls():

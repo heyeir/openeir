@@ -7,9 +7,9 @@ import os
 import sys
 from pathlib import Path
 
-from .eir_config import (
+from .workspace import (
     WORKSPACE, CONFIG_DIR, DATA_DIR, SKILL_DIR,
-    load_config, get_api_url, get_api_key, load_settings,
+    load_settings,
 )
 
 # Pipeline data directories

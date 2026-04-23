@@ -79,6 +79,21 @@ Base URL defaults to `https://api.heyeir.com/api`. Override with `EIR_API_URL` e
 
 See `eir-api.md` for full API reference.
 
+## Interest Management
+
+Eir provides a visual dashboard for viewing and managing your interests at heyeir.com.
+
+**Optional sync:** If you have local interests in `config/interests.json`, you can optionally sync them to Eir via the API:
+
+```bash
+cd scripts
+python3 -m pipeline.eir_sync fetch  # Fetch directives from Eir
+```
+
+This is **entirely optional** — local interests work perfectly without syncing. The skill does NOT auto-upload interests.
+
+**Note:** Interest extraction (from USER.md) is a separate, manual process. See `references/interest-extraction-prompt.md` for details.
+
 ## Validation
 
 ```bash

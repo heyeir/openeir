@@ -28,9 +28,10 @@ from urllib.parse import urlparse
 
 from .config import (
     CANDIDATES_FILE, SNIPPETS_DIR, V9_DIR, DIRECTIVES_FILE,
-    ensure_dirs, load_json, get_api_url, get_api_key,
+    ensure_dirs, load_json,
 )
-from .eir_config import SKILL_DIR
+from .workspace import SKILL_DIR
+from .directives import load_directives as load_directives_from_file
 
 TASKS_DIR = V9_DIR / "tasks"
 WRITER_PROMPT_PATH = SKILL_DIR / "references" / "writer-prompt-eir.md"
@@ -38,47 +39,7 @@ WRITER_PROMPT_STANDALONE_PATH = SKILL_DIR / "references" / "writer-prompt-standa
 MIN_CONTENT_LEN = 500
 
 
-def _report_misses(misses):
-    """Report missed topic slugs to POST /oc/curation/miss.
-    
-    Args:
-        misses: list of {slug, reason} dicts, or list of slug strings (legacy)
-    """
-    if not misses:
-        return
-    # Normalize to [{slug, reason}]
-    normalized = []
-    for m in misses:
-        if isinstance(m, str):
-            normalized.append({"slug": m, "reason": "no usable content"})
-        else:
-            normalized.append({"slug": m.get("slug", ""), "reason": m.get("reason", "no usable content")})
-    normalized = [m for m in normalized if m["slug"]]
-    if not normalized:
-        return
-    try:
-        import urllib.request
-        api_url = get_api_url()
-        api_key = get_api_key()
-        payload = json.dumps({
-            "slugs": [m["slug"] for m in normalized],
-            "details": normalized,
-        }).encode()
-        req = urllib.request.Request(
-            "%s/api/oc/curation/miss" % api_url,
-            data=payload,
-            headers={
-                "Authorization": "Bearer %s" % api_key,
-                "Content-Type": "application/json",
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read())
-        slugs_str = ", ".join(m["slug"] for m in normalized)
-        print("  📡 Reported %d missed topics: %s" % (len(normalized), slugs_str))
-    except Exception as e:
-        print("  ⚠️ Failed to report misses: %s" % e)
+# _report_misses moved to eir_sync.py
 
 
 def extract_article_body(text, max_len=4000):
@@ -194,16 +155,20 @@ def _get_user_md_path():
 
 
 def _load_reader_context():
-    """Load reader context from USER.md.
+    """Load reader context from USER.md if personalization is enabled.
     
     USER.md contains the user's profile, interests, and current focus.
     Used to personalize l2.context and eir_take.
     """
+    from .workspace import load_settings
+    settings = load_settings()
+    if not settings.get("personalization", {}).get("enabled", False):
+        return ""  # Personalization disabled
+    
     p = _get_user_md_path()
     if p.exists():
         return p.read_text().strip()
     return ""
-    return "Generate content for Eir. Output JSON only."
 
 
 def sanitize_slug(slug):
@@ -338,7 +303,7 @@ def main():
         sys.exit(1)
 
     # Load directives
-    directives_data = load_json(DIRECTIVES_FILE, {})
+    directives_data = load_directives_from_file()
     all_directives = directives_data.get("directives", []) + directives_data.get("tracked", [])
     directives_map = {d["slug"]: d for d in all_directives}
 
@@ -458,8 +423,13 @@ def main():
                     seen_slugs.add(topic)
         # 3. Topics skipped by event dedup
         # (already printed during pack, not critical to report)
+        # Report missed topics via eir_sync (if Eir mode enabled)
         if misses:
-            _report_misses(misses)
+            try:
+                from .eir_sync import report_misses
+                report_misses(misses)
+            except Exception:
+                print("  ℹ️ Miss reporting disabled (standalone mode or API unavailable)")
 
     if packed > 0 and not args.dry_run:
         # Write manifest

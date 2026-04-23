@@ -10,6 +10,11 @@ Read the task file. It contains:
 - `suggested_angle` — the specific angle to cover
 - `sources` — array of source materials with title, url, content/snippet
 - `language` — output language (e.g. "zh" or "en")
+- `reader_context` — (optional) user profile for personalization. May be empty.
+
+### Personalization
+- If `reader_context` is provided: use it to make the `connect` field specific to the reader's context.
+- If `reader_context` is empty (default): write `connect` for a general tech-savvy audience.
 
 ## Output
 

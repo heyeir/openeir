@@ -9,7 +9,11 @@ You will receive:
 - `topic_slug` — the directive topic this content belongs to (used as `topicSlug` and `interests.anchor`)
 - `angle`, `reason` — the editorial angle
 - `output_lang` — the language to write in (`"zh"` or `"en"`)
-- `reader_context` — the user's profile from USER.md (role, interests, perspective). Use this to personalize `l2.context` and `eir_take`.
+- `reader_context` — the user's profile from USER.md (role, interests, perspective). **May be empty** if personalization is disabled.
+
+### Personalization rules
+- If `reader_context` is **provided**: Use it to personalize `l2.context` and `eir_take`. Reference the reader's specific work, decisions, or perspective.
+- If `reader_context` is **empty or absent**: Write for a general tech-savvy audience. `l2.context` should focus on industry-wide implications. `eir_take` should be Eir's editorial perspective without personal references.
 - Source material — crawled article content with URLs, titles, and text
 
 ## Output
@@ -87,7 +91,7 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
 12. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly". Apply equivalent rules for non-English output.
 13. Source attribution goes in `sources[]`, NEVER inline in prose as `[Source: XX]`.
 14. `l2.content`: Start where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
-15. `l2.context`: This is the **personal relevance** section. It must feel like advice from someone who knows the reader's actual work, not a generic "if you're in this industry..." statement. Reference the reader's specific context (provided in `reader_context` below) to make it land. Wrong: "If you're building AI products, this is worth watching." Right: Connect this news to something concrete in the reader's daily work, a decision they're facing, or a belief they hold.
+15. `l2.context`: This is the **personal relevance** section. If `reader_context` is provided, it must feel like advice from someone who knows the reader's actual work — connect this news to something concrete in the reader's daily work, a decision they're facing, or a belief they hold. If `reader_context` is empty, write for a general tech-savvy audience — focus on industry-wide implications, practical takeaways, and what this means for practitioners.
 16. Be opinionated and curated - this is NOT a news summary, it's a knowledge signal.
 
 ### Depth Scaling

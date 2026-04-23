@@ -1,115 +1,78 @@
 # Interest Extraction Prompt
 
-> Used by main agent's interest-sync cron to update the reader profile and interest system.
+> Local reference for extracting interests from USER.md profile.
+> Used manually or by agent to set up initial topics.
+> **Not part of the automated pipeline.**
+
+## Privacy Note
+
+Interest extraction produces **de-identified topic labels only** (e.g., "AI agents", "smart driving"). No personal data, profile content, or identifying information is stored or transmitted. All output is local to `config/interests.json`.
+
+---
 
 ## Your Job
 
-Analyze user activity → Extract genuine interests and context → Update USER.md + submit to interest system.
+Analyze the USER.md reader profile → Extract genuine interests → Output to local config.
 
-**You decide WHAT the user is interested in and WHO they are becoming.**
+**Check first:** Does the user already have interest/profile skills installed? If yes, consider using those instead of duplicating functionality.
 
-## Core Principle: Infer Interests from Behavior
+---
 
-The user's work reveals what they want to READ about — not what they're building.
+## Core Principle: Infer Interests from Profile
 
-Ask: *"Someone doing this work — what public content would they find valuable?"*
+The USER.md profile reveals what content the user would find valuable.
+
+Ask: *"Someone with this profile — what public content would they want to read?"*
 
 ### Examples
 
-| User is doing... | Interest to extract |
-|-------------------|---------------------|
-| Building a RAG pipeline | AI retrieval systems, vector databases |
-| Debugging CSS grid layout | ❌ Not an interest (just a task) |
-| Researching MCP protocol excitedly | MCP Protocol, AI agent infrastructure |
-| Complaining about Vercel cold starts | ❌ Not an interest (complaint, not curiosity) |
-| Asking deep questions about embeddings | Embedding models, semantic search |
-| Discussing interior design for new home | Interior design, spatial design |
+| Profile mentions... | Interest to extract |
+|---------------------|---------------------|
+| "Building a RAG pipeline" | AI retrieval systems, vector databases |
+| "Researching MCP protocol" | MCP Protocol, AI agent infrastructure |
+| "Asking deep questions about embeddings" | Embedding models, semantic search |
+| "Discussing interior design for new home" | Interior design, spatial design |
 
 ### What IS an interest
 - Topics they ask deep questions about
-- Domains they spend time researching (not just using)
-- Areas where they express curiosity, excitement, or strong opinions
+- Domains they spend time researching
+- Areas where they express curiosity or strong opinions
 - Subjects they want to stay updated on
 
 ### What is NOT an interest
 - Tools they use mechanically (git, npm, etc.)
 - One-off debugging tasks
 - Complaints without curiosity
-- Things already well-known to them (no new content needed)
+- Things already well-known to them
+
+---
 
 ## Extraction Steps
 
 ### 1. Read USER.md
-Read the content workspace `USER.md` — this is the reader profile that content generation reads. It lives at the path specified in the cron prompt.
 
-Also read main agent's `USER.md` (workspace/USER.md) for richer context about work style, communication preferences, and API notes — but **don't copy those sections** into the content USER.md.
+Read the workspace USER.md (content agent's reader profile). This file contains:
+- Role & context
+- Current focus areas
+- Explicit interests
+- Perspective and preferences
 
-### 2. Analyze recent activity
-Review the user's recent interactions and work context.
+**Do not** read other agent USER.md files or analyze conversation history — only read the current workspace USER.md.
 
-Look for:
-- **Interest signals** — curiosity, depth, repeated engagement with a topic
-- **Context signals** — role changes, new projects, new tools adopted
-- **Focus shifts** — what's consuming attention this week vs last month
-- **Perspective signals** — strong opinions, frameworks, mental models expressed
+### 2. Generalize to searchable topics
 
-### 3. Generalize to searchable topics
-Private contexts → universal, publicly-searchable labels.
+Profile specifics → universal, publicly-searchable labels.
 
 | ❌ Too specific | ✅ Good label |
 |-----------------|---------------|
 | "Meta UTIS paper" | Recommendation Systems |
-| "Our Cosmos DB migration" | Database Architecture |
-| "Debugging our RAG pipeline" | AI Retrieval & RAG |
+| "Cosmos DB migration" | Database Architecture |
+| "Debugging RAG pipeline" | AI Retrieval & RAG |
 
-### 4. Update USER.md
+### 3. Output to config/interests.json
 
-The content USER.md has this structure:
+Write to `config/interests.json` in the skill directory:
 
-```markdown
-# USER.md — Reader Profile
-
-- **Name:** ...
-- **Timezone:** ...
-- **Languages:** zh (primary), en (native-level reading)
-
-## Role & Context
-- [What they do, what they're building]
-- [Current org/team context]
-
-### Current Focus (YYYY-MM)
-- [What's consuming attention right now — update monthly]
-
-## Interests
-- [Active interests — topics they want content about]
-
-## Perspective
-- [How they think, what they value, what makes content land for them]
-```
-
-**Update rules:**
-- **Current Focus** — replace items that are done/stale, add new ones. Date the section header (YYYY-MM)
-- **Interests** — target 8-15 items. Add new ones, **demote stale ones** (no signal in 30+ days → remove to make room)
-- **Role & Context** — only update on significant changes (new product, role shift)
-- **Perspective** — only update when conversations reveal a new mental model or value shift
-- **Keep it concise** — total file should stay under ~50 lines
-- **Merge similar items** — don't let lists bloat with near-duplicates
-- **Don't over-infer** — only add things with clear signal from conversations
-
-### 5. Submit interests to system
-
-**Eir mode** — POST to API:
-```
-POST {EIR_API_URL}/oc/interests/add
-Authorization: Bearer {EIR_API_KEY}
-
-{
-  "labels": ["AI Retrieval & RAG", "Embedding Models"],
-  "lang": "en"
-}
-```
-
-**Standalone mode** — update `config/interests.json`:
 ```json
 {
   "topics": [
@@ -121,13 +84,25 @@ Authorization: Bearer {EIR_API_KEY}
 }
 ```
 
+**Output rules:**
+- 8-15 topics maximum
+- Each topic: `label` (human-readable), `keywords` (search terms), `freshness` (how recent the content should be)
+- De-identified labels only — no personal details
+- Local storage only — no external transmission
+
+---
+
 ## Rules
 
-1. **Quality over quantity** — 1-3 genuine new interests per sync, not 10 vague ones
+1. **Quality over quantity** — target 8-15 genuine interests, not 30 vague ones
 2. **Content-value test** — every label must match quality external content
-3. **Don't duplicate** — check USER.md interests first
-4. **Broad enough to be useful** — "AI" is too broad, "GPT-4o mini tokenizer bug" is too narrow
-5. **Respect user privacy** — generalize private details into public topics
-6. **USER.md is the source of truth** — content generation reads this to personalize output
-7. **Demote stale interests** — if an interest has no signal in 30+ days, remove it to keep the list fresh
-8. **Bilingual labels OK** — use the language that matches the best public content for that topic
+3. **Broad enough to be useful** — "AI" is too broad, "specific bug fix" is too narrow
+4. **Respect privacy** — generalize private details into public topics
+5. **De-identified only** — topic labels should not contain personal identifiers
+6. **Local output** — all results go to config/interests.json, nowhere else
+
+---
+
+## Eir Mode Note
+
+If using Eir mode, the app provides a visual dashboard for interest management. You can optionally sync local interests via the Eir API — entirely manual and optional. The skill does NOT auto-upload interests. See `references/eir-setup.md` for details.

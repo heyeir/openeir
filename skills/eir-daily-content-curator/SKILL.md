@@ -39,6 +39,7 @@ Curates personalized content based on your interests. Supports two modes:
 python3 scripts/setup.py --init --settings '{
   "mode": "standalone",
   "language": "en",
+  "personalization": {"enabled": false},
   "search": {
     "search_base_url": "https://api.search.brave.com/res/v1",
     "search_api_key": "YOUR_BRAVE_API_KEY"
@@ -74,14 +75,14 @@ cd scripts
 python3 -m pipeline.search              # Search for each topic
 python3 -m pipeline.candidate_selector  # Group results for agent selection
 python3 -m pipeline.crawl               # Fetch full content
-python3 -m pipeline.pack_tasks          # Bundle into task files
+python3 -m pipeline.task_builder        # Bundle into task files
 ```
 
 > All `python3 -m pipeline.*` commands must be run from the `scripts/` directory.
 
 **4. Generate content** (agent-driven):
 
-After `pack_tasks`, task files are in `data/v9/tasks/`. Tell your OpenClaw agent:
+After `task_builder`, task files are in `data/v9/tasks/`. Tell your OpenClaw agent:
 
 ```
 Read the task files in data/v9/tasks/ and generate content for each one.
@@ -89,12 +90,12 @@ Use the writer prompt in references/writer-prompt-standalone.md.
 Save output to data/output/{YYYY-MM-DD}/.
 ```
 
-Or schedule the full pipeline as a cron job:
+**Scheduling tip:** If you want automated daily runs, you can set up a cron job:
 ```bash
 openclaw cron add --name "daily-curate" \
   --cron "0 8 * * *" --tz "Asia/Shanghai" \
   --session isolated \
-  --message "Read SKILL.md for eir-daily-content-curator, then run the full standalone pipeline: search → select → crawl → pack → generate content from task files → compile daily brief."
+  --message "Read SKILL.md for eir-daily-content-curator, then run the full standalone pipeline: search → select → crawl → task_builder → generate content from task files → compile daily brief."
 ```
 
 ### Output
@@ -135,22 +136,31 @@ Job C: daily-brief       → Check status → Fill gaps → Compile brief → PO
 
 For full Eir setup, cron configuration, content rules, and API details, see `references/eir-setup.md`.
 
+### Privacy Notice
+
+When Eir mode is enabled, generated content summaries are POSTed to heyeir.com. See SECURITY.md for details on what IS and IS NOT sent.
+
 ---
 
 ## Pipeline Modules
 
 All in `scripts/pipeline/`:
 
-| Module | Purpose |
-|--------|---------|
-| `search.py` | Search via configurable API, SearXNG fallback |
-| `crawl.py` | Fetch content via Browse API, Crawl4AI fallback |
-| `grounding.py` | Configurable search API client |
-| `candidate_selector.py` | Group results, prepare for agent selection |
-| `pack_tasks.py` | Bundle candidates into task files |
-| `validate_content.py` | Validate generated content against spec |
-| `config.py` | Shared configuration and path resolution |
-| `eir_config.py` | Workspace and credential resolution |
+| Module | Purpose | Mode |
+|--------|---------|------|
+| `search.py` | Search via configurable API, SearXNG fallback | Both |
+| `crawl.py` | Fetch content via Browse API, Crawl4AI fallback | Both |
+| `grounding.py` | Configurable search API client | Both |
+| `candidate_selector.py` | Group results, prepare for agent selection | Both |
+| `task_builder.py` | Bundle candidates into task files | Both |
+| `generate.py` | Build prompts for content generation | Both |
+| `validate_content.py` | Validate generated content against spec | Both |
+| `directives.py` | Load local interests/directives | Both |
+| `config.py` | Shared configuration and path resolution | Both |
+| `workspace.py` | Workspace and credential resolution | Both |
+| `eir_sync.py` | Fetch directives from Eir API | Eir only |
+| `eir_post.py` | POST content to Eir API | Eir only |
+| `run_state.py` | Pipeline run state management | Both |
 
 ### Search Fallback Chain
 
@@ -178,17 +188,11 @@ Search API (primary) → SearXNG (optional) → Crawl4AI/web_fetch (content)
 
 ## Security & Data Flow
 
-This skill makes outbound network requests to:
+**Standalone mode:** Only sends search queries to your configured search API and HTTP requests to crawl source URLs. No other external communication.
 
-- **Your configured search API** (e.g. Brave, Tavily) — sends search queries based on your interest topics
-- **heyeir.com API** (Eir mode only, opt-in) — sends generated content summaries and interest signals
+**Eir mode (opt-in):** Additionally sends generated content summaries to heyeir.com. USER.md is never transmitted — it's used locally as LLM context only when personalization is enabled.
 
-What is **NOT** sent externally:
-- Local files or conversation history
-- Environment variables or system credentials
-- Any data in standalone mode (unless you configure a search API)
-
-Credentials are stored locally in `config/eir.json` (gitignored). See `SECURITY.md` for full details.
+**Personalization** is off by default. Enable it in `config/settings.json` to get content tailored to your profile. See `SECURITY.md` for the full data flow table.
 
 ---
 
@@ -201,6 +205,7 @@ Credentials are stored locally in `config/eir.json` (gitignored). See `SECURITY.
 | Search | `cd scripts && python3 -m pipeline.search` |
 | Select candidates | `cd scripts && python3 -m pipeline.candidate_selector` |
 | Crawl | `cd scripts && python3 -m pipeline.crawl` |
-| Pack tasks | `cd scripts && python3 -m pipeline.pack_tasks` |
+| Build tasks | `cd scripts && python3 -m pipeline.task_builder` |
 | Validate | `cd scripts && python3 -m pipeline.validate_content` |
+| Fetch directives (Eir) | `cd scripts && python3 -m pipeline.eir_sync fetch` |
 | Connect Eir | `node scripts/connect.mjs <PAIRING_CODE>` |

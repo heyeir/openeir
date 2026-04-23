@@ -1,5 +1,7 @@
 # Eir Interest Rules
 
+> **Eir Mode Only** — This document describes curation behavior when connected to the Eir API.
+
 Curation guidelines for the content curator agent.
 
 ## Your Job
