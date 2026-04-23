@@ -323,26 +323,30 @@ def get_recent_posted_events(days=3):
 
 
 def get_posted_content_slugs():
-    """Get content slugs already posted (all-time from pushed_titles).
+    """Get content slugs already posted (read directly from posted files).
     Dedup by content_slug (not topic_slug) — same topic with different
     angle/event is allowed; only identical content is blocked."""
     slugs = set()
     
-    # 1. Today's run_state
+    # Read directly from posted directory (most reliable source)
+    posted_dir = V9_DIR / "posted"
+    if posted_dir.exists():
+        for f in posted_dir.glob("*.json"):
+            try:
+                # Extract content_slug from filename (strip _zh/_en suffix)
+                filename = f.stem  # e.g., "mcp-security-flaws-enterprise-rush_en"
+                content_slug = filename.rsplit("_", 1)[0] if "_" in filename else filename
+                slugs.add(content_slug)
+            except:
+                pass
+    
+    # Also check run_state for today's in-progress posts
     state = load_state()
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     if state.get("run_id") == today:
         for p in state.get("posted_ids", []):
             if p.get("slug"):
                 slugs.add(p["slug"])
-    
-    # 2. Historical from pushed_titles.json
-    pushed = load_json(PUSHED_TITLES_FILE, [])
-    if isinstance(pushed, list):
-        for p in pushed:
-            s = p.get("slug")
-            if s and s != "":
-                slugs.add(s)
     
     return slugs
 
