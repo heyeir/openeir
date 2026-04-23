@@ -15,20 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const CONFIG_DIR = path.join(__dirname, '..', 'config')
 const CONFIG_PATH = path.join(CONFIG_DIR, 'eir.json')
 
-// --- Phase 1: Local config read (no network) ---
-
-/**
- * Resolve API base URL from local settings file.
- * Only reads config/settings.json for the eir.api_url field.
- */
-function resolveBaseUrl() {
-  const settingsPath = path.join(CONFIG_DIR, 'settings.json')
-  try {
-    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
-    if (settings?.eir?.api_url) return settings.eir.api_url
-  } catch { /* no settings file, use default */ }
-  return 'https://api.heyeir.com'
-}
+const API_BASE = 'https://api.heyeir.com/api'
 
 /**
  * Ensure config directory exists for saving credentials.
@@ -46,8 +33,8 @@ function ensureConfigDir() {
 /**
  * Exchange pairing code with Eir API. Returns { apiKey, userId }.
  */
-async function exchangePairingCode(apiBase, code) {
-  const res = await fetch(`${apiBase}/oc/connect`, {
+async function exchangePairingCode(code) {
+  const res = await fetch(`${API_BASE}/oc/connect`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code: code.replace('-', '').toUpperCase() }),
@@ -67,9 +54,9 @@ async function exchangePairingCode(apiBase, code) {
 /**
  * Save API credentials to config/eir.json.
  */
-function saveConfig(baseUrl, data) {
+function saveConfig(data) {
   const config = {
-    apiUrl: baseUrl + '/api',
+    apiUrl: API_BASE,
     apiKey: data.apiKey,
     userId: data.userId,
     connectedAt: new Date().toISOString(),
@@ -88,11 +75,10 @@ if (!code) {
 }
 
 try {
-  const baseUrl = resolveBaseUrl()
   ensureConfigDir()
 
-  const data = await exchangePairingCode(baseUrl + '/api', code)
-  saveConfig(baseUrl, data)
+  const data = await exchangePairingCode(code)
+  saveConfig(data)
 
   console.log(`✓ Connected to Eir`)
   console.log(`  User ID: ${data.userId}`)
