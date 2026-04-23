@@ -2,13 +2,10 @@
 name: eir-daily-content-curator
 description: "Daily AI news curation — learns interests from your profile, searches the web, delivers structured summaries and daily briefs. Use when: 'set up daily news', 'curate content for me', 'what should I read today', 'personalized news briefing', 'daily digest', 'news summary', 'content pipeline', 'interest tracking', 'automated content curation'."
 metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "📰",
-        "requires": { "bins": ["python3"] },
-      },
-  }
+  openclaw:
+    emoji: "📰"
+    requires:
+      bins: ["python3"]
 ---
 
 # Daily Content Curator
