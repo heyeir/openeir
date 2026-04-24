@@ -33,6 +33,7 @@ Curates personalized content based on your interests. Supports two modes:
 
 **1. Initialize workspace** — creates `config/` directory and default settings:
 ```bash
+# Option A: inline JSON
 python3 scripts/setup.py --init --settings '{
   "mode": "standalone",
   "language": "en",
@@ -42,6 +43,10 @@ python3 scripts/setup.py --init --settings '{
     "search_api_key": "YOUR_BRAVE_API_KEY"
   }
 }'
+
+# Option B: settings file (recommended for PowerShell/Windows)
+python3 scripts/setup.py --init --settings-file path/to/settings.json
+```
 ```
 
 Search provider examples:
@@ -66,16 +71,30 @@ Search provider examples:
 
 Interests can also be auto-extracted — see `references/interest-extraction-prompt.md`.
 
+**Freshness and tier:** Each topic supports optional `freshness` (e.g. `"3d"`, `"7d"`, `"14d"`) and `tier` (`"focus"`, `"tracked"`, `"explore"`, `"seed"`) fields in `interests.json`. In Eir mode, these come from the API directives. In standalone mode, defaults are `"7d"` and `"tracked"`. The search pipeline uses tier to decide search depth (focus/tracked get entity refinement) and freshness to filter stale results.
+
 **3. Run the search + crawl pipeline** (from the `scripts/` directory):
 ```bash
 cd scripts
 python3 -m pipeline.search              # Search for each topic
 python3 -m pipeline.candidate_selector  # Group results for agent selection
+# ↓ Agent step: review topic files, write candidates.json (see below)
 python3 -m pipeline.crawl               # Fetch full content
 python3 -m pipeline.task_builder        # Bundle into task files
 ```
 
 > All `python3 -m pipeline.*` commands must be run from the `scripts/` directory.
+
+**Agent selection step** (between `candidate_selector` and `crawl`):
+
+`candidate_selector` outputs per-topic JSON files to `data/v9/topics/`. Your agent should:
+1. Read each topic file
+2. Pick 0-3 candidates per topic based on relevance and freshness
+3. Write `data/v9/candidates.json` with the selected candidates
+
+See `references/candidates-spec.md` for the exact JSON format.
+
+> **Note on crawl fallback:** If a candidate URL isn't in the search cache, `crawl.py` automatically tries: Browse API → Crawl4AI → web_fetch → HTML head extraction. No manual intervention needed.
 
 **4. Generate content** (agent-driven):
 
@@ -177,6 +196,7 @@ Search API (primary) → SearXNG (optional) → Crawl4AI/web_fetch (content)
 | `references/eir-setup.md` | Eir mode setup, cron, API endpoints | Agent / User |
 | `references/eir-api.md` | Full Eir API reference | Agent |
 | `references/eir-interest-rules.md` | Curation tier guidelines | Agent |
+| `references/candidates-spec.md` | Candidates JSON format for agent selection | Agent / User |
 | `references/interest-extraction-prompt.md` | Interest extraction prompt | Agent |
 
 > The `writer-prompt-*.md` files are **instructions for the agent** — the agent reads them to know how to generate content from task files. You don't need to read them unless customizing output format.
