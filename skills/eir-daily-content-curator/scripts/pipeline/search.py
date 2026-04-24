@@ -183,6 +183,38 @@ _QUERY_STOP_WORDS = {
 }
 
 
+def _inject_time_qualifier(query, freshness):
+    """For short-freshness queries, replace broad year qualifiers with precise time words.
+    
+    '2026' → 'today' for 1d, 'this week' for 2-3d.
+    If the query already has a time qualifier, leave it alone.
+    """
+    import re as _re
+    lower = query.lower()
+    # Already has a good time qualifier
+    if any(t in lower for t in ['today', 'this week', 'yesterday', '今天', '今日', '本周', '昨天', 'latest', '最新']):
+        return query
+    # Map freshness to qualifier
+    qualifier_map = {
+        '1d': ('today', '今天'),
+        '24h': ('today', '今天'),
+        '2d': ('this week', '本周'),
+        '3d': ('this week', '本周'),
+    }
+    en_qual, zh_qual = qualifier_map.get(freshness, ('', ''))
+    if not en_qual:
+        return query
+    # Detect language
+    is_zh = any('\u4e00' <= c <= '\u9fff' for c in query)
+    qual = zh_qual if is_zh else en_qual
+    # Replace year references ("2025", "2026") with time qualifier
+    replaced = _re.sub(r'\b20[2-3]\d\b', qual, query)
+    if replaced != query:
+        return replaced
+    # No year found, append qualifier
+    return "%s %s" % (query, qual)
+
+
 def _extract_key_terms(text, max_terms=5):
     """Extract key terms from text, prioritizing proper nouns and entities.
 
@@ -242,7 +274,11 @@ def build_queries(directive):
     is_seed = tier in ("explore", "seed")
     
     # 1. Use suggested queries from API (highest quality)
+    #    For short freshness, inject time qualifiers to avoid stale results
+    is_short_freshness = freshness in ("1d", "24h", "2d", "3d")
     for q in suggested:
+        if is_short_freshness:
+            q = _inject_time_qualifier(q, freshness)
         _add(q)
 
     # 2. Entity-focused query from description
@@ -278,7 +314,15 @@ def build_queries(directive):
             if kw:
                 _add(" ".join(kw))
 
-    # 5. For seed/explore: enhance queries with specificity modifiers
+    # 5. For short freshness topics without good time qualifiers, add a direct "today" query
+    if is_short_freshness and topic_name and len(queries) < 5:
+        has_zh = any('\u4e00' <= c <= '\u9fff' for c in topic_name)
+        if has_zh:
+            _add("%s 今天" % topic_name)
+        else:
+            _add("%s today" % topic_name)
+
+    # 6. For seed/explore: enhance queries with specificity modifiers
     if is_seed and len(queries) < 5:
         # Add year to existing hint for time-anchoring ("ML advances" → "ML advances 2026")
         from datetime import datetime as _dt
@@ -344,8 +388,19 @@ def _extract_entities_from_titles(results, max_entities=5):
             if w not in _skip_cjk:
                 entity_counts[w] += 1
     
-    # Only keep entities appearing 2+ times (cross-title confirmation)
-    entities = [e for e, c in entity_counts.most_common(max_entities) if c >= 2]
+    # Keep entities appearing 2+ times (cross-title confirmation)
+    # Exception: versioned product names (GPT-5.5, Claude-4) are high-signal
+    # even at count=1 — they indicate specific product launches/updates
+    import re as _re2
+    _versioned_product = _re2.compile(r'^[A-Z][A-Za-z]*[-]?\d[\w.]*$')
+    entities = []
+    for e, c in entity_counts.most_common(max_entities * 2):
+        if c >= 2:
+            entities.append(e)
+        elif _versioned_product.match(e) and c >= 1:
+            entities.append(e)  # versioned product name, keep at count=1
+        if len(entities) >= max_entities:
+            break
     return entities
 
 
@@ -386,6 +441,107 @@ def _entity_refinement_pass(initial_results, slug, topic_name, freshness,
     if refined:
         print("    🔬 Refinement: +%d results from entity queries" % len(refined))
     return refined
+
+
+def _cross_topic_entity_search(all_results, directives, used_urls):
+    """After all topics searched, extract hot entities across ALL results
+    and do supplementary news searches for entities that span multiple topics.
+    
+    This catches breaking news (e.g. GPT-5.5 launch) that searchHints missed.
+    """
+    import re as _re
+    from collections import Counter, defaultdict
+    
+    if not all_results:
+        return []
+    
+    # Extract entities and track which topics they appear in
+    entity_topics = defaultdict(set)  # entity -> set of topic_slugs
+    entity_counts = Counter()
+    
+    for r in all_results:
+        title = r.get("title", "")
+        slug = r.get("topic_slug", "unknown")
+        # Product names with version: GPT-4, Claude-3.5, Gemini-2.0
+        for m in _re.finditer(r'[A-Z][A-Za-z]*[-]?\d[\w.]*', title):
+            e = m.group()
+            entity_topics[e].add(slug)
+            entity_counts[e] += 1
+        # Multi-word proper nouns
+        for m in _re.finditer(r'(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)', title):
+            e = m.group()
+            if e.lower() not in _QUERY_STOP_WORDS and len(e) > 5:
+                entity_topics[e].add(slug)
+                entity_counts[e] += 1
+    
+    # Find entities that appear across 2+ topics (signal of hot event)
+    # OR appear 3+ times in any context (high frequency = breaking news)
+    hot_entities = []
+    for entity, topics in entity_topics.items():
+        count = entity_counts[entity]
+        if len(topics) >= 2 or count >= 3:
+            hot_entities.append((entity, len(topics), count))
+    
+    if not hot_entities:
+        return []
+    
+    # Sort by cross-topic breadth, then frequency
+    hot_entities.sort(key=lambda x: (-x[1], -x[2]))
+    
+    # Only search top 3 entities to avoid API abuse
+    hot_entities = hot_entities[:3]
+    print("\n🔥 Cross-topic hot entities: %s" % 
+          ", ".join("%s (%dt/%dc)" % (e, t, c) for e, t, c in hot_entities))
+    
+    # Search each hot entity
+    seen_urls = {r["url"] for r in all_results}
+    supplementary = []
+    use_grounding = grounding.is_available()
+    
+    # Find the most relevant directive for each entity
+    directive_map = {d["slug"]: d for d in directives}
+    
+    for entity, n_topics, n_count in hot_entities:
+        # Find which topic this entity is most associated with
+        topics_for_entity = entity_topics[entity]
+        # Pick the topic with shortest freshness (most time-sensitive)
+        best_topic = None
+        best_freshness_days = 999
+        for t in topics_for_entity:
+            d = directive_map.get(t, {})
+            fd = FRESHNESS_DAYS.get(d.get("freshness", "7d"), 7)
+            if fd < best_freshness_days:
+                best_freshness_days = fd
+                best_topic = t
+        
+        topic_directive = directive_map.get(best_topic, {})
+        freshness = topic_directive.get("freshness", "7d")
+        time_range = FRESHNESS_TO_TIME_RANGE.get(freshness)
+        topic_name = topic_directive.get("label", best_topic or "unknown")
+        
+        q = "%s news" % entity if len(entity) < 8 else entity
+        print("    🔥 [cross-topic news] %s (for %s)" % (q, best_topic))
+        
+        results = []
+        if use_grounding:
+            results = grounding_search(q, category="news", limit=5)
+        if not results:
+            results = searxng_search(q, category="news", time_range=time_range)
+        results = filter_by_freshness(results, freshness)
+        
+        for r in results:
+            if r["url"] not in seen_urls and r["url"] not in used_urls:
+                r["topic_slug"] = best_topic or "cross-topic"
+                r["topic_name"] = topic_name
+                r["search_query"] = q
+                r["cross_topic_entity"] = entity
+                supplementary.append(r)
+                seen_urls.add(r["url"])
+        time.sleep(0.3)
+    
+    if supplementary:
+        print("    🔥 Cross-topic: +%d supplementary results" % len(supplementary))
+    return supplementary
 
 
 def search_topic(directive, used_urls):
@@ -470,9 +626,11 @@ def search_topic(directive, used_urls):
     # Post-filter
     all_results = _post_filter(all_results)
 
-    # Step 3: Entity refinement for seed/explore topics with thin results
+    # Step 3: Entity refinement for ALL tiers (not just explore/seed)
+    # Short freshness topics especially benefit from entity-driven 2nd pass
     tier = directive.get("tier", "")
-    if tier in ("explore", "seed") and len(all_results) < 8 and all_results:
+    refinement_threshold = 5 if freshness in ("1d", "24h", "2d", "3d") else 8
+    if len(all_results) < refinement_threshold and all_results:
         refined = _entity_refinement_pass(all_results, slug, topic_name,
                                           freshness, time_range, seen_urls, used_urls)
         if refined:
@@ -533,6 +691,14 @@ def main():
     if args.dry_run:
         print("\n[dry-run] Done.")
         return
+
+    # Cross-topic entity aggregation: find hot entities across ALL results
+    # and do supplementary searches for entities that appear in many topics
+    cross_topic_results = _cross_topic_entity_search(
+        all_results, all_directives, used_urls
+    )
+    if cross_topic_results:
+        all_results.extend(cross_topic_results)
 
     # Save raw results
     output = {
