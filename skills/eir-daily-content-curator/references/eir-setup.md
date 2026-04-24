@@ -38,13 +38,13 @@ Job C: daily-brief (runs after Job B completes)
 openclaw cron add --name "eir-material-prep" \
   --cron "0 7 * * *" --tz "Asia/Shanghai" \
   --session isolated --agent content \
-  --message "Run eir-daily-content-curator material prep: search → select → crawl → pack tasks."
+  --message "Read SKILL.md for eir-daily-content-curator. Run Eir mode material prep: eir_sync fetch → search → candidate_selector → agent selection → crawl → task_builder. Use references/candidates-spec.md for selection format."
 
 # Job B: Content generation (35 min after Job A)
 openclaw cron add --name "eir-content-gen" \
   --cron "35 7 * * *" --tz "Asia/Shanghai" \
   --session isolated --agent content \
-  --message "Read task manifest, spawn subagents to generate content and POST to Eir API."
+  --message "Read SKILL.md for eir-daily-content-curator. Read task files from data/v9/tasks/. For each task: generate Eir-format content using references/writer-prompt-eir.md, then POST via pipeline.eir_post.post_content(). Use topic_slug from task file (must match directive slugs, not Chinese labels). Include publishTime at item top level."
 
 # Job C: Daily brief (10 min after Job B, after subagent timeout)
 openclaw cron add --name "eir-daily-brief" \
