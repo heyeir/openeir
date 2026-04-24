@@ -51,7 +51,7 @@ def load_local_interests():
                 "description": ", ".join(t.get("keywords", [])),
                 "keywords": t.get("keywords", []),
                 "freshness": t.get("freshness", "7d"),
-                "tier": "focus",
+                "tier": t.get("tier", "tracked"),
                 "searchHints": t.get("search_hints", []),
             })
         return {"directives": directives, "tracked": []}
