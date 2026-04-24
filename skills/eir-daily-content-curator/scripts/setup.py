@@ -29,9 +29,9 @@ from pathlib import Path
 # Skill root directory
 SKILL_DIR = Path(__file__).resolve().parent.parent
 
-# Add pipeline to path for eir_config
-sys.path.insert(0, str(SKILL_DIR / "scripts" / "pipeline"))
-from eir_config import resolve_workspace, SKILL_DIR as _SKILL_DIR
+# Add scripts to path for pipeline imports
+sys.path.insert(0, str(SKILL_DIR / "scripts"))
+from pipeline.workspace import resolve_workspace
 
 
 def set_workspace(workspace_dir: str) -> Path:
@@ -136,6 +136,7 @@ def main():
     parser.add_argument("--set-workspace", metavar="PATH", help="Set workspace directory")
     parser.add_argument("--init", action="store_true", help="Initialize workspace with --settings JSON")
     parser.add_argument("--settings", metavar="JSON", help="Settings JSON string (use with --init)")
+    parser.add_argument("--settings-file", metavar="PATH", help="Path to settings JSON file (alternative to --settings)")
     args = parser.parse_args()
 
     if args.show_workspace:
@@ -151,13 +152,20 @@ def main():
         return
 
     if args.init:
-        if not args.settings:
-            print(json.dumps({"ok": False, "error": "--init requires --settings JSON"}))
-            sys.exit(1)
-        try:
-            settings = json.loads(args.settings)
-        except json.JSONDecodeError as e:
-            print(json.dumps({"ok": False, "error": f"Invalid JSON: {e}"}))
+        if args.settings_file:
+            try:
+                settings = json.loads(Path(args.settings_file).read_text())
+            except (json.JSONDecodeError, FileNotFoundError) as e:
+                print(json.dumps({"ok": False, "error": f"Failed to read settings file: {e}"}))
+                sys.exit(1)
+        elif args.settings:
+            try:
+                settings = json.loads(args.settings)
+            except json.JSONDecodeError as e:
+                print(json.dumps({"ok": False, "error": f"Invalid JSON: {e}"}))
+                sys.exit(1)
+        else:
+            print(json.dumps({"ok": False, "error": "--init requires --settings or --settings-file"}))
             sys.exit(1)
         init_workspace(settings)
         return
