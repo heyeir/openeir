@@ -152,23 +152,53 @@ def save_posted(content_data, content_id, content_group):
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Post content to Eir API")
-    parser.add_argument("file", nargs="?", help="Task file to post")
-    parser.add_argument("--from-dir", help="Post all files from directory")
+    parser.add_argument("file", nargs="?", help="Generated content JSON file to post")
+    parser.add_argument("--from-dir", help="Post all JSON files from directory")
+    parser.add_argument("--dry-run", action="store_true", help="Validate without posting")
     args = parser.parse_args()
 
+    api_key = get_api_key()
+    if not api_key and not args.dry_run:
+        print("Error: No API key. Run connect.mjs first or set EIR_API_KEY.", file=sys.stderr)
+        sys.exit(1)
+
+    def post_file(filepath):
+        data = json.loads(Path(filepath).read_text())
+        if args.dry_run:
+            print("  [dry-run] Would POST: %s" % data.get("slug", data.get("content_slug", "?")))
+            return
+        cid, cg = post_content(data, api_key)
+        record_posted(data, cid, cg)
+        print("  ✅ Posted: %s → %s" % (data.get("slug", "?"), cid))
+
     if args.file:
-        task_file = Path(args.file)
-        if not task_file.exists():
-            print("Error: File not found: %s" % task_file, file=sys.stderr)
+        fpath = Path(args.file)
+        if not fpath.exists():
+            print("Error: File not found: %s" % fpath, file=sys.stderr)
             sys.exit(1)
-        # Load and post task - requires LLM generation first
-        print("Error: Direct task posting requires LLM generation. Use agent-driven workflow.", file=sys.stderr)
-        sys.exit(1)
+        try:
+            post_file(fpath)
+        except Exception as e:
+            print("Error: %s" % e, file=sys.stderr)
+            sys.exit(1)
     elif args.from_dir:
-        print("Error: Batch posting not implemented. Use agent-driven workflow.", file=sys.stderr)
-        sys.exit(1)
+        d = Path(args.from_dir)
+        if not d.is_dir():
+            print("Error: Directory not found: %s" % d, file=sys.stderr)
+            sys.exit(1)
+        files = sorted(d.glob("*.json"))
+        print("Found %d files in %s" % (len(files), d))
+        ok, fail = 0, 0
+        for f in files:
+            try:
+                post_file(f)
+                ok += 1
+            except Exception as e:
+                print("  ❌ %s: %s" % (f.name, e), file=sys.stderr)
+                fail += 1
+        print("Done: %d posted, %d failed" % (ok, fail))
     else:
-        print("Error: Specify --file or --from-dir", file=sys.stderr)
+        parser.print_help()
         sys.exit(1)
 
 

@@ -34,7 +34,11 @@ def load_writer_prompt():
     from .workspace import load_settings
     settings = load_settings()
     mode = settings.get("mode", "standalone")
-    
+    return _load_prompt_by_mode(mode)
+
+
+def _load_prompt_by_mode(mode):
+    """Load writer prompt file for the given mode."""
     if mode == "eir" and WRITER_PROMPT_PATH.exists():
         return WRITER_PROMPT_PATH.read_text()
     if WRITER_PROMPT_STANDALONE_PATH.exists():
@@ -52,7 +56,12 @@ def build_generation_prompt(task_data):
     source_text = task_data.get("source_text", "")
     reader_context = task_data.get("reader_context", "")
     
-    writer_prompt = task_data.get("writer_prompt", "") or load_writer_prompt()
+    # Load writer prompt: use mode marker from task (v2), fall back to embedded prompt (v1)
+    writer_prompt_mode = task_data.get("writer_prompt_mode", "")
+    if writer_prompt_mode:
+        writer_prompt = _load_prompt_by_mode(writer_prompt_mode)
+    else:
+        writer_prompt = task_data.get("writer_prompt", "") or load_writer_prompt()
 
     prompt = """%s
 

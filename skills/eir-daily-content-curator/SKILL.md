@@ -13,7 +13,20 @@ metadata:
 Curates personalized content based on your interests. Supports two modes:
 
 - **Standalone** — works locally, no external account needed
-- **Eir** — full AI-powered curation with [heyeir.com](https://www.heyeir.com) delivery
+- **Eir** — full curation + delivery via [heyeir.com](https://www.heyeir.com)
+
+## Getting Started
+
+**Before setup, ask the user which mode to use:**
+
+| Mode | What it does | Requirements |
+|------|--------------|---------------|
+| **Standalone** | Search → curate → generate summaries locally | Search API key (Brave, Tavily, etc.) |
+| **Eir** | Full pipeline with delivery to Eir app | [Eir account](https://www.heyeir.com) + pairing code |
+
+> **Important:** The two modes use different content formats and topic slug conventions. Choose the correct mode at setup time — switching later requires reconfiguration. If the user has an Eir account, use Eir mode.
+
+Then follow the corresponding setup section below.
 
 ## Standalone Mode
 
@@ -150,7 +163,46 @@ Job C: daily-brief       → Check status → Fill gaps → Compile brief → PO
 2. Run: `node scripts/connect.mjs <PAIRING_CODE>`
 3. Set `"mode": "eir"` in `config/settings.json`
 
-For full Eir setup, cron configuration, content rules, and API details, see `references/eir-setup.md`.
+### Running the Pipeline (Eir Mode)
+
+All `python3 -m pipeline.*` commands must be run from the `scripts/` directory.
+
+**Step 1: Sync directives** — fetch topic slugs and curation rules from Eir API:
+```bash
+cd scripts && python3 -m pipeline.eir_sync fetch
+```
+> This creates/updates `config/directives.json` with the canonical topic slugs (e.g. `ai-agents`, `autonomous-vehicles`). All downstream scripts use these slugs — do NOT use interests.json labels as topic_slug in Eir mode.
+
+**Step 2: Search + Select + Crawl + Pack:**
+```bash
+python3 -m pipeline.search              # Search for each directive topic
+python3 -m pipeline.candidate_selector  # Group results for agent selection
+# ↓ Agent step: review topic files, write candidates.json (see references/candidates-spec.md)
+python3 -m pipeline.crawl               # Fetch full content from candidate URLs
+python3 -m pipeline.task_builder        # Bundle into task files (auto-selects eir writer prompt)
+```
+
+**Step 3: Generate content** (agent-driven):
+
+Task files are in `data/v9/tasks/`. The agent should:
+1. Read each task file
+2. Follow the writer prompt in `references/writer-prompt-eir.md`
+3. Generate Eir-format JSON (`slug`, `lang`, `dot`, `l1`, `l2`, `sources`, `interests`)
+4. POST via `from pipeline.eir_post import post_content; post_content(data, api_key)`
+
+> **Key difference from standalone:** Eir format uses `dot.hook`, `l1.bullets`, `l2.context`, `l2.eir_take` etc. Do NOT use the standalone format (`title/summary/body/connect`).
+
+**Step 4: Daily brief** (optional):
+```bash
+# Agent compiles generated content into a brief and POSTs to /api/oc/brief
+```
+
+**Common POST failures:**
+- `400 Bad Request` → check that `topicSlug` matches a directive slug (not a Chinese label), `publishTime` is present at the item level, and no fields are `null`
+- `401 Unauthorized` → check `config/eir.json` has valid credentials
+- `500 Internal Server Error` → retry once; if persistent, report the payload
+
+For cron configuration and API details, see `references/eir-setup.md`.
 
 ### Privacy Notice
 

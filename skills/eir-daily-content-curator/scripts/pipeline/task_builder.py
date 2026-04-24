@@ -30,7 +30,7 @@ from .config import (
     CANDIDATES_FILE, SNIPPETS_DIR, V9_DIR, DIRECTIVES_FILE,
     ensure_dirs, load_json,
 )
-from .workspace import SKILL_DIR
+from .workspace import SKILL_DIR, load_settings
 from .directives import load_directives as load_directives_from_file
 
 TASKS_DIR = V9_DIR / "tasks"
@@ -132,7 +132,7 @@ def load_candidate_sources(candidate):
 
 def load_writer_prompt():
     """Load writer prompt based on mode (eir or standalone)."""
-    settings = load_json(SKILL_DIR / "config" / "settings.json", {})
+    settings = load_settings()
     mode = settings.get("mode", "standalone")
     if mode == "eir" and WRITER_PROMPT_PATH.exists():
         return WRITER_PROMPT_PATH.read_text()
@@ -179,7 +179,7 @@ def sanitize_slug(slug):
     return slug[:80]  # reasonable max length
 
 
-def pack_single_task(candidate, sources, writer_prompt, directives_map):
+def pack_single_task(candidate, sources, writer_prompt_mode, directives_map):
     """Build a self-contained task bundle for one candidate."""
     topic_slug = candidate["matched_topic_slug"]
     content_slug = candidate.get("content_slug", "")
@@ -216,7 +216,7 @@ def pack_single_task(candidate, sources, writer_prompt, directives_map):
         "reader_context": _load_reader_context(),
         "source_meta": source_meta,
         "source_text": source_text,
-        "writer_prompt": writer_prompt,
+        "writer_prompt_mode": writer_prompt_mode,
         "has_fresh_source": candidate.get("has_fresh_source", True),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -307,9 +307,10 @@ def main():
     all_directives = directives_data.get("directives", []) + directives_data.get("tracked", [])
     directives_map = {d["slug"]: d for d in all_directives}
 
-    # Load writer prompt once
-    writer_prompt = load_writer_prompt()
-    print("  Writer prompt: %d chars" % len(writer_prompt))
+    # Determine writer prompt mode
+    settings = load_settings()
+    writer_prompt_mode = settings.get("mode", "standalone")
+    print("  Writer prompt mode: %s" % writer_prompt_mode)
 
     # Load used URLs and posted content slugs for dedup
     try:
@@ -380,7 +381,7 @@ def main():
             continue
 
         # Build task
-        task = pack_single_task(c, sources, writer_prompt, directives_map)
+        task = pack_single_task(c, sources, writer_prompt_mode, directives_map)
         slug = task["content_slug"]
 
         if args.dry_run:

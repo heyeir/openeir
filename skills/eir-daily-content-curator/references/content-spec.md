@@ -64,6 +64,7 @@
 | `l1` | object | **Yes** | See l1 section above. `l1.title` is required. |
 | `l2` | object | No | See l2 section above. Strongly recommended. |
 | `sources` | array | No | See sources section above. At least 1 recommended. |
+| `publishTime` | string | **Recommended** | ISO 8601 date of the primary source. Used for freshness display and sorting. If omitted, `eir_post.py` auto-extracts from `sources[0].publish_time`. Prefer providing explicitly. |
 | `visibility` | `"private"` \| `"public"` | **Yes** | `private` for user content, `public` for pool/shared content. Set by API, not writer. |
 | `channelId` | string | **Yes** | Content channel: `user-private`, `eir-express`, `shared-pick`, etc. Set by API, not writer. |
 
