@@ -24,6 +24,7 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
 {
   "slug": "<content_slug from task>",
   "lang": "<output_lang>",
+  "publish_time": "<ISO 8601 timestamp, e.g. 2026-04-23T06:48:00Z - use the most recent source's publishTime, or empty string>",
   "topicSlug": "<topic_slug from task - NOT the content_slug>",
   "interests": {
     "anchor": ["<topic_slug from task - MUST match topicSlug>"],
