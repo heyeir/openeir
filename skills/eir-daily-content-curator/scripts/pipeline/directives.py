@@ -10,6 +10,27 @@ from pathlib import Path
 from .config import CONFIG_DIR, DIRECTIVES_FILE, load_json
 
 
+def _label_to_slug(label: str) -> str:
+    """Convert a human-readable label to a kebab-case slug.
+    Handles CJK by transliterating common terms; falls back to
+    stripping non-ASCII and lowercasing."""
+    import re
+    # If already looks like a slug (lowercase ASCII + hyphens), keep it
+    if re.match(r'^[a-z0-9]+(-[a-z0-9]+)*$', label):
+        return label
+    # Try: lowercase, replace spaces/underscores with hyphens, strip non-slug chars
+    slug = label.lower().strip()
+    slug = re.sub(r'[\s_]+', '-', slug)
+    slug = re.sub(r'[^a-z0-9\-]', '', slug)
+    slug = re.sub(r'-+', '-', slug).strip('-')
+    # Require meaningful content (multi-word or long enough)
+    if slug and '-' in slug and len(slug) >= 5:
+        return slug
+    # Fallback for CJK-heavy labels: use hash
+    import hashlib
+    return 'topic-' + hashlib.md5(label.encode()).hexdigest()[:8]
+
+
 def load_local_interests():
     """Load interests from local config/interests.json (standalone mode).
     Converts to directive format for pipeline compatibility."""
@@ -24,7 +45,7 @@ def load_local_interests():
         directives = []
         for t in topics:
             directives.append({
-                "slug": t.get("label", "").lower().replace(" ", "-"),
+                "slug": t.get("slug", "") or _label_to_slug(t.get("label", "")),
                 "label": t.get("label", ""),
                 "topic": t.get("label", ""),
                 "description": ", ".join(t.get("keywords", [])),
