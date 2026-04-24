@@ -21,6 +21,36 @@ from pathlib import Path
 SKILL_DIR = Path(__file__).resolve().parent.parent.parent
 
 
+# Default settings template — created on first run if config/settings.json is missing
+_DEFAULT_SETTINGS = {
+    "mode": "standalone",
+    "skill_version": "1.0.0",
+    "supported_schema_versions": ["2"],
+    "max_items_per_day": 10,
+    "local_storage": "data/",
+    "search": {
+        "providers": ["brave"],
+        "searxng_url": "http://localhost:8888",
+        "crawl4ai_url": "http://localhost:11235",
+    },
+    "cron": {
+        "schedule": "0 8 * * *",
+        "timezone": "UTC",
+    },
+}
+
+
+def _ensure_config_dir(workspace: Path) -> None:
+    """Create config/ and default settings.json if missing."""
+    config_dir = workspace / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    settings_file = config_dir / "settings.json"
+    if not settings_file.exists():
+        settings_file.write_text(
+            json.dumps(_DEFAULT_SETTINGS, indent=2, ensure_ascii=False)
+        )
+
+
 def resolve_workspace() -> Path:
     """Resolve the Eir workspace directory.
 
@@ -29,24 +59,31 @@ def resolve_workspace() -> Path:
       1. EIR_WORKSPACE env var (absolute path)
       2. workspace_dir field in <skill_root>/config/settings.json
       3. Skill root directory (development fallback)
+
+    After resolution, ensures config/ and default settings.json exist.
     """
     # 1. Env var — highest priority
     env_ws = os.environ.get("EIR_WORKSPACE")
     if env_ws:
-        return Path(env_ws).expanduser()
+        ws = Path(env_ws).expanduser()
+        _ensure_config_dir(ws)
+        return ws
 
     # 2. Read from skill's settings.json
     settings_file = SKILL_DIR / "config" / "settings.json"
     if settings_file.exists():
         try:
             settings = json.loads(settings_file.read_text())
-            ws = settings.get("workspace_dir")
-            if ws:
-                return Path(ws).expanduser()
+            ws_path = settings.get("workspace_dir")
+            if ws_path:
+                ws = Path(ws_path).expanduser()
+                _ensure_config_dir(ws)
+                return ws
         except (json.JSONDecodeError, KeyError):
             pass
 
-    # 3. Fallback: skill root (for development / pre-setup)
+    # 3. Fallback: skill root directory
+    _ensure_config_dir(SKILL_DIR)
     return SKILL_DIR
 
 
