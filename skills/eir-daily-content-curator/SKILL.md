@@ -189,13 +189,14 @@ python3 -m pipeline.task_builder        # Bundle into task files (auto-selects e
 
 **Step 3: Generate and publish** (agent-driven):
 
-Task files are in `data/v9/tasks/`. The agent should:
-1. Read each task file
-2. Follow the writer prompt in `references/writer-prompt-eir.md`
-3. Generate Eir-format JSON (see `references/content-spec.md` for field types and limits)
-3. POST via `python3 -m pipeline.eir_post <file>` or programmatically
+Task files are in `data/v9/tasks/`. For each task file:
+1. Read the task JSON (contains `source_text`, `source_meta`, `suggested_angle`, `topic_slug`, `content_slug`)
+2. Build a generation prompt using `generate.build_generation_prompt(task_data)` — this loads the writer prompt from `references/writer-prompt-eir.md` and injects sources + context
+3. Call LLM with the prompt to generate Eir-format JSON (see `references/content-spec.md`)
+4. Parse the JSON response and POST via `python3 -m pipeline.eir_post --file <generated.json>` or call `eir_post.post_content(data)` programmatically
+5. Repeat for remaining tasks. Already-posted slugs are skipped automatically.
 
-> Eir format uses `dot.hook`, `l1.bullets`, `l2.context`, `l2.eir_take` etc. Do NOT use the standalone format in Eir mode.
+> This step requires an LLM — that's why `generate.py` has no `main()`. The agent orchestrates the loop.
 
 **Step 4: Daily brief** (optional):
 

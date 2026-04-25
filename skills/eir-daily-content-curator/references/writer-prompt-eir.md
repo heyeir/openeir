@@ -80,7 +80,7 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
 
 ### Content Quality
 5. **Do NOT set `l1.via`** - the pipeline auto-generates it from `sources[].name`.
-6. **`sources`**: include `url`, `title`, `name` (publisher), and `publishTime` (camelCase) for each source used. Use `""` if publishTime is unknown (never null). The API requires at least one source with a `publishTime` within the last 3 days.
+6. **`sources`**: include `url`, `title`, `name` (publisher), and `publishTime` (camelCase) for each source used. Use `""` if publishTime is unknown (never null). The API requires at least one source with a `publishTime` within the last 3 days. The top-level `publishTime` field also uses camelCase (not `publish_time`).
 7. **NEVER fabricate or adjust `publishTime`**. Use the exact date from the source metadata. If ALL sources are outside the API's 3-day freshness window, do NOT generate content - report the issue and stop. Do NOT fake dates to bypass validation.
 8. **`key_quote`**: must be a **string** (not an object). Pick the most insightful direct quote from the sources, or `""` if none. If the quote contains double quotes, escape them as `\"` in the JSON output.
 9. **`eir_take`** (optional) is **PUBLIC** (visible on share pages). If included, it should feel like a sharp comment from a friend who deeply understands the topic. Not generic punditry.

@@ -98,7 +98,7 @@ def preflight_check(require_eir=False):
     """Verify essential configuration before running pipeline.
     Returns list of error strings. Empty = all good."""
     errors = []
-    from .workspace import load_settings, load_eir_config
+    from .workspace import load_settings, load_config
 
     settings = load_settings()
     search_cfg = settings.get("search", {})
@@ -110,7 +110,7 @@ def preflight_check(require_eir=False):
 
     # Eir mode checks
     if require_eir or settings.get("mode") == "eir":
-        eir_cfg = load_eir_config()
+        eir_cfg = load_config()
         if not eir_cfg.get("apiKey"):
             errors.append("Eir API key missing. Run: python3 scripts/connect.py <PAIRING_CODE>")
 

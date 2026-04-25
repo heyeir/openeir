@@ -87,8 +87,8 @@ def post_content(content_data, api_key):
                 from .eir_sync import sync_sources
                 print("  🔄 Duplicate detected, refreshing source cache...")
                 sync_sources(force=True)
-            except Exception:
-                pass
+            except Exception as e:
+                print("  ⚠️ sync_sources failed: %s" % e)
         raise RuntimeError("POST rejected: %s" % reason)
 
     content_id = results[0].get("id", "")
