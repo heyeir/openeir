@@ -23,7 +23,7 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
 {
   "slug": "<content_slug from task>",
   "lang": "<output_lang>",
-  "publish_time": "<ISO 8601 timestamp, e.g. 2026-04-23T06:48:00Z - use the most recent source's publishTime, or empty string>",
+  "publishTime": "<ISO 8601 timestamp, e.g. 2026-04-23T06:48:00Z - use the most recent source's publishTime, or empty string>",
   "topicSlug": "<topic_slug from task - NOT the content_slug>",
   "interests": {
     "anchor": ["<topic_slug from task - MUST match topicSlug>"],
@@ -82,7 +82,7 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
 5. **Do NOT set `l1.via`** - the pipeline auto-generates it from `sources[].name`.
 6. **`sources`**: include `url`, `title`, `name` (publisher), and `publishTime` (camelCase) for each source used. Use `""` if publishTime is unknown (never null). The API requires at least one source with a `publishTime` within the last 3 days.
 7. **NEVER fabricate or adjust `publishTime`**. Use the exact date from the source metadata. If ALL sources are outside the API's 3-day freshness window, do NOT generate content - report the issue and stop. Do NOT fake dates to bypass validation.
-8. **`key_quote`**: must be a **string** (not an object). Pick the most insightful direct quote from the sources, or `""` if none.
+8. **`key_quote`**: must be a **string** (not an object). Pick the most insightful direct quote from the sources, or `""` if none. If the quote contains double quotes, escape them as `\"` in the JSON output.
 9. **`eir_take`** (optional) is **PUBLIC** (visible on share pages). If included, it should feel like a sharp comment from a friend who deeply understands the topic. Not generic punditry.
 10. **`eir_take`** must be specific, opinionated, and demonstrate genuine understanding of the material. Bad: "This is an issue that deserves society's attention." Bad: "AI isn't stealing jobs, it's redefining..." (cliché). Good: a concrete take that shows you saw something others missed.
 

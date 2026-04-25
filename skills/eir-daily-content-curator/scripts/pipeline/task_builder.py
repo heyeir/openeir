@@ -28,7 +28,7 @@ from urllib.parse import urlparse
 
 from .config import (
     CANDIDATES_FILE, SNIPPETS_DIR, V9_DIR, DIRECTIVES_FILE,
-    ensure_dirs, load_json,
+    API_FRESHNESS_DAYS, ensure_dirs, load_json,
 )
 from .workspace import SKILL_DIR, load_settings
 from .directives import load_directives as load_directives_from_file
@@ -382,6 +382,27 @@ def main():
             skipped += 1
             continue
         slug = task["content_slug"]
+
+        # API freshness gate: skip if no source is within API's global window
+        if API_FRESHNESS_DAYS:
+            from datetime import datetime, timezone, timedelta
+            cutoff = datetime.now(timezone.utc) - timedelta(days=API_FRESHNESS_DAYS)
+            has_fresh = False
+            for sm in task.get("source_meta", []):
+                pd = sm.get("publishedDate", "")
+                if pd:
+                    try:
+                        # Parse various ISO formats
+                        dt = datetime.fromisoformat(pd.replace("Z", "+00:00"))
+                        if dt >= cutoff:
+                            has_fresh = True
+                            break
+                    except (ValueError, TypeError):
+                        pass
+            if not has_fresh and task.get("source_meta"):
+                print("  ⏭️  %s: all sources older than %dd (API will reject)" % (slug, API_FRESHNESS_DAYS))
+                skipped += 1
+                continue
 
         if args.dry_run:
             print("  [dry-run] Would pack: %s.json (%d sources, %d chars)" % (

@@ -58,14 +58,13 @@ def post_content(content_data, api_key):
         "l2": content_data["l2"],
         "sources": content_data.get("sources", []),
     }
-    # publish_time is required at top level by API
-    if content_data.get("publish_time"):
-        item["publish_time"] = content_data["publish_time"]
-    elif item["sources"]:
+    # publishTime at top level (accept both camelCase and snake_case input)
+    pt = content_data.get("publishTime") or content_data.get("publish_time", "")
+    if not pt and item["sources"]:
         # Fall back to first source's publishTime
         pt = item["sources"][0].get("publishTime", item["sources"][0].get("publish_time", ""))
-        if pt:
-            item["publish_time"] = pt
+    if pt:
+        item["publishTime"] = pt
     if content_data.get("interests"):
         item["interests"] = content_data["interests"]
     if content_data.get("contentGroup"):

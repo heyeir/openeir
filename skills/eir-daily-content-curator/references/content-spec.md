@@ -51,7 +51,7 @@
 | `url` | string | **Yes** | Must be valid URL. Used for server-side dedup — duplicate URLs are rejected. |
 | `title` | string | No | Original article title. |
 | `name` | string | No | Publisher/source name (e.g. "MIT Technology Review"). This is what `l1.via` selects from. |
-| `publish_time` | string | No | ISO date or date string from source. |
+| `publishTime` | string | **Recommended** | ISO 8601 date or date string from source. Used for freshness display and sorting. `eir_post.py` auto-extracts from `sources[0].publishTime` if omitted. |
 
 ### Top-level item fields
 
@@ -64,7 +64,7 @@
 | `l1` | object | **Yes** | See l1 section above. `l1.title` is required. |
 | `l2` | object | No | See l2 section above. Strongly recommended. |
 | `sources` | array | No | See sources section above. At least 1 recommended. |
-| `publishTime` | string | **Recommended** | ISO 8601 date of the primary source. Used for freshness display and sorting. If omitted, `eir_post.py` auto-extracts from `sources[0].publish_time`. Prefer providing explicitly. |
+| `publishTime` | string | **Recommended** | ISO 8601 date of the primary source. Used for freshness display and sorting. If omitted, `eir_post.py` auto-extracts from `sources[0].publishTime`. Prefer providing explicitly. |
 | `visibility` | `"private"` \| `"public"` | **Yes** | `private` for user content, `public` for pool/shared content. Set by API, not writer. |
 | `channelId` | string | **Yes** | Content channel: `user-private`, `eir-express`, `shared-pick`, etc. Set by API, not writer. |
 
@@ -130,6 +130,7 @@
 - `lang` missing, or not `"zh"` or `"en"`
 - `lang` is `"en"` but hook contains CJK characters (language mismatch)
 - `items` empty, not an array, or >20 items
+- No source `publishTime` within the global freshness window (currently 3 days) → `stale content`
 
 ### API skips (returned as `status: "skipped"`)
 

@@ -38,6 +38,10 @@ FRESHNESS_DAYS = {
     "24h": 1, "1d": 1, "2d": 2, "3d": 3, "7d": 7, "14d": 14, "30d": 30,
 }
 
+# API global freshness window — sources older than this will be rejected by the API.
+# Task packing skips candidates where all sources exceed this limit.
+API_FRESHNESS_DAYS = 3
+
 # Map freshness strings to SearXNG time_range parameter
 FRESHNESS_TO_TIME_RANGE = {
     "24h": "day",
