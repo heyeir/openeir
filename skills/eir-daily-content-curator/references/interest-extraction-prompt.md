@@ -1,6 +1,6 @@
 # Interest Extraction Prompt
 
-> Local reference for extracting interests from USER.md profile.
+> Local reference for extracting interests from a user profile or conversation.
 > Used manually or by agent to set up initial topics.
 > **Not part of the automated pipeline.**
 
@@ -12,7 +12,7 @@ Interest extraction produces **de-identified topic labels only** (e.g., "AI agen
 
 ## Your Job
 
-Analyze the USER.md reader profile → Extract genuine interests → Output to local config.
+Analyze the user's profile or stated interests → Extract genuine interests → Output to local config.
 
 **Check first:** Does the user already have interest/profile skills installed? If yes, consider using those instead of duplicating functionality.
 
@@ -20,7 +20,7 @@ Analyze the USER.md reader profile → Extract genuine interests → Output to l
 
 ## Core Principle: Infer Interests from Profile
 
-The USER.md profile reveals what content the user would find valuable.
+The user's profile reveals what content they would find valuable.
 
 Ask: *"Someone with this profile — what public content would they want to read?"*
 
@@ -49,15 +49,15 @@ Ask: *"Someone with this profile — what public content would they want to read
 
 ## Extraction Steps
 
-### 1. Read USER.md
+### 1. Gather user interests
 
-Read the workspace USER.md (content agent's reader profile). This file contains:
+Ask the user about their interests, or read their profile if available. Look for:
 - Role & context
 - Current focus areas
 - Explicit interests
 - Perspective and preferences
 
-**Do not** read other agent USER.md files or analyze conversation history — only read the current workspace USER.md.
+**Do not** analyze conversation history beyond what the user explicitly shares.
 
 ### 2. Generalize to searchable topics
 

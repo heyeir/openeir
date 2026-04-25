@@ -39,7 +39,7 @@ The user can optionally provide audience context to the agent for more relevant 
 
 ### Interest Extraction
 
-This skill includes a reference prompt (`references/interest-extraction-prompt.md`) that helps your agent learn your interests from conversations. It extracts only **de-identified topic labels and keywords** (e.g. "AI Agents", "autonomous vehicles") and saves them locally to `config/interests.json`. No raw conversation text or personal identifiers are stored.
+This skill includes a reference prompt (`references/interest-extraction-prompt.md`) that helps your agent learn your interests from conversation. It extracts only **de-identified topic labels and keywords** (e.g. "AI Agents", "autonomous vehicles") and saves them locally to `config/interests.json`. No personal identifiers are stored or transmitted.
 
 If you already have a profile or interest skill installed, you can use that instead.
 
@@ -59,6 +59,7 @@ All credentials are stored locally in config files (gitignored). No secrets are 
 |----------|---------|----------|
 | `EIR_API_KEY` | Eir API bearer token | No — defaults to `config/eir.json` |
 | `EIR_API_URL` | Eir API base URL | No — defaults to `https://api.heyeir.com` |
+| `SEARCH_API_KEY` | Search provider API key | No — defaults to `config/settings.json` |
 | `EIR_WORKSPACE` | Override workspace directory | No — auto-detected |
 
 These are convenience overrides only. The standard setup stores credentials in `config/eir.json` (created by `node scripts/connect.mjs`).

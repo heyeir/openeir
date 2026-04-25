@@ -8,8 +8,9 @@ metadata:
       bins: ["python3"]
       optionalBins: ["node"]
       env:
-        EIR_API_KEY: "Eir API bearer token (Eir mode only — obtained via connect.mjs pairing)"
-        EIR_API_URL: "Eir API base URL (optional override, defaults to https://api.heyeir.com)"
+        EIR_API_KEY: "Eir API bearer token (Eir mode only)"
+        EIR_API_URL: "Eir API base URL (optional override)"
+        SEARCH_API_KEY: "Search provider API key (Brave, Tavily, etc.)"
 ---
 
 # Daily Content Curator

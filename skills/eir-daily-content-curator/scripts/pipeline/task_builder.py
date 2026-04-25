@@ -144,21 +144,19 @@ def load_writer_prompt():
 
 
 def _get_user_md_path():
-    """Resolve USER.md path from settings or default workspace."""
+    """Resolve reader profile path from settings or default workspace."""
     settings = load_json(SKILL_DIR / "config" / "settings.json", {})
     path = settings.get("user_md_path", "")
     if path:
         return Path(path)
-    # Default: OPENCLAW_WORKSPACE env or ~/.openclaw/workspace-content
     ws = os.environ.get("OPENCLAW_WORKSPACE", str(Path.home() / ".openclaw" / "workspace-content"))
     return Path(ws) / "USER.md"
 
 
 def _load_reader_context():
-    """Load reader context from USER.md if personalization is enabled.
+    """Load optional reader context for content personalization.
     
-    USER.md contains the user's profile, interests, and current focus.
-    Used to personalize l2.context and eir_take.
+    Returns empty string if personalization is disabled (default).
     """
     from .workspace import load_settings
     settings = load_settings()
