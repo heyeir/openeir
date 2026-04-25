@@ -6,7 +6,6 @@ metadata:
     emoji: "📰"
     requires:
       bins: ["python3"]
-      optionalBins: ["node"]
       env:
         EIR_API_KEY: "Eir API bearer token (Eir mode only)"
         EIR_API_URL: "Eir API base URL (optional override)"
@@ -147,7 +146,7 @@ Content saved to `data/output/{YYYY-MM-DD}/`. Daily brief compiles the top items
 
 **Required:** Python 3.10+ (standard library only — no `pip install` needed).
 
-**Optional:** Node.js 18+ (required only for `node scripts/connect.mjs` — the Eir pairing step). Not needed for Standalone mode. [SearXNG](https://docs.searxng.org/) (fallback search). [Crawl4AI](https://github.com/unclecode/crawl4ai) (fallback crawl).
+**Optional:** [SearXNG](https://docs.searxng.org/) (fallback search). [Crawl4AI](https://github.com/unclecode/crawl4ai) (fallback crawl).
 
 ---
 
@@ -164,7 +163,7 @@ Job C: daily-brief       → Check status → Fill gaps → Compile brief → De
 ### Setup
 
 1. Get a pairing code from [heyeir.com](https://www.heyeir.com) → Settings → Connect OpenClaw
-2. Run: `node scripts/connect.mjs <PAIRING_CODE>`
+2. Run: `python3 scripts/connect.py <PAIRING_CODE>`
 3. Set `"mode": "eir"` in `config/settings.json`
 
 ### Running the Pipeline (Eir Mode)
@@ -204,7 +203,7 @@ The agent compiles generated content into a brief and delivers it directly to yo
 
 **Common POST failures:**
 - `400` → check `topicSlug` matches a directive slug, `publishTime` is present, no `null` fields
-- `401` → re-run `connect.mjs` to refresh credentials
+- `401` → re-run `connect.py` to refresh credentials
 - `500` → retry once; if persistent, report the payload
 
 For cron configuration and API details, see `references/eir-setup.md`.
@@ -274,4 +273,4 @@ See `SECURITY.md` for the complete data flow table, credential storage details, 
 | Build tasks | `cd scripts && python3 -m pipeline.task_builder` |
 | Validate | `cd scripts && python3 -m pipeline.validate_content` |
 | Fetch directives (Eir) | `cd scripts && python3 -m pipeline.eir_sync fetch` |
-| Connect Eir | `node scripts/connect.mjs <PAIRING_CODE>` |
+| Connect Eir | `python3 scripts/connect.py <PAIRING_CODE>` |

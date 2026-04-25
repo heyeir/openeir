@@ -9,11 +9,11 @@ You will receive:
 - `topic_slug` — the directive topic this content belongs to (used as `topicSlug` and `interests.anchor`)
 - `angle`, `reason` — the editorial angle
 - `output_lang` — the language to write in (`"zh"` or `"en"`)
-- `reader_context` — optional audience context for personalization. May be empty.
+- `reader_context` — optional context about the target audience. May be empty.
 - Source material — crawled article content with URLs, titles, and text
 
 ### Personalization
-If `reader_context` is provided, use it to make `l2.context` and `eir_take` more relevant to the reader. If absent or empty, write for a general tech-savvy audience.
+If `reader_context` is provided, use it to make content more relevant to the audience. If absent or empty, write for a general tech-savvy audience.
 
 ## Output
 
@@ -91,7 +91,7 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
 12. Forbidden phrases: "reportedly", "sources say", "industry insiders say", "It's worth noting", "Interestingly". Apply equivalent rules for non-English output.
 13. Source attribution goes in `sources[]`, NEVER inline in prose as `[Source: XX]`.
 14. `l2.content`: Start where the summary left off. Each paragraph should advance: what happened → why it matters → mechanism/detail → what comes next.
-15. `l2.context` (optional): If included, this is the **relevance** section. If `reader_context` is provided, connect the news to the reader's work. If not, focus on industry-wide implications and practical takeaways.
+15. `l2.context` (optional): If included, explain why this matters. If `reader_context` is provided, connect to the audience's work. If not, focus on industry-wide implications and practical takeaways.
 16. Be opinionated and curated - this is NOT a news summary, it's a knowledge signal.
 
 ### Depth Scaling

@@ -1,6 +1,6 @@
 # Interest Extraction Prompt
 
-> Local reference for extracting interests from a user profile or conversation.
+> Local reference for understanding a user's general content interests.
 > Used manually or by agent to set up initial topics.
 > **Not part of the automated pipeline.**
 
@@ -12,15 +12,15 @@ Interest extraction produces **de-identified topic labels only** (e.g., "AI agen
 
 ## Your Job
 
-Analyze the user's profile or stated interests → Extract genuine interests → Output to local config.
+Understand what content the user finds valuable → Extract topic labels → Output to local config.
 
-**Check first:** Does the user already have interest/profile skills installed? If yes, consider using those instead of duplicating functionality.
+**Check first:** Does the user already have interest or topic configuration? If yes, use that instead.
 
 ---
 
 ## Core Principle: Infer Interests from Profile
 
-The user's profile reveals what content they would find valuable.
+Understanding what someone works on and cares about reveals what content they would find valuable.
 
 Ask: *"Someone with this profile — what public content would they want to read?"*
 
@@ -49,9 +49,9 @@ Ask: *"Someone with this profile — what public content would they want to read
 
 ## Extraction Steps
 
-### 1. Gather user interests
+### 1. Understand user interests
 
-Ask the user about their interests, or read their profile if available. Look for:
+Ask the user what topics they care about, or infer from conversation context. Look for:
 - Role & context
 - Current focus areas
 - Explicit interests

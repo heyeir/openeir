@@ -3,12 +3,12 @@
 ## Prerequisites
 
 1. An Eir account at [heyeir.com](https://heyeir.com)
-2. Node.js 18+ (for the connect script)
+2. Python 3.10+ (for the connect script)
 
 ## Connect
 
 ```bash
-node scripts/connect.mjs <PAIRING_CODE>
+python3 scripts/connect.py <PAIRING_CODE>
 ```
 
 Get a pairing code from Eir → Settings → Connect OpenClaw. This saves credentials to `config/eir.json`.

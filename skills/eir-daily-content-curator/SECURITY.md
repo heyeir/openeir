@@ -7,7 +7,7 @@
 | Search API calls | ✅ Brave, Tavily, etc. | ✅ Same |
 | Crawl (fetch URLs) | ✅ | ✅ |
 | Eir API calls | ❌ None | ✅ Opt-in |
-| Reads user profile | ❌ No (default) | Only if user provides context |
+| Personalization | ❌ Off (default) | Optional opt-in |
 | Personal data leaves machine | ❌ Never | Only generated content (see below) |
 
 ## Standalone Mode — What is sent
@@ -41,7 +41,7 @@ The user can optionally provide audience context to the agent for more relevant 
 
 This skill includes a reference prompt (`references/interest-extraction-prompt.md`) that helps your agent learn your interests from conversation. It extracts only **de-identified topic labels and keywords** (e.g. "AI Agents", "autonomous vehicles") and saves them locally to `config/interests.json`. No personal identifiers are stored or transmitted.
 
-If you already have a profile or interest skill installed, you can use that instead.
+If you already have an interest or topic configuration, you can use that instead.
 
 ## Credential Storage
 
@@ -62,7 +62,7 @@ All credentials are stored locally in config files (gitignored). No secrets are 
 | `SEARCH_API_KEY` | Search provider API key | No — defaults to `config/settings.json` |
 | `EIR_WORKSPACE` | Override workspace directory | No — auto-detected |
 
-These are convenience overrides only. The standard setup stores credentials in `config/eir.json` (created by `node scripts/connect.mjs`).
+These are convenience overrides only. The standard setup stores credentials in `config/eir.json` (created by `python3 scripts/connect.py`).
 
 ## File Access
 
