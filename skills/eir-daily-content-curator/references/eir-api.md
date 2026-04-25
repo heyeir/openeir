@@ -9,7 +9,7 @@
 - [Connection](#connection) — Register/disconnect/rotate keys
 - [Interests](#interests) — Manage user interests
 - [Curation](#curation) — Fetch directives, report misses
-- [Content](#content) — Push/read/delete content items, daily briefs
+- [Content](#content) — Push/read/delete content items
 
 ---
 
@@ -175,20 +175,3 @@ Report topics where you searched but found no quality content. This lowers their
 **Response:** `{ "ok": true, "updated": 2 }`
 
 **When to call:** After finishing a curation round, if you searched for a topic's searchHints but found nothing worth pushing.
-
-### POST /oc/brief
-Push a daily brief (compiled summary of the day's content).
-
-**Request:**
-```json
-{
-  "title": "Daily Brief — 2026-04-22",
-  "summary": "3 focus items, 2 signals, 1 seed",
-  "content": "Markdown body of the brief",
-  "publishTime": "2026-04-22T07:45:00Z"
-}
-```
-
-**Response:** `{ "ok": true }`
-
-**When to call:** After content generation is complete, typically from the daily-brief cron job.

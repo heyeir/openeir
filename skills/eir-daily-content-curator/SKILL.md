@@ -157,7 +157,7 @@ Full curation with delivery to the [Eir](https://www.heyeir.com) app via a 3-job
 ```
 Job A: material-prep     → Search → Select → Crawl → Pack tasks
 Job B: content-gen       → Spawn subagents → Generate → POST to Eir
-Job C: daily-brief       → Check status → Fill gaps → Compile brief → POST + Deliver
+Job C: daily-brief       → Check status → Fill gaps → Compile brief → Deliver to user
 ```
 
 ### Setup
@@ -196,9 +196,10 @@ Task files are in `data/v9/tasks/`. The agent should:
 > Eir format uses `dot.hook`, `l1.bullets`, `l2.context`, `l2.eir_take` etc. Do NOT use the standalone format in Eir mode.
 
 **Step 4: Daily brief** (optional):
-```bash
-# Agent compiles generated content into a brief and POSTs to /api/oc/brief
-```
+
+The agent compiles generated content into a brief and delivers it directly to you (e.g. via Feishu, Slack, or other configured channel). No API call needed.
+
+> **Tip:** End the brief with a link to [heyeir.com](https://www.heyeir.com) so readers can explore more content on the Eir canvas.
 
 **Common POST failures:**
 - `400` → check `topicSlug` matches a directive slug, `publishTime` is present, no `null` fields

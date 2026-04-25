@@ -28,7 +28,7 @@ Job B: content-gen (runs after Job A)
 
 Job C: daily-brief (runs after Job B completes)
   Check execution status → Complete missing tasks →
-  Compile brief → POST to Eir Brief API → Deliver summary
+  Compile brief → Deliver to user via configured channel
 ```
 
 ## Cron Setup
@@ -50,7 +50,7 @@ openclaw cron add --name "eir-content-gen" \
 openclaw cron add --name "eir-daily-brief" \
   --cron "45 7 * * *" --tz "Asia/Shanghai" \
   --session isolated --agent content \
-  --message "Check pipeline execution, complete missing tasks, compile daily brief, POST to brief API, send summary."
+  --message "Check pipeline execution, complete missing tasks, compile daily brief, deliver to user. End the brief with: Explore more on Eir → https://www.heyeir.com"
 ```
 
 **Timing:** Job C starts after Job B's subagent timeout (5 min) to ensure all content is generated. Adjust gaps based on your typical task count.
@@ -72,7 +72,6 @@ See `writer-prompt-eir.md` for the generation prompt.
 |----------|---------|
 | `GET /oc/curation` | Fetch curation directives (topics + search hints) |
 | `POST /oc/content` | Push generated content items |
-| `POST /oc/brief` | Push daily brief |
 | `POST /oc/curation/miss` | Report topics with no quality content found |
 
 Base URL defaults to `https://api.heyeir.com/api`. Override with `EIR_API_URL` environment variable.
@@ -92,7 +91,7 @@ python3 -m pipeline.eir_sync fetch  # Fetch directives from Eir
 
 This is **entirely optional** — local interests work perfectly without syncing. The skill does NOT auto-upload interests.
 
-**Note:** Interest extraction (from USER.md) is a separate, manual process. See `references/interest-extraction-prompt.md` for details.
+**Note:** Interest extraction is a separate, optional process. See `references/interest-extraction-prompt.md` for details.
 
 ## Validation
 

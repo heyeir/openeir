@@ -7,7 +7,7 @@
 | Search API calls | ✅ Brave, Tavily, etc. | ✅ Same |
 | Crawl (fetch URLs) | ✅ | ✅ |
 | Eir API calls | ❌ None | ✅ Opt-in |
-| Reads USER.md | ❌ Never (default) | Only if personalization enabled |
+| Reads user profile | ❌ No (default) | Only if user provides context |
 | Personal data leaves machine | ❌ Never | Only generated content (see below) |
 
 ## Standalone Mode — What is sent
@@ -21,10 +21,10 @@
 | Data | Sent to Eir API | Notes |
 |------|:---:|-------|
 | Generated content (dot, l1, l2) | ✅ | LLM-generated summaries |
-| l2.context, eir_take | ✅ | See personalization note below |
+| l2.context, eir_take | Optional | Only included if user enables these fields |
 | Interest categories | ✅ | Topic slugs only (e.g. "ai-agents") |
 | Source URLs + metadata | ✅ | For attribution |
-| **USER.md content** | **❌ Never** | Used as local LLM prompt context only |
+| **User profile data** | **❌ Never** | Agent may use local context for generation, but raw profile data is not transmitted |
 | **Raw conversation text** | **❌ Never** | Not accessed by pipeline |
 | **System credentials** | **❌ Never** | |
 | **File paths / machine identifiers** | **❌ Never** | |
@@ -33,14 +33,9 @@
 
 > ⚠️ **Personalization is OFF by default and requires explicit opt-in.**
 
-When enabled (`"personalization": {"enabled": true}` in `config/settings.json`), the pipeline reads your USER.md to provide `reader_context` to the LLM during content generation. **USER.md itself is never transmitted to any external API.** However, because the LLM uses it as prompt context, the generated `l2.context` and `eir_take` fields may indirectly reflect your professional context (e.g. "as an AI product builder..."). These generated fields are then POSTed to the Eir API.
+The user can optionally provide audience context to the agent for more relevant content. This context is used locally during LLM generation only. Generated fields like `l2.context` and `eir_take` are optional — users can disable them in their settings.
 
-**Data flow when personalization is ON:**
-```
-USER.md (local only) → LLM prompt context → generated l2.context/eir_take → POST to api.heyeir.com
-```
-
-**To keep all personal context local:** leave personalization disabled (the default). Content will be written for a general tech-savvy audience with no personal references.
+**To keep all content generic:** leave personalization disabled (the default) and omit `l2.context`/`eir_take` from generated content.
 
 ### Interest Extraction
 
@@ -70,7 +65,7 @@ These are convenience overrides only. The standard setup stores credentials in `
 
 ## File Access
 
-Pipeline scripts read/write only within the skill's `data/` and `config/` directories. The only external file access is optionally reading `USER.md` (when personalization is enabled).
+Pipeline scripts read/write only within the skill's `data/` and `config/` directories.
 
 ## Reporting Vulnerabilities
 
