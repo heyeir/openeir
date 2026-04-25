@@ -182,10 +182,8 @@ def pack_single_task(candidate, sources, writer_prompt_mode, directives_map):
     topic_slug = candidate["matched_topic_slug"]
     content_slug = candidate.get("content_slug", "")
     if not content_slug:
-        # Fallback: use topic_slug + angle hash
-        angle = candidate.get("suggested_angle", "")
-        angle_hash = hashlib.md5(angle.encode()).hexdigest()[:6]
-        content_slug = "%s_%s" % (topic_slug, angle_hash)
+        print("  ❌ %s: missing content_slug (LLM must generate it)" % topic_slug, file=sys.stderr)
+        return None
 
     content_slug = sanitize_slug(content_slug)
     directive = directives_map.get(topic_slug, {})
@@ -380,6 +378,9 @@ def main():
 
         # Build task
         task = pack_single_task(c, sources, writer_prompt_mode, directives_map)
+        if task is None:
+            skipped += 1
+            continue
         slug = task["content_slug"]
 
         if args.dry_run:
