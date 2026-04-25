@@ -1,6 +1,14 @@
 # Changelog
 
-## 3.117.0 (pending)
+## 3.118.0 (pending)
+
+Node.js dependency completely removed — the Eir connect script is now pure Python (no more `connect.mjs`). The skill requires only Python 3.10+ with no external packages.
+
+Interest extraction reworked to understand general content interests from conversation, rather than reading specific files. Writer prompts use softer "audience context" language throughout.
+
+Also: `SEARCH_API_KEY` added to declared environment variables, `package.json` removed.
+
+## 3.117.0 (2026-04-25)
 
 Removed the unnecessary `package.json` that was triggering Node.js dependency signals. Added `SEARCH_API_KEY` to declared environment variables. Interest extraction prompt no longer references specific files — just asks the user or reads available context. Code comments cleaned up.
 
