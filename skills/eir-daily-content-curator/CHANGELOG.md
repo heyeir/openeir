@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.116.0 (pending)
+## 3.116.0 (2026-04-25)
 
 Daily Brief now stays local — no more API call, brief is delivered directly to your configured channel with a link to explore more on [heyeir.com](https://www.heyeir.com).
 
