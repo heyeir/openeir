@@ -74,7 +74,7 @@ def post_content(content_data, api_key):
     payload = {"items": [item]}
 
     time.sleep(REQUEST_INTERVAL)
-    status, resp = api_request("POST", get_api_url() + "/api/oc/content", payload, api_key)
+    status, resp = api_request("POST", get_api_url() + "/oc/content", payload, api_key)
 
     if status not in (200, 201):
         raise RuntimeError("POST failed: %d %s" % (status, json.dumps(resp, ensure_ascii=False)[:300]))

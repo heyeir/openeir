@@ -22,7 +22,7 @@ def _fetch_interests_as_directives():
     Assigns default tier/freshness based on heat score."""
     api_key = get_api_key()
     req = urllib.request.Request(
-        "%s/api/oc/interests" % get_api_url(),
+        "%s/oc/interests" % get_api_url(),
         headers={"Authorization": "Bearer %s" % api_key},
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
@@ -78,11 +78,19 @@ def _fetch_interests_as_directives():
 def fetch_directives():
     """Fetch fresh directives from Eir API.
     Falls back to building directives from /oc/interests if /oc/curation fails."""
+    # Preflight
+    from .config import preflight_check
+    errors = preflight_check(require_eir=True)
+    if errors:
+        for e in errors:
+            print("❌ %s" % e, file=sys.stderr)
+        return None
+
     api_key = get_api_key()
     # Try /oc/curation first
     try:
         req = urllib.request.Request(
-            "%s/api/oc/curation" % get_api_url(),
+            "%s/oc/curation" % get_api_url(),
             headers={"Authorization": "Bearer %s" % api_key},
         )
         with urllib.request.urlopen(req, timeout=15) as resp:
@@ -130,7 +138,7 @@ def report_misses(misses):
             "details": normalized,
         }).encode()
         req = urllib.request.Request(
-            "%s/api/oc/curation/miss" % api_url,
+            "%s/oc/curation/miss" % api_url,
             data=payload,
             headers={
                 "Authorization": "Bearer %s" % api_key,

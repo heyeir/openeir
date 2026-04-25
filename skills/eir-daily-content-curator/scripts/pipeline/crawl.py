@@ -115,6 +115,8 @@ def _build_fallback_query(slug, suggested_angle=None):
 
 def _fallback_search(candidate, existing_urls):
     """Search SearXNG for alternative URLs when all original sources failed."""
+    if not SEARXNG_URL:
+        return []
     slug = candidate.get("content_slug", candidate.get("matched_topic_slug", ""))
     angle = candidate.get("suggested_angle", "")
     query = _build_fallback_query(slug, angle)
@@ -149,6 +151,8 @@ def crawl_url(url):
 
     raw_html is the first ~20KB of the page, used for date extraction.
     """
+    if not CRAWL4AI_URL:
+        return None, None
     try:
         payload = json.dumps({
             "urls": [url],

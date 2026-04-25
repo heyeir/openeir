@@ -105,6 +105,8 @@ def searxng_search(query, category="news", limit=MAX_RESULTS_PER_QUERY, time_ran
     """Search SearXNG and return results list.
     time_range: 'day', 'week', 'month', or None (all time).
     """
+    if not SEARXNG_URL:
+        return []
     lang = _detect_query_language(query)
     params_dict = {
         "q": query,
@@ -649,6 +651,15 @@ def main():
     args = parser.parse_args()
 
     ensure_dirs()
+
+    # Preflight
+    from .config import preflight_check
+    errors = preflight_check()
+    if errors:
+        for e in errors:
+            print("❌ %s" % e, file=sys.stderr)
+        sys.exit(1)
+
     start = time.time()
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     print("🔍 Search starting (run=%s)" % run_id)
