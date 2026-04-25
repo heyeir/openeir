@@ -55,6 +55,22 @@ def build_generation_prompt(task_data):
     reason = task_data.get("reason", "")
     source_text = task_data.get("source_text", "")
     reader_context = task_data.get("reader_context", "")
+
+    # Resolve output language: task > directives cache > settings > default
+    output_lang = task_data.get("output_lang", "")
+    if not output_lang:
+        try:
+            from .config import DIRECTIVES_FILE, load_json
+            directives = load_json(DIRECTIVES_FILE, {})
+            output_lang = directives.get("user", {}).get("primaryLanguage", "")
+        except Exception:
+            pass
+    if not output_lang:
+        try:
+            from .workspace import load_settings
+            output_lang = load_settings().get("language", "zh")
+        except Exception:
+            output_lang = "zh"
     
     # Load writer prompt: use mode marker from task (v2), fall back to embedded prompt (v1)
     writer_prompt_mode = task_data.get("writer_prompt_mode", "")
@@ -72,13 +88,13 @@ def build_generation_prompt(task_data):
 Topic slug: %s
 Angle: %s
 Why: %s
-Output language: zh
+Output language: %s
 %s
 Source material:
 %s
 
 Output ONLY the JSON. No other text or markdown fences.""" % (
-        writer_prompt, slug, angle, reason, 
+        writer_prompt, slug, angle, reason, output_lang, 
         "\nReader context:\n" + reader_context if reader_context else "",
         source_text)
 

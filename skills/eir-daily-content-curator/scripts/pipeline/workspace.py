@@ -127,8 +127,15 @@ def load_config() -> dict:
 
 
 def get_api_url() -> str:
+    """Return base API URL without trailing /api suffix.
+    Normalizes both old (https://api.heyeir.com) and new
+    (https://api.heyeir.com/api) formats to the same base."""
     config = load_config()
-    return config.get("apiUrl", "").rstrip("/")
+    url = config.get("apiUrl", "").rstrip("/")
+    # Strip /api suffix if present — callers add /api/oc/... themselves
+    if url.endswith("/api"):
+        url = url[:-4]
+    return url
 
 
 def get_api_key() -> str:

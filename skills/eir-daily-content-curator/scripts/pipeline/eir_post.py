@@ -74,7 +74,7 @@ def post_content(content_data, api_key):
     payload = {"items": [item]}
 
     time.sleep(REQUEST_INTERVAL)
-    status, resp = api_request("POST", get_api_url() + "/oc/content", payload, api_key)
+    status, resp = api_request("POST", get_api_url() + "/api/oc/content", payload, api_key)
 
     if status not in (200, 201):
         raise RuntimeError("POST failed: %d %s" % (status, json.dumps(resp, ensure_ascii=False)[:300]))
@@ -82,6 +82,14 @@ def post_content(content_data, api_key):
     results = resp.get("results", [])
     if not results or results[0].get("status") != "accepted":
         reason = results[0].get("reason", "unknown") if results else "empty"
+        # If rejected for duplicate, refresh source cache
+        if "duplicate" in reason.lower() or "exists" in reason.lower():
+            try:
+                from .eir_sync import sync_sources
+                print("  🔄 Duplicate detected, refreshing source cache...")
+                sync_sources(force=True)
+            except Exception:
+                pass
         raise RuntimeError("POST rejected: %s" % reason)
 
     content_id = results[0].get("id", "")
@@ -111,17 +119,18 @@ def record_posted(content_data, content_id, content_group):
         "pushed_at": datetime.now(timezone.utc).isoformat(),
         "source_urls": [s.get("url", "") for s in content_data.get("sources", [])],
     })
-    PUSHED_TITLES_FILE.write_text(json.dumps(pushed, ensure_ascii=False, indent=2))
+    PUSHED_TITLES_FILE.write_text(json.dumps(pushed, ensure_ascii=False, indent=2), encoding="utf-8")
 
     # Also update run state for cross-step dedup
     try:
-        from .run_state import record_posted_url, record_posted_id, persist_used_urls
+        from .run_state import record_posted_url, record_posted_id, persist_used_urls, load_state
+        state = load_state()
         for s in content_data.get("sources", []):
             url = s.get("url", "")
             if url:
-                record_posted_url({}, url)  # load_json(V9_DIR / "run_state.json", {})
+                record_posted_url(state, url)
         record_posted_id(
-            {},  # load_json(V9_DIR / "run_state.json", {})
+            state,
             content_id, content_group,
             content_data["slug"],
             content_data.get("topicSlug", ""),
@@ -159,7 +168,7 @@ def main():
 
     api_key = get_api_key()
     if not api_key and not args.dry_run:
-        print("Error: No API key. Run connect.mjs first or set EIR_API_KEY.", file=sys.stderr)
+        print("Error: No API key. Run connect.py first or set EIR_API_KEY.", file=sys.stderr)
         sys.exit(1)
 
     def post_file(filepath):
