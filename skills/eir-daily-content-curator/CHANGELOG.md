@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.117.0 (pending)
+
+Removed the unnecessary `package.json` that was triggering Node.js dependency signals. Added `SEARCH_API_KEY` to declared environment variables. Interest extraction prompt no longer references specific files — just asks the user or reads available context. Code comments cleaned up.
+
 ## 3.116.0 (2026-04-25)
 
 Daily Brief now stays local — no more API call, brief is delivered directly to your configured channel with a link to explore more on [heyeir.com](https://www.heyeir.com).
