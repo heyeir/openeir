@@ -266,6 +266,11 @@ def _find_duplicate_event(content_slug, title, topic, recent_events):
     Only compares within same topic (different topics = different events)."""
     THRESHOLD = 0.30  # lowered: catches 'claude-design-*' variants (0.33 was slipping through at 0.35)
     for ev in recent_events:
+        # Normalized title match: catches cross-language duplicates
+        # (e.g. API-synced titles from other language versions)
+        ev_normalized = ev.get("normalized", "")
+        if ev_normalized and ev_normalized == _normalize_title_for_dedup(title):
+            return ev.get("slug", "?") + " (title match)"
         if ev.get("topic") != topic:
             continue
         sim = _event_similarity(content_slug, title,
@@ -273,6 +278,15 @@ def _find_duplicate_event(content_slug, title, topic, recent_events):
         if sim >= THRESHOLD:
             return ev.get("slug", "?")
     return None
+
+
+def _normalize_title_for_dedup(title):
+    """Lightweight wrapper — import normalize from eir_sync if available."""
+    try:
+        from .eir_sync import _normalize_title
+        return _normalize_title(title)
+    except ImportError:
+        return title.strip().lower()
 
 
 def main():

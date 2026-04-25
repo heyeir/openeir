@@ -344,7 +344,25 @@ def get_recent_posted_events(days=3):
                 pass
             events.append({"slug": content_slug, "topic": topic, "title": title})
     
-    # 3. Enrich titles for run_state entries that lack them
+    # 3. From pushed_titles.json — covers content synced from API
+    #    with content_group for cross-language event matching
+    pushed = load_json(PUSHED_TITLES_FILE, [])
+    if isinstance(pushed, list):
+        for p in pushed:
+            cg = p.get("content_group", "")
+            title = p.get("title", "")
+            normalized = p.get("normalized", "")
+            if cg and cg not in seen_slugs:
+                seen_slugs.add(cg)
+                events.append({
+                    "slug": cg,
+                    "topic": "",
+                    "title": title,
+                    "normalized": normalized,
+                    "content_group": cg,
+                })
+
+    # 4. Enrich titles for run_state entries that lack them
     posted_dir = V9_DIR / "posted"
     for ev in events:
         if ev["title"]:
