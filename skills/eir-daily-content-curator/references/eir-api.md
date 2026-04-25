@@ -136,8 +136,8 @@ Push generated content.
       "l2": {
         "content": "...(500+ words)...",
         "bullets": [{ "text": "...", "confidence": "high" }],
-        "context": "...",
-        "eir_take": "...",
+        "context": "...(optional)",
+        "eir_take": "...(optional)",
         "related_topics": ["ai-agents"]
       },
       "sources": [{ "url": "https://...", "title": "...", "name": "Anthropic Blog" }]
