@@ -54,7 +54,6 @@ Then follow the corresponding setup section below.
 python3 scripts/setup.py --init --settings '{
   "mode": "standalone",
   "language": "en",
-  "personalization": {"enabled": false},
   "search": {
     "search_base_url": "https://api.search.brave.com/res/v1",
     "search_api_key": "YOUR_BRAVE_API_KEY"
@@ -186,15 +185,15 @@ python3 -m pipeline.crawl               # Fetch full content from candidate URLs
 python3 -m pipeline.task_builder        # Bundle into task files (auto-selects eir writer prompt)
 ```
 
-**Step 3: Generate content** (agent-driven):
+**Step 3: Generate and publish** (agent-driven):
 
 Task files are in `data/v9/tasks/`. The agent should:
 1. Read each task file
 2. Follow the writer prompt in `references/writer-prompt-eir.md`
-3. Generate Eir-format JSON (`slug`, `lang`, `dot`, `l1`, `l2`, `sources`, `interests`)
-4. POST via `from pipeline.eir_post import post_content; post_content(data, api_key)`
+3. Generate Eir-format JSON (see `references/content-spec.md` for field types and limits)
+3. POST via `python3 -m pipeline.eir_post <file>` or programmatically
 
-> **Key difference from standalone:** Eir format uses `dot.hook`, `l1.bullets`, `l2.context`, `l2.eir_take` etc. Do NOT use the standalone format (`title/summary/body/connect`).
+> Eir format uses `dot.hook`, `l1.bullets`, `l2.context`, `l2.eir_take` etc. Do NOT use the standalone format in Eir mode.
 
 **Step 4: Daily brief** (optional):
 ```bash
@@ -202,15 +201,11 @@ Task files are in `data/v9/tasks/`. The agent should:
 ```
 
 **Common POST failures:**
-- `400 Bad Request` → check that `topicSlug` matches a directive slug (not a Chinese label), `publishTime` is present at the item level, and no fields are `null`
-- `401 Unauthorized` → check `config/eir.json` has valid credentials
-- `500 Internal Server Error` → retry once; if persistent, report the payload
+- `400` → check `topicSlug` matches a directive slug, `publishTime` is present, no `null` fields
+- `401` → re-run `connect.mjs` to refresh credentials
+- `500` → retry once; if persistent, report the payload
 
 For cron configuration and API details, see `references/eir-setup.md`.
-
-### Privacy Notice
-
-When Eir mode is enabled, generated content summaries are POSTed to heyeir.com. See SECURITY.md for details on what IS and IS NOT sent.
 
 ---
 
@@ -229,7 +224,7 @@ All in `scripts/pipeline/`:
 | `validate_content.py` | Validate generated content against spec | Both |
 | `directives.py` | Load local interests/directives | Both |
 | `config.py` | Shared configuration and path resolution | Both |
-| `workspace.py` | Workspace and credential resolution | Both |
+| `workspace.py` | Workspace and path resolution | Both |
 | `eir_sync.py` | Fetch directives from Eir API | Eir only |
 | `eir_post.py` | POST content to Eir API | Eir only |
 | `run_state.py` | Pipeline run state management | Both |
@@ -261,11 +256,7 @@ Search API (primary) → SearXNG (optional) → Crawl4AI/web_fetch (content)
 
 ## Security & Data Flow
 
-**Standalone mode:** Only sends search queries to your configured search API and HTTP requests to crawl source URLs. No other external communication.
-
-**Eir mode (opt-in):** Additionally sends generated content summaries to heyeir.com. USER.md is never transmitted — it's used locally as LLM context only when personalization is enabled.
-
-**Personalization** is off by default. Enable it in `config/settings.json` to get content tailored to your profile. See `SECURITY.md` for the full data flow table.
+See `SECURITY.md` for the complete data flow table, credential storage details, and personalization behavior.
 
 ---
 
