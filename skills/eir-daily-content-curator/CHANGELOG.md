@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.118.0 (pending)
+## 3.118.0 (2026-04-25)
 
 Node.js dependency completely removed — the Eir connect script is now pure Python (no more `connect.mjs`). The skill requires only Python 3.10+ with no external packages.
 
