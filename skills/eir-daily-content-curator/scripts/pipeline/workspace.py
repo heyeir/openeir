@@ -30,8 +30,8 @@ _DEFAULT_SETTINGS = {
     "local_storage": "data/",
     "search": {
         "providers": ["brave"],
-        "searxng_url": "http://localhost:8888",
-        "crawl4ai_url": "http://localhost:11235",
+        "searxng_url": "",
+        "crawl4ai_url": "",
     },
     "cron": {
         "schedule": "0 8 * * *",
