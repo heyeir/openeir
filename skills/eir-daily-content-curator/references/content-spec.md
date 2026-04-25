@@ -151,8 +151,8 @@ Both use the same ID scheme:
 {8-char contentGroup}_{lang}    e.g. a3k9m2x7_zh
 ```
 
-- `contentGroup`: 8-char base64url, globally unique
-- All language versions of the same item share the `contentGroup`
+- `contentGroup`: 8-char base64url, globally unique, server-assigned on first POST
+- All language versions of the same content **must** share the same `contentGroup` — POST the primary language first (without `contentGroup`), then use the returned `contentGroup` when posting other languages
 
 ---
 

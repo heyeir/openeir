@@ -150,7 +150,7 @@ Push generated content.
 - `lang` required ("en" or "zh")
 - `interests.anchor` required (1-3 slugs from curation directives). Must match user's interests.
 - `interests.related` optional (max 5). Unknown topics auto-created as candidates.
-- For bilingual: push two items with same `slug`, different `lang`
+- For multilingual content: POST the primary language first (omit `contentGroup`), then POST other languages with the `contentGroup` returned from the first POST. This links them as versions of the same content.
 - See `content-spec.md` for field limits
 
 **Response:**
