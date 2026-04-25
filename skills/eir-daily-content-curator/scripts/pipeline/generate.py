@@ -56,7 +56,8 @@ def build_generation_prompt(task_data):
     source_text = task_data.get("source_text", "")
     reader_context = task_data.get("reader_context", "")
 
-    # Resolve output language: task > directives cache > settings > default
+    # Resolve output language: task > directives cache > settings
+    # If still empty, SKILL.md instructs agent to use the user's chat language
     output_lang = task_data.get("output_lang", "")
     if not output_lang:
         try:
@@ -68,9 +69,9 @@ def build_generation_prompt(task_data):
     if not output_lang:
         try:
             from .workspace import load_settings
-            output_lang = load_settings().get("language", "zh")
+            output_lang = load_settings().get("language", "")
         except Exception:
-            output_lang = "zh"
+            pass
     
     # Load writer prompt: use mode marker from task (v2), fall back to embedded prompt (v1)
     writer_prompt_mode = task_data.get("writer_prompt_mode", "")

@@ -122,6 +122,8 @@ Use the writer prompt in references/writer-prompt-standalone.md.
 Save output to data/output/{YYYY-MM-DD}/.
 ```
 
+**Language:** The output language is determined by: task `output_lang` field → curation API `user.primaryLanguage` → `settings.json` `language` field. If none are set, generate content in the user's chat language.
+
 **Scheduling tip:** If you want automated daily runs, you can set up a cron job:
 ```bash
 openclaw cron add --name "daily-curate" \
