@@ -6,6 +6,10 @@ metadata:
     emoji: "📰"
     requires:
       bins: ["python3"]
+      optionalBins: ["node"]
+      env:
+        EIR_API_KEY: "Eir API bearer token (Eir mode only — obtained via connect.mjs pairing)"
+        EIR_API_URL: "Eir API base URL (optional override, defaults to https://api.heyeir.com)"
 ---
 
 # Daily Content Curator
@@ -143,7 +147,7 @@ Content saved to `data/output/{YYYY-MM-DD}/`. Daily brief compiles the top items
 
 **Required:** Python 3.10+ (standard library only — no `pip install` needed).
 
-**Optional:** Node.js 18+ (only for Eir connect script). [SearXNG](https://docs.searxng.org/) (fallback search). [Crawl4AI](https://github.com/unclecode/crawl4ai) (fallback crawl).
+**Optional:** Node.js 18+ (required only for `node scripts/connect.mjs` — the Eir pairing step). Not needed for Standalone mode. [SearXNG](https://docs.searxng.org/) (fallback search). [Crawl4AI](https://github.com/unclecode/crawl4ai) (fallback crawl).
 
 ---
 

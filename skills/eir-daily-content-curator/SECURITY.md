@@ -31,9 +31,16 @@
 
 ### Personalization
 
-Personalization is **off by default**. When enabled (`"personalization": {"enabled": true}` in `config/settings.json`), the pipeline reads your USER.md to provide context to the LLM during content generation. USER.md itself is never transmitted, but the LLM-generated `l2.context` and `eir_take` fields may reflect your professional context (e.g. "as an AI product builder...").
+> ⚠️ **Personalization is OFF by default and requires explicit opt-in.**
 
-To disable: set `"personalization": {"enabled": false}` in `config/settings.json`, or simply don't enable it — it's off by default. When disabled, content is written for a general audience with no personal references.
+When enabled (`"personalization": {"enabled": true}` in `config/settings.json`), the pipeline reads your USER.md to provide `reader_context` to the LLM during content generation. **USER.md itself is never transmitted to any external API.** However, because the LLM uses it as prompt context, the generated `l2.context` and `eir_take` fields may indirectly reflect your professional context (e.g. "as an AI product builder..."). These generated fields are then POSTed to the Eir API.
+
+**Data flow when personalization is ON:**
+```
+USER.md (local only) → LLM prompt context → generated l2.context/eir_take → POST to api.heyeir.com
+```
+
+**To keep all personal context local:** leave personalization disabled (the default). Content will be written for a general tech-savvy audience with no personal references.
 
 ### Interest Extraction
 
@@ -50,6 +57,16 @@ All credentials are stored locally in config files (gitignored). No secrets are 
 | `config/eir.json` | Eir API key, user ID | ❌ gitignored |
 | `config/settings.json` | Search API key, mode, preferences | ❌ gitignored |
 | `config/interests.json` | Topic labels and keywords | ✅ no secrets |
+
+### Environment Variables (optional overrides)
+
+| Variable | Purpose | Required? |
+|----------|---------|----------|
+| `EIR_API_KEY` | Eir API bearer token | No — defaults to `config/eir.json` |
+| `EIR_API_URL` | Eir API base URL | No — defaults to `https://api.heyeir.com` |
+| `EIR_WORKSPACE` | Override workspace directory | No — auto-detected |
+
+These are convenience overrides only. The standard setup stores credentials in `config/eir.json` (created by `node scripts/connect.mjs`).
 
 ## File Access
 
