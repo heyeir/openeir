@@ -66,7 +66,23 @@ def post_content(content_data, api_key):
     if pt:
         item["publishTime"] = pt
     if content_data.get("interests"):
-        item["interests"] = content_data["interests"]
+        interests = content_data["interests"]
+        # Validate anchor: must be clean topic slugs, not content_slugs with hashes
+        anchors = interests.get("anchor", [])
+        topic_slug = content_data.get("topicSlug", "")
+        if anchors and topic_slug:
+            # Fix: if anchor looks like content_slug (too long or has hash), replace with topicSlug
+            cleaned = []
+            for a in anchors:
+                if a == topic_slug:
+                    cleaned.append(a)
+                elif len(a) > len(topic_slug) + 10:
+                    print("  ⚠️  Fixing anchor '%s' → '%s' (was content_slug?)" % (a, topic_slug))
+                    cleaned.append(topic_slug)
+                else:
+                    cleaned.append(a)
+            interests["anchor"] = cleaned
+        item["interests"] = interests
     if content_data.get("contentGroup"):
         item["contentGroup"] = content_data["contentGroup"]
 
