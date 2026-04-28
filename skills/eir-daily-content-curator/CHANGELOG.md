@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.120.0 (2026-04-28)
+
+### Bug Fixes
+- **Grounding API rate limiting**: added 1s minimum interval between requests + 429 retry with exponential backoff (2s/4s/8s, max 3 retries)
+- **eir_post error parsing**: reads response body and parses JSON for better error diagnostics (was only `str(e)`)
+- **Source date normalization**: `publish_time`/`publishedDate` auto-mapped to `publishTime` in sources before POST
+- **l2.related_topics stripped**: removed before POST (API doesn't store this field)
+
+### Improvements
+- **Blocked domains**: added 10 unreliable domains to tier3 list (baidu legal, xinhuanet, sciencedaily, etc.)
+- **search.py sleep**: inter-query sleep increased from 0.3s to 0.5s for better rate limiting
+
+### Removed (writer prompt / content-spec)
+- **`l1.bullets`**: removed — frontend only renders `l2.bullets`; was generating redundant content and confusing agents with two different `bullets` types
+- **`l2.related_topics`**: removed — API doesn't store it; agent was wasting ~50 tokens per item
+
 ## 3.119.0 (2026-04-25)
 
 ### Bug Fixes
