@@ -41,7 +41,11 @@ def api_request(method, url, data=None, api_key=""):
                 time.sleep(2 ** attempt)
                 continue
             try:
-                return e.code, {"error": str(e)}
+                body = e.read().decode() if hasattr(e, 'read') else ""
+                try:
+                    return e.code, json.loads(body)
+                except (json.JSONDecodeError, ValueError):
+                    return e.code, {"error": body or str(e)}
             except AttributeError:
                 return 0, {"error": str(e)}
     return 0, {"error": "max retries"}
@@ -55,9 +59,23 @@ def post_content(content_data, api_key):
         "topicSlug": content_data.get("topicSlug", content_data["slug"]),
         "dot": content_data["dot"],
         "l1": content_data["l1"],
-        "l2": content_data["l2"],
+        "l2": {k: v for k, v in content_data["l2"].items() if k != "related_topics"},
         "sources": content_data.get("sources", []),
     }
+    # Normalize source date fields: publish_time/publishedDate → publishTime
+    for src in item["sources"]:
+        if "publishTime" not in src:
+            pt_val = src.pop("publish_time", None) or src.pop("publishedDate", None)
+            if pt_val:
+                src["publishTime"] = pt_val
+    # Migrate l2.related_topics → interests.related if present
+    rt = content_data.get("l2", {}).get("related_topics", [])
+    if rt:
+        if not content_data.get("interests"):
+            content_data["interests"] = {
+                "anchor": [content_data.get("topicSlug", content_data["slug"])],
+                "related": [{"slug": s, "label": s} for s in rt],
+            }
     # publishTime at top level (accept both camelCase and snake_case input)
     pt = content_data.get("publishTime") or content_data.get("publish_time", "")
     if not pt and item["sources"]:

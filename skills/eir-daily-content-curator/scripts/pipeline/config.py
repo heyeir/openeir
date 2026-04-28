@@ -83,6 +83,16 @@ SOURCE_QUALITY = {
         "msn.com", "msn.cn", "forbes.com", "cnbc.com", "nytimes.com",
         "thehill.com", "politico.eu", "seekingalpha.com", "winbuzzer.com",
         "techrepublic.com", "beckershospitalreview.com",
+        # Added 2026-04-27: frequent failures or hard to crawl
+        "ailegal.baidu.com",          # Baidu legal - blocked/no content
+        "xinhuanet.com",              # State media - JS heavy, inconsistent
+        "health.people.com.cn",       # People's Daily health - redirects
+        "dailymaverick.co.za",        # SA news - inconsistent
+        "newscase.com",               # Aggregator - link rot
+        "moneycontrol.com",           # India finance - paywall/bot detection
+        "sitepoint.com",              # Tech tutorials - slow/heavy
+        "hackaday.com",               # Blog format - extraction issues
+        "sciencedaily.com",           # Press releases - low content quality
     ],
 }
 
