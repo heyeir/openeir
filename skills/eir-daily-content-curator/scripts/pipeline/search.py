@@ -438,7 +438,7 @@ def _entity_refinement_pass(initial_results, slug, topic_name, freshness,
                 r["search_query"] = q
                 refined.append(r)
                 seen_urls.add(r["url"])
-        time.sleep(0.3)
+        time.sleep(0.5)
     
     if refined:
         print("    🔬 Refinement: +%d results from entity queries" % len(refined))
@@ -539,7 +539,7 @@ def _cross_topic_entity_search(all_results, directives, used_urls):
                 r["cross_topic_entity"] = entity
                 supplementary.append(r)
                 seen_urls.add(r["url"])
-        time.sleep(0.3)
+        time.sleep(0.5)
     
     if supplementary:
         print("    🔥 Cross-topic: +%d supplementary results" % len(supplementary))
@@ -586,7 +586,7 @@ def search_topic(directive, used_urls):
                 r["search_query"] = q
                 news_results.append(r)
                 seen_urls.add(r["url"])
-        time.sleep(0.3)
+        time.sleep(0.5)
 
     # Keep fresh results; when time_range is set, also keep unknown-date results
     # but cap undated results to avoid noise dominating
@@ -623,7 +623,7 @@ def search_topic(directive, used_urls):
                     r["search_query"] = q
                     all_results.append(r)
                     seen_urls.add(r["url"])
-            time.sleep(0.3)
+            time.sleep(0.5)
 
     # Post-filter
     all_results = _post_filter(all_results)

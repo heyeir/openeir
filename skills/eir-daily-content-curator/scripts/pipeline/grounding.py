@@ -18,10 +18,15 @@ implementing the same REST interface.
 """
 
 import json
+import time
 import urllib.request
 from typing import Optional
 
 from .config import load_settings
+
+# Rate limiting
+_REQUEST_INTERVAL = 1.0  # min seconds between requests
+_last_request_time = 0.0
 
 _settings_cache = None
 
@@ -41,19 +46,48 @@ def _is_available():
     return bool(base and key)
 
 
-def _post(endpoint, body, timeout=20):
-    """POST JSON to grounding API endpoint, return parsed response."""
+def _post(endpoint, body, timeout=20, max_retries=3):
+    """POST JSON to grounding API endpoint with rate limiting and retry on 429."""
+    global _last_request_time
     base, key = _get_grounding_config()
     if not base or not key:
         raise RuntimeError("Search API not configured (set search_base_url + search_api_key in settings.json)")
     url = "%s/%s" % (base, endpoint.lstrip("/"))
     data = json.dumps(body).encode()
-    req = urllib.request.Request(url, data=data, headers={
+    headers = {
         "Content-Type": "application/json",
         "x-apikey": key,
-    })
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read())
+    }
+
+    for attempt in range(max_retries):
+        # Rate limit: enforce minimum interval between requests
+        elapsed = time.time() - _last_request_time
+        if elapsed < _REQUEST_INTERVAL:
+            time.sleep(_REQUEST_INTERVAL - elapsed)
+
+        try:
+            req = urllib.request.Request(url, data=data, headers=headers)
+            _last_request_time = time.time()
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                # Parse Retry-After header, default exponential backoff
+                retry_after = e.headers.get("Retry-After")
+                if retry_after:
+                    try:
+                        wait = float(retry_after)
+                    except ValueError:
+                        wait = 2 ** (attempt + 1)
+                else:
+                    wait = 2 ** (attempt + 1)  # 2s, 4s, 8s
+                print("    ⏳ 429 rate limited on %s, waiting %.0fs (attempt %d/%d)" % (
+                    endpoint, wait, attempt + 1, max_retries))
+                time.sleep(wait)
+                continue
+            raise  # re-raise non-429 errors
+    # All retries exhausted
+    raise RuntimeError("Search API rate limited after %d retries on %s" % (max_retries, endpoint))
 
 
 def search_web(query, max_results=10, language="en", region="US",
