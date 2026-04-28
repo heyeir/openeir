@@ -42,7 +42,6 @@
 | `bullets` | array | 3-5 items | — | Each: `{text: string, confidence: "high"\|"medium"\|"low"}`. Concrete facts with numbers/names. Every bullet must have supporting detail in `content`. |
 | `context` | string | 1-2 sentences | — | Optional. "SO WHAT for the reader." Omit or leave empty if not needed. |
 | `eir_take` | string | 1 sentence | — | Optional. Eir's sharp opinion. **PUBLIC** (visible on share pages) if included. |
-| `related_topics` | string[] | 3-5 items | — | Human-readable phrases in `lang`. NOT slugs. e.g. `"Vector Search and ANN Algorithms"` ✅, `"vector-search-ann"` ❌ |
 
 ### sources (provenance — machine-readable)
 
