@@ -47,8 +47,7 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
   "l1": {
     "title": "<opinionated title in output_lang>",
     "summary": "<2-3 sentences in output_lang, 50-80 words>",
-    "key_quote": "<most insightful direct quote from source, or empty string>",
-    "bullets": ["<≤20 zh chars or ≤50 en chars>", "...", "..."]
+    "key_quote": "<most insightful direct quote from source, or empty string>"
   },
   "l2": {
     "content": "<2-4 paragraphs, 200-400 zh chars or 150-300 en words, separated by \\n\\n>",
@@ -65,7 +64,7 @@ Output a **single JSON object** (no markdown fences). The JSON must have this ex
 ## Rules
 
 ### Language
-1. **ALL text fields must be in `output_lang`.** This includes `dot.hook`, `l1.title`, `l1.summary`, `l1.bullets`, `l2.content`, `l2.bullets`, `l2.context`, `l2.eir_take`. No exceptions.
+1. **ALL text fields must be in `output_lang`.** This includes `dot.hook`, `l1.title`, `l1.summary`, `l2.content`, `l2.bullets`, `l2.context`, `l2.eir_take`. No exceptions.
 2. **NEVER mix languages** in a single field. Technical terms and proper nouns (e.g. "GPT-4", "Transformer", "LLM") may remain in their original form.
 
 ### Category

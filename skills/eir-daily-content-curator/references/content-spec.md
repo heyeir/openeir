@@ -32,7 +32,6 @@
 | `summary` | string | 50-80 words | — | 2-3 sentences. Advances beyond the title — don't repeat. |
 | `key_quote` | string | 1 sentence | — | Best direct quote from sources. Use `""` if none. |
 | `via` | **string[]** | — | — | **Must be an array.** Auto-derived from `sources[].name`. Pipeline populates it; API also falls back to `sources[].name` if empty. Writer should NOT set this. |
-| `bullets` | string[] | 3-4 items | 10 items (API rejects) | Each: ≤20 CJK chars / ≤50 EN chars. Don't repeat summary. |
 
 ### l2 (depth — expanded view)
 
@@ -123,7 +122,6 @@
 - `l1` missing or not an object
 - `l1.title` empty or >200 chars
 - `l1.via` present but not an array
-- `l1.bullets` present but not an array, or >10 items
 - `sources[].url` missing or not a valid URL
 - `sources` >10 items per content item
 - `lang` missing, or not `"zh"` or `"en"`
