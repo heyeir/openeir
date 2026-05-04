@@ -280,6 +280,48 @@ def _find_duplicate_event(content_slug, title, topic, recent_events):
     return None
 
 
+def _find_duplicate_source_event(source_title, recent_events):
+    """Check if a single source title matches an already-covered event.
+    
+    This catches the case where the same event is reported by multiple outlets
+    with different URLs but similar titles. E.g.:
+    - "Harvard study: AI beats ER doctors" (TechCrunch)
+    - "AI more accurate than doctors in emergency room - Harvard" (Reuters)
+    
+    Returns (duplicate_slug, similarity_score) or (None, 0).
+    """
+    if not source_title or len(source_title.strip()) < 10:
+        return None, 0
+    
+    THRESHOLD = 0.35  # slightly higher than event-level to avoid over-filtering
+    source_tokens = _tokenize_for_dedup(source_title)
+    
+    for ev in recent_events:
+        # Compare source title against published event's title
+        ev_title = ev.get("title", "")
+        if not ev_title:
+            continue
+        
+        # First check: normalized title exact match
+        if _normalize_title_for_dedup(source_title) == _normalize_title_for_dedup(ev_title):
+            return ev.get("slug", "?") + " (title exact match)", 1.0
+        
+        # Second check: token overlap (cross-topic - same event can appear in different topics)
+        ev_tokens = _tokenize_for_dedup(ev_title)
+        if not source_tokens or not ev_tokens:
+            continue
+        
+        shared = source_tokens & ev_tokens
+        min_size = min(len(source_tokens), len(ev_tokens))
+        if min_size == 0:
+            continue
+        sim = len(shared) / min_size
+        if sim >= THRESHOLD:
+            return ev.get("slug", "?") + f" (sim={sim:.2f})", sim
+    
+    return None, 0
+
+
 def _normalize_title_for_dedup(title):
     """Lightweight wrapper — import normalize from eir_sync if available."""
     try:
@@ -327,7 +369,7 @@ def main():
         from .run_state import get_all_used_urls, get_posted_content_slugs, get_recent_posted_events
         used_urls = get_all_used_urls()
         posted_slugs = get_posted_content_slugs()
-        recent_events = get_recent_posted_events(days=3)
+        recent_events = get_recent_posted_events(days=7)
     except Exception:
         used_urls = set()
         posted_slugs = set()
@@ -385,6 +427,26 @@ def main():
 
         # Load sources
         sources = load_candidate_sources(c)
+        
+        # Source-level event dedup: filter out sources covering already-covered events
+        if sources and recent_events:
+            filtered_sources = []
+            for src in sources:
+                dup_of, sim = _find_duplicate_source_event(src.get("title", ""), recent_events)
+                if dup_of:
+                    print("  ⏭️  %s: source '%s...' is duplicate event (match: '%s')" % (
+                        content_slug, src.get("title", "")[:40], dup_of))
+                    continue
+                filtered_sources.append(src)
+            if len(filtered_sources) < len(sources):
+                print("  🔗 %s: removed %d duplicate event source(s), %d remaining" % (
+                    content_slug, len(sources) - len(filtered_sources), len(filtered_sources)))
+                sources = filtered_sources
+            if not sources:
+                print("  ⏭️  %s: all sources are duplicate events" % content_slug)
+                skipped += 1
+                continue
+        
         if not sources:
             print("  ⏭️  %s: no usable sources after crawl" % topic)
             skipped += 1
@@ -408,6 +470,9 @@ def main():
                     try:
                         # Parse various ISO formats
                         dt = datetime.fromisoformat(pd.replace("Z", "+00:00"))
+                        # Assume UTC for naive datetimes
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
                         if dt >= cutoff:
                             has_fresh = True
                             break

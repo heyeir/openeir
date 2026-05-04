@@ -19,6 +19,53 @@ from .config import POSTED_DIR, PUSHED_TITLES_FILE, V9_DIR, ensure_dirs
 from .workspace import get_api_url, get_api_key
 
 TIMEOUT = 60
+
+# --- Directive label cache (lazy-loaded) ---
+_directive_labels = None  # {slug: zh_label}
+
+
+def _load_directive_labels():
+    """Load directive slug→label map from directives.json (cached)."""
+    global _directive_labels
+    if _directive_labels is not None:
+        return _directive_labels
+    _directive_labels = {}
+    dpath = Path(__file__).resolve().parent.parent.parent / "data" / "directives.json"
+    if dpath.exists():
+        try:
+            data = json.loads(dpath.read_text(encoding="utf-8"))
+            for d in data.get("directives", []):
+                if d.get("slug") and d.get("label"):
+                    _directive_labels[d["slug"]] = d["label"]
+        except Exception:
+            pass
+    return _directive_labels
+
+
+def _slug_to_label(slug, lang="zh"):
+    """Best-effort slug → human label. For en, title-case the slug words."""
+    if lang == "zh":
+        labels = _load_directive_labels()
+        if slug in labels:
+            return labels[slug]
+    # Fallback: title-case from slug
+    return slug.replace("-", " ").title()
+
+
+def _ensure_anchor_strings(interests):
+    """Ensure interests.anchor is a flat string[] of topic slugs.
+    If any entry is an object with 'slug', extract the slug string."""
+    anchors = interests.get("anchor", [])
+    if not anchors:
+        return
+    cleaned = []
+    for a in anchors:
+        if isinstance(a, dict) and "slug" in a:
+            cleaned.append(a["slug"])
+        elif isinstance(a, str):
+            cleaned.append(a)
+        # else skip invalid
+    interests["anchor"] = cleaned
 REQUEST_INTERVAL = 0.5
 
 
@@ -62,7 +109,7 @@ def post_content(content_data, api_key):
         "l2": {k: v for k, v in content_data["l2"].items() if k != "related_topics"},
         "sources": content_data.get("sources", []),
     }
-    # Normalize source date fields: publish_time/publishedDate → publishTime
+    # Normalize source date fields → publishTime (API expects camelCase in sources)
     for src in item["sources"]:
         if "publishTime" not in src:
             pt_val = src.pop("publish_time", None) or src.pop("publishedDate", None)
@@ -74,15 +121,15 @@ def post_content(content_data, api_key):
         if not content_data.get("interests"):
             content_data["interests"] = {
                 "anchor": [content_data.get("topicSlug", content_data["slug"])],
-                "related": [{"slug": s, "label": s} for s in rt],
+                "related": [{"slug": s, "label": _slug_to_label(s, content_data.get("lang", "zh"))} for s in rt],
             }
-    # publishTime at top level (accept both camelCase and snake_case input)
+    # publish_time at top level (API expects snake_case)
     pt = content_data.get("publishTime") or content_data.get("publish_time", "")
     if not pt and item["sources"]:
-        # Fall back to first source's publishTime
-        pt = item["sources"][0].get("publishTime", item["sources"][0].get("publish_time", ""))
+        # Fall back to first source's publish_time
+        pt = item["sources"][0].get("publish_time", item["sources"][0].get("publishTime", ""))
     if pt:
-        item["publishTime"] = pt
+        item["publish_time"] = pt
     if content_data.get("interests"):
         interests = content_data["interests"]
         # Validate anchor: must be clean topic slugs, not content_slugs with hashes
@@ -100,6 +147,8 @@ def post_content(content_data, api_key):
                 else:
                     cleaned.append(a)
             interests["anchor"] = cleaned
+        # Ensure anchor is flat string[] of topic slugs
+        _ensure_anchor_strings(interests)
         item["interests"] = interests
     if content_data.get("contentGroup"):
         item["contentGroup"] = content_data["contentGroup"]

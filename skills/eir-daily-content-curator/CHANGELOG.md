@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.121.0 (2026-05-04)
+
+### Bug Fixes
+- **Candidate coherence constraint**: all `source_urls` in a candidate must be about the same event/narrative — prevents unrelated stories being bundled together
+- **Source-level event dedup**: new `_find_duplicate_source_event()` filters out sources covering events already posted — catches same event from different outlets with different URLs but similar titles
+- **Naive datetime handling**: task_builder assumes UTC for datetimes without tzinfo
+- **Dedup window**: extended from 3d to 7d for better coverage
+
+### Improvements
+- **eir_post anchor normalization**: ensures `interests.anchor` is always a flat string[] (handles edge case where objects leak in)
+- **Directive slug→label mapping**: `_slug_to_label()` provides human-readable topic labels for related interests
+
 ## 3.120.0 (2026-04-28)
 
 ### Bug Fixes
