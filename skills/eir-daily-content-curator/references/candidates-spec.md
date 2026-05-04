@@ -68,4 +68,5 @@ The agent reads per-topic files from `data/v9/topics/`, evaluates search results
 - `content_slug` must be unique across all candidates
 - `matched_topic_slug` should match a known directive/interest slug
 - `source_urls` must contain at least 1 valid HTTP(S) URL
+- **All `source_urls` must be about the same event/narrative.** Never bundle unrelated stories into one candidate just because they share a topic or appeared in the same time window. If two articles cover different events (e.g. "AI startup steals art" vs "AI beats doctors in ER"), they MUST be separate candidates — even if both fall under the same topic_slug.
 - No `null` values — use `""` or `[]` for empty fields
