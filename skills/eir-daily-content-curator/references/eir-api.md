@@ -175,3 +175,76 @@ Report topics where you searched but found no quality content. This lowers their
 **Response:** `{ "ok": true, "updated": 2 }`
 
 **When to call:** After finishing a curation round, if you searched for a topic's searchHints but found nothing worth pushing.
+
+---
+
+## Picks
+
+### GET /oc/curation → `publicPicks`
+
+Public picks are returned as part of the curation response (not a separate endpoint). The `publicPicks` array contains content from the shared pool that matches the user's interests.
+
+**Response field:**
+```json
+{
+  "publicPicks": [
+    {
+      "contentId": "abc123_zh",
+      "contentGroup": "abc123",
+      "channelId": "eir-express",
+      "lang": "zh",
+      "title": "Example Article Title",
+      "summary": "Brief summary of the content...",
+      "bullets": [{ "text": "Key fact 1" }, { "text": "Key fact 2" }],
+      "topicSlugs": ["ai-agents"],
+      "sourceUrls": ["https://example.com/article"]
+    }
+  ],
+  "curationStats": {
+    "publicPicks": {
+      "snapshotGroups": 100,
+      "returned": 8,
+      "readFiltered": 5,
+      "impressionFiltered": 0,
+      "unmatchedFiltered": 87,
+      "coveredTopics": 6
+    }
+  }
+}
+```
+
+### POST /oc/picks
+
+Submit pick overlays — personalized recommendations and connections for public pool content.
+
+**Request:**
+```json
+{
+  "picks": [
+    {
+      "contentId": "abc123_zh",
+      "recommend": true,
+      "connection": "Personalized insight in content's language..."
+    },
+    {
+      "contentId": "def456_en",
+      "recommend": false
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "upserted": 2,
+  "rejected": 0
+}
+```
+
+**Fields:**
+- `contentId` (required): from `publicPicks[].contentId`
+- `recommend` (required): boolean — whether to surface this pick prominently
+- `connection` (optional): 1-3 sentence personalized note, must match content's `lang`
+
+See `eir-picks` skill for full overlay workflow documentation.
