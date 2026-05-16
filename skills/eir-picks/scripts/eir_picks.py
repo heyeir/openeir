@@ -1,25 +1,26 @@
 #!/usr/bin/env python3
 """
-Eir Picks Client — fetch public picks and post overlays.
+Eir Picks Client — connect, fetch public picks, and post overlays.
 
-Standalone script with zero external dependencies (stdlib only).
-Requires: EIR_API_KEY env var or config/eir.json in skill directory.
+Standalone script, stdlib only, no external dependencies.
 
 Usage:
-  python3 scripts/eir_picks.py fetch          # Fetch public picks → stdout JSON
-  python3 scripts/eir_picks.py post FILE      # Post overlays from JSON file
-  python3 scripts/eir_picks.py post -         # Post overlays from stdin
+  python3 scripts/eir_picks.py connect CODE   # Exchange pairing code for API key
+  python3 scripts/eir_picks.py fetch           # Fetch public picks → stdout JSON
+  python3 scripts/eir_picks.py post FILE       # Post overlays from JSON file
+  python3 scripts/eir_picks.py post -          # Post overlays from stdin
 """
 
 import json
 import os
 import sys
-import time
 import urllib.request
 from pathlib import Path
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
-CONFIG_FILE = SKILL_DIR / "config" / "eir.json"
+CONFIG_DIR = SKILL_DIR / "config"
+CONFIG_FILE = CONFIG_DIR / "eir.json"
+API_BASE = "https://api.heyeir.com"
 REQUEST_TIMEOUT = 30
 
 
@@ -28,7 +29,8 @@ def _load_config():
     api_url = os.environ.get("EIR_API_URL")
     api_key = os.environ.get("EIR_API_KEY")
     if api_url and api_key:
-        return api_url.rstrip("/").removesuffix("/api"), api_key
+        url = api_url.rstrip("/")
+        return url.removesuffix("/api"), api_key
 
     if CONFIG_FILE.exists():
         cfg = json.loads(CONFIG_FILE.read_text())
@@ -39,9 +41,36 @@ def _load_config():
         if url and key:
             return url, key
 
-    print("Error: No API credentials. Set EIR_API_KEY + EIR_API_URL env vars,", file=sys.stderr)
-    print("       or create config/eir.json with {\"apiUrl\": \"...\", \"apiKey\": \"...\"}", file=sys.stderr)
+    print("Error: Not connected. Run: python3 scripts/eir_picks.py connect YOUR_CODE", file=sys.stderr)
     sys.exit(1)
+
+
+def connect(code):
+    """Exchange pairing code for API key. Saves to config/eir.json."""
+    body = json.dumps({"code": code}).encode()
+    req = urllib.request.Request(
+        f"{API_BASE}/api/oc/connect",
+        method="POST",
+        data=body,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as resp:
+            result = json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")[:200]
+        print(f"Connection failed ({e.code}): {detail}", file=sys.stderr)
+        sys.exit(1)
+
+    api_key = result.get("apiKey")
+    if not api_key:
+        print(f"Unexpected response: {result}", file=sys.stderr)
+        sys.exit(1)
+
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    config = {"apiUrl": API_BASE, "apiKey": api_key}
+    CONFIG_FILE.write_text(json.dumps(config, indent=2))
+    print(f"✅ Connected successfully. Config saved to {CONFIG_FILE.relative_to(SKILL_DIR)}")
 
 
 def fetch_picks():
@@ -51,14 +80,18 @@ def fetch_picks():
         f"{api_url}/api/oc/curation",
         headers={"Authorization": f"Bearer {api_key}"},
     )
-    with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as resp:
-        data = json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as resp:
+            data = json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")[:200]
+        print(f"Fetch failed ({e.code}): {detail}", file=sys.stderr)
+        sys.exit(1)
 
     return {
         "publicPicks": data.get("publicPicks", []),
         "recentEngagements": data.get("recentEngagements", []),
         "curationStats": data.get("curationStats", {}),
-        "exclude": data.get("exclude", {}),
         "directives": [
             {"slug": d.get("slug"), "label": d.get("label"), "tier": d.get("tier")}
             for d in data.get("directives", [])
@@ -69,6 +102,7 @@ def fetch_picks():
 def post_overlays(overlays):
     """POST overlays to /oc/picks. Returns API response dict."""
     if not overlays:
+        print("Nothing to post.")
         return {"upserted": 0, "rejected": 0}
 
     api_url, api_key = _load_config()
@@ -87,8 +121,8 @@ def post_overlays(overlays):
         with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
-        body_text = e.read().decode("utf-8", errors="replace")[:200]
-        return {"error": str(e), "detail": body_text}
+        detail = e.read().decode("utf-8", errors="replace")[:200]
+        return {"error": str(e), "detail": detail}
 
 
 def main():
@@ -98,7 +132,13 @@ def main():
 
     cmd = sys.argv[1]
 
-    if cmd == "fetch":
+    if cmd == "connect":
+        if len(sys.argv) < 3:
+            print("Usage: python3 scripts/eir_picks.py connect YOUR_PAIRING_CODE", file=sys.stderr)
+            sys.exit(1)
+        connect(sys.argv[2])
+
+    elif cmd == "fetch":
         result = fetch_picks()
         json.dump(result, sys.stdout, indent=2, ensure_ascii=False)
         print()
@@ -116,6 +156,7 @@ def main():
 
     else:
         print(f"Unknown command: {cmd}", file=sys.stderr)
+        print(__doc__.strip())
         sys.exit(1)
 
 
