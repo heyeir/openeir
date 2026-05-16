@@ -1,12 +1,5 @@
 # Changelog
 
-## 3.122.0 (2026-05-16)
-
-### Features
-- **eir-picks skill**: New standalone skill for public content pool picks evaluation and connection overlay generation
-- **picks_overlay module**: Added `scripts/pipeline/picks_overlay.py` to the main curator skill (was missing from repo)
-- **API reference**: Documented `/oc/picks` endpoint and `publicPicks` response field in `eir-api.md`
-
 ## 3.121.0 (2026-05-04)
 
 ### Bug Fixes
