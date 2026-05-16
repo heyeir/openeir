@@ -1,1 +1,0 @@
-# eir-picks pipeline module
