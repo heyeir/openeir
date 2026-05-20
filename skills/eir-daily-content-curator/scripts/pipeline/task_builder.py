@@ -28,7 +28,7 @@ from urllib.parse import urlparse
 
 from .config import (
     CANDIDATES_FILE, SNIPPETS_DIR, V9_DIR, DIRECTIVES_FILE,
-    API_FRESHNESS_DAYS, ensure_dirs, load_json,
+    API_FRESHNESS_DAYS, FRESHNESS_DAYS, ensure_dirs, load_json,
 )
 from .workspace import SKILL_DIR, load_settings
 from .directives import load_directives as load_directives_from_file
@@ -103,12 +103,21 @@ def _get_title_for_url(candidate, url):
 
 
 def load_candidate_sources(candidate):
-    """Load crawled content for a candidate's source URLs."""
+    """Load crawled content for a candidate's source URLs.
+    
+    Falls back to topic file articles if candidate URLs have no snippets
+    (handles agent URL hallucination).
+    """
     from .crawl import is_error_page
     sources = []
     # Get source_dates from candidate (written by crawl.py freshness gate)
     source_dates = candidate.get("source_dates", {})
-    for url in candidate.get("crawled_sources", candidate.get("source_urls", [])):
+    # Merge crawled_sources + source_urls, dedup while preserving order
+    all_urls = list(candidate.get("crawled_sources", []))
+    for u in candidate.get("source_urls", []):
+        if u not in all_urls:
+            all_urls.append(u)
+    for url in all_urls:
         path = snippet_path_for_url(url)
         if not path.exists():
             continue
@@ -127,6 +136,36 @@ def load_candidate_sources(candidate):
             "content": content[:6000],
             "publishedDate": pub_date,
         })
+
+    # Fallback: if no sources found, try topic file articles (pre-saved snippets)
+    if not sources:
+        topic_slug = candidate.get("matched_topic_slug", "")
+        if topic_slug:
+            topics_dir = V9_DIR / "topics"
+            topic_path = topics_dir / ("%s.json" % topic_slug)
+            if topic_path.exists():
+                topic_data = load_json(topic_path)
+                for article in topic_data.get("articles", []):
+                    url = article.get("url", "")
+                    if not url or url in [s["url"] for s in sources]:
+                        continue
+                    path = snippet_path_for_url(url)
+                    if not path.exists():
+                        continue
+                    snippet = load_json(path)
+                    content = snippet.get("content", "")
+                    if len(content) < MIN_CONTENT_LEN or is_error_page(content):
+                        continue
+                    pub_date = snippet.get("publishedDate") or article.get("publishedDate")
+                    sources.append({
+                        "url": url,
+                        "title": article.get("title", ""),
+                        "name": urlparse(url).netloc.replace("www.", ""),
+                        "content": content[:6000],
+                        "publishedDate": pub_date,
+                    })
+                    if len(sources) >= 5:
+                        break
     return sources
 
 
@@ -219,9 +258,26 @@ def pack_single_task(candidate, sources, writer_prompt_mode, directives_map):
     return task
 
 
+# Cross-language entity mapping for dedup.
+# Maps CJK substrings → English tokens so that e.g. "微软" and "microsoft"
+# produce overlapping tokens.  Keep this list focused on high-frequency
+# entities that actually appear in our content pipeline.
+_CJK_EN_ENTITY_MAP = {
+    '微软': 'microsoft', '谷歌': 'google', '苹果': 'apple',
+    '英伟达': 'nvidia', '华为': 'huawei', '字节': 'bytedance',
+    '裁员': 'layoffs', '买断': 'buyout', '自愿退休': 'voluntary-retirement',
+    '漏洞': 'vulnerability', '零日': 'zero-day',
+    '网络安全': 'cybersecurity', '智驾': 'smart-driving',
+    '估值': 'valuation', '融资': 'funding',
+    '开源': 'open-source', '隐私': 'privacy',
+    '陪伴': 'companion', '药物': 'drug', '诊断': 'diagnosis',
+}
+
+
 def _tokenize_for_dedup(text):
     """Extract meaningful tokens from a slug or title for dedup.
-    Handles both English (space/hyphen split) and CJK (character bigrams)."""
+    Handles both English (space/hyphen split) and CJK (character bigrams),
+    plus cross-language entity mapping for high-frequency terms."""
     import re
     text = text.lower()
     tokens = set()
@@ -232,13 +288,34 @@ def _tokenize_for_dedup(text):
             'has','have','been','will','can','not','but','its','more',
             'than','into','how','what','why','who','about','after',
             'big','tech','race','boom','wave','shift','impact','risk',
-            'reality','check','debate','crisis'}
+            'reality','check','debate','crisis',
+            'launch','launches','launched','update','updates','updated',
+            'report','reports','announces','announced','first','says',
+            'reveals','shows','finds','found','day','days','year','years',
+            'company','companies','product','products','service','services',
+            'confirms','just','now','also','could','would','should',
+            'make','makes','making','use','uses','using','used',
+            'get','gets','getting','take','takes','taking',
+            'still','already','may','might'}
     tokens |= en_tokens - stop
     
     # CJK character bigrams
     cjk_chars = re.findall(r'[\u4e00-\u9fff]', text)
     for i in range(len(cjk_chars) - 1):
         tokens.add(cjk_chars[i] + cjk_chars[i+1])
+    
+    # Cross-language entity mapping: inject English tokens for CJK matches
+    # and vice versa, so "微软裁员" and "microsoft-layoffs" share tokens.
+    for cjk, en in _CJK_EN_ENTITY_MAP.items():
+        if cjk in text:
+            # Add the English token(s) from the mapping
+            for t in re.findall(r'[a-z]{3,}', en):
+                tokens.add(t)
+        # Also check if English form appears → add CJK bigrams
+        en_parts = set(re.findall(r'[a-z]{3,}', en))
+        if en_parts and en_parts <= en_tokens:
+            for i in range(len(cjk) - 1):
+                tokens.add(cjk[i] + cjk[i+1])
     
     return tokens
 
@@ -254,6 +331,11 @@ def _event_similarity(slug_a, title_a, slug_b, title_b):
         return 0.0
     
     shared = a_tokens & b_tokens
+    # Require at least 3 shared tokens to consider it a match.
+    # Two-token overlap is still too noisy — e.g. "google" + "谷歌" (same entity
+    # via cross-lang mapping) would false-match any two Google stories.
+    if len(shared) < 3:
+        return 0.0
     # Score: shared count normalized by the SMALLER set (asymmetric — 
     # if a short slug matches most of a longer one, it's a dup)
     min_size = min(len(a_tokens), len(b_tokens))
@@ -263,19 +345,30 @@ def _event_similarity(slug_a, title_a, slug_b, title_b):
 def _find_duplicate_event(content_slug, title, topic, recent_events):
     """Check if this candidate covers an event already in recent_events.
     Returns the slug of the duplicate, or None.
-    Only compares within same topic (different topics = different events)."""
-    THRESHOLD = 0.30  # lowered: catches 'claude-design-*' variants (0.33 was slipping through at 0.35)
+    
+    Comparison strategy:
+    - Same topic OR empty topic: standard threshold (0.30)
+    - Different topic: higher threshold (0.55) — catches cross-topic coverage
+      of the same real-world event (e.g. microsoft layoffs filed under
+      different topic slugs)
+    """
+    SAME_TOPIC_THRESHOLD = 0.30
+    CROSS_TOPIC_THRESHOLD = 0.55  # higher bar for cross-topic matches
     for ev in recent_events:
         # Normalized title match: catches cross-language duplicates
         # (e.g. API-synced titles from other language versions)
         ev_normalized = ev.get("normalized", "")
         if ev_normalized and ev_normalized == _normalize_title_for_dedup(title):
             return ev.get("slug", "?") + " (title match)"
-        if ev.get("topic") != topic:
-            continue
+        ev_topic = ev.get("topic", "")
+        # Choose threshold based on topic relationship
+        if ev_topic and ev_topic != topic:
+            threshold = CROSS_TOPIC_THRESHOLD
+        else:
+            threshold = SAME_TOPIC_THRESHOLD
         sim = _event_similarity(content_slug, title,
                                 ev.get("slug", ""), ev.get("title", ""))
-        if sim >= THRESHOLD:
+        if sim >= threshold:
             return ev.get("slug", "?")
     return None
 
@@ -375,6 +468,8 @@ def main():
         posted_slugs = set()
         recent_events = []
 
+
+
     # Build event fingerprints for semantic dedup
     packed_events = []  # track within this run too
 
@@ -385,11 +480,34 @@ def main():
         topic = c.get("matched_topic_slug", "")
         content_slug = c.get("content_slug", "")
 
-        # Skip if no content
+        # Skip if no content (but allow topic-file fallback)
         if not c.get("has_content", False):
-            print("  ⏭️  %s: no crawled content" % topic)
-            skipped += 1
-            continue
+            # Check if topic file has pre-saved snippets we can use
+            topic_slug = c.get("matched_topic_slug", "")
+            has_topic_fallback = False
+            if topic_slug:
+                from .crawl import is_error_page as _is_error
+                topics_dir = V9_DIR / "topics"
+                topic_path = topics_dir / ("%s.json" % topic_slug)
+                if topic_path.exists():
+                    topic_data = load_json(topic_path)
+                    for article in topic_data.get("articles", []):
+                        url = article.get("url", "")
+                        if not url:
+                            continue
+                        path = snippet_path_for_url(url)
+                        if path.exists():
+                            snippet = load_json(path)
+                            content = snippet.get("content", "")
+                            if len(content) >= MIN_CONTENT_LEN and not _is_error(content):
+                                has_topic_fallback = True
+                                break
+            if not has_topic_fallback:
+                print("  ⏭️  %s: no crawled content" % topic)
+                skipped += 1
+                continue
+            else:
+                print("  📎 %s: using topic-file fallback sources" % topic)
 
         # Skip if freshness gate failed (strict check, default to False)
         # has_fresh_source is set by crawl.py, must be True to proceed
@@ -412,6 +530,7 @@ def main():
             print("  ⏭️  %s: duplicate event (similar to '%s')" % (content_slug, dup_of))
             skipped += 1
             continue
+
 
         # Remove individual used URLs (not skip entire candidate)
         source_urls = c.get("source_urls", [])
@@ -459,10 +578,13 @@ def main():
             continue
         slug = task["content_slug"]
 
-        # API freshness gate: skip if no source is within API's global window
-        if API_FRESHNESS_DAYS:
+        # API freshness gate: use per-topic freshness from directive, fall back to global
+        directive = directives_map.get(topic, {})
+        freshness_str = directive.get("freshness", "")
+        topic_freshness_days = FRESHNESS_DAYS.get(freshness_str, API_FRESHNESS_DAYS) if freshness_str else API_FRESHNESS_DAYS
+        if topic_freshness_days:
             from datetime import datetime, timezone, timedelta
-            cutoff = datetime.now(timezone.utc) - timedelta(days=API_FRESHNESS_DAYS)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=topic_freshness_days)
             has_fresh = False
             for sm in task.get("source_meta", []):
                 pd = sm.get("publishedDate", "")
@@ -479,7 +601,7 @@ def main():
                     except (ValueError, TypeError):
                         pass
             if not has_fresh and task.get("source_meta"):
-                print("  ⏭️  %s: all sources older than %dd (API will reject)" % (slug, API_FRESHNESS_DAYS))
+                print("  ⏭️  %s: all sources older than %dd (directive freshness)" % (slug, topic_freshness_days))
                 skipped += 1
                 continue
 

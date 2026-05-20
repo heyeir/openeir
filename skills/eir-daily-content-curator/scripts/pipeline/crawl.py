@@ -358,6 +358,30 @@ def main():
     global _search_content_cache
     _search_content_cache = _search_content_cache_local
 
+    # Pre-save search inline content as snippets so task_builder can find them
+    # even if the crawl step doesn't process these URLs (URL mismatch with candidates)
+    presaved = 0
+    for url, sc in _search_content_cache_local.items():
+        path = snippet_path_for_url(url)
+        if path.exists():
+            existing = load_json(path)
+            if len(existing.get("content", "")) >= MIN_CONTENT_LEN:
+                continue  # already have good content
+        fc = sc.get("full_content", "")
+        q_score = content_quality_score(fc)
+        if q_score >= 40 and not is_error_page(fc):
+            snippet_data = {
+                "url": url,
+                "content": fc[:MAX_CONTENT_LEN],
+                "publishedDate": sc.get("publishedDate"),
+                "source_api": "search_inline_presave",
+                "quality_score": q_score,
+            }
+            path.write_text(json.dumps(snippet_data, ensure_ascii=False))
+            presaved += 1
+    if presaved:
+        print("  💾 Pre-saved %d search inline snippets" % presaved)
+
     def get_domain(url):
         return urlparse(url).netloc.replace("www.", "")
 
@@ -435,6 +459,16 @@ def main():
 
             # Look for pre-fetched content from search API results
             search_result = _search_content_cache.get(url)
+            # Fuzzy match: if exact URL not in cache, try prefix matching
+            # (Grounding API sometimes returns truncated URLs)
+            if not search_result:
+                url_lower = url.lower().rstrip("/")
+                for cached_url, cached_data in _search_content_cache.items():
+                    cached_lower = cached_url.lower().rstrip("/")
+                    if (url_lower.startswith(cached_lower) or
+                            cached_lower.startswith(url_lower)):
+                        search_result = cached_data
+                        break
             if search_result and len(search_result.get("full_content", "")) >= MIN_CONTENT_LEN:
                 content = search_result["full_content"][:MAX_CONTENT_LEN]
                 crawl_method = "search_inline"
@@ -522,6 +556,13 @@ def main():
                 if not pub_date:
                     pub_date = extract_publish_date(content[:3000], url)
                 if pub_date:
+                    # Cross-check: detect re-published old articles with updated metadata
+                    from .date_extractor import verify_date_against_content
+                    body_for_verify = raw_html or content
+                    verified_date = verify_date_against_content(pub_date, body_for_verify)
+                    if verified_date != pub_date:
+                        print("    ⚠️  Date corrected: %s → %s (re-published old article detected)" % (pub_date, verified_date))
+                        pub_date = verified_date
                     snippet_data["publishedDate"] = pub_date
                     print("    📅 Date: %s" % pub_date)
                 path.write_text(json.dumps(snippet_data, indent=2, ensure_ascii=False))
