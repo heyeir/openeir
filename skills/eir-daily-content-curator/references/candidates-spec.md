@@ -12,66 +12,86 @@ This document defines the expected format of `candidates.json`, which is the han
 {
   "candidates": [
     {
-      "content_slug": "string (required) — kebab-case identifier, 3-6 words, e.g. 'openai-gpt-5-launch'",
-      "matched_topic_slug": "string (required) — must match a directive slug, e.g. 'ai-industry-news'",
+      "content_slug": "string (required) — kebab-case identifier, 3-6 words",
+      "matched_topic_slug": "string (required) — must match a directive slug",
       "suggested_angle": "string (required) — editorial angle in output language",
       "reason": "string (optional) — why this candidate was selected",
       "priority": "string (optional) — 'high' | 'medium' | 'low', default 'medium'",
-      "source_urls": [
-        "string (required, 1-5 URLs) — URLs to crawl for full content"
-      ],
-      "source_titles": {
-        "https://example.com/article": "Article Title"
-      }
+      "source_refs": [1, 3, 5]
     }
+  ],
+  "skipped_topics": [
+    {"slug": "...", "reason": "why skipped"}
   ],
   "selected_at": "ISO 8601 timestamp"
 }
 ```
 
+## Agent Responsibilities
+
+The agent ONLY decides:
+1. **Which topics** to cover (matched_topic_slug)
+2. **What angle** to take (suggested_angle)
+3. **Which articles** are relevant (source_refs — article indices from the topic file)
+4. **Content slug** (descriptive kebab-case name)
+
+The agent does **NOT** need to provide `source_urls` or `source_titles`.
+These are auto-filled by `resolve_sources.py` from the topic files.
+
 ## Field Details
 
-### Required Fields
+### Required Fields (agent outputs these)
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `content_slug` | string | Unique identifier for this content piece. Used as filename and API slug. Must be kebab-case, 3-6 words. |
-| `matched_topic_slug` | string | The directive topic this belongs to. Must match a slug from directives/interests. Used as `topicSlug` in generated content. |
-| `suggested_angle` | string | The editorial angle — what makes this worth covering. In the output language. |
-| `source_urls` | string[] | 1-5 URLs to crawl. Prefer diverse domains. At least one must be crawlable. |
+| `content_slug` | string | Unique identifier. Kebab-case, 3-6 words. Used as filename and API slug. |
+| `matched_topic_slug` | string | The directive topic this belongs to. Must match a topic file slug. |
+| `suggested_angle` | string | The editorial angle — what makes this worth covering. |
 
-### Optional Fields
+### Optional Fields (agent may output these)
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `source_refs` | int[] | 1-based article indices from the topic file. If omitted, all articles are used. |
 | `reason` | string | Why this candidate was selected (for audit trail). |
-| `priority` | string | `high` / `medium` / `low`. Affects generation order. Default: `medium`. |
-| `source_titles` | object | Map of URL → article title (helps crawl quality scoring). |
+| `priority` | string | `high` / `medium` / `low`. Default: `medium`. |
 
-## Downstream Usage
+### Auto-filled Fields (script fills these)
 
-1. **`crawl.py`** reads `candidates.json`, crawls each `source_urls` entry, saves content to `data/v9/snippets/{url_hash}.json`.
-2. **`task_builder.py`** reads crawled candidates, bundles source text + writer prompt into task files at `data/v9/tasks/{content_slug}.json`.
+| Field | Type | Description |
+|-------|------|-------------|
+| `source_urls` | string[] | Resolved from source_refs or all topic articles. |
+| `source_titles` | object | Map of URL → article title. |
 
-## How Candidates Are Created
+## Pipeline Flow
 
-### Eir Mode (cron-driven)
-The agent reads per-topic files from `data/v9/topics/`, evaluates search results, and writes `candidates.json` directly.
-
-### Standalone Mode (manual)
-1. Run `python3 -m pipeline.candidate_selector` → generates topic files in `data/v9/topics/`
-2. Review topic files and create `candidates.json` following the format above
-3. Run `python3 -m pipeline.crawl` → crawls candidate URLs
+```
+candidate_selector.py → topic files (articles with URLs)
+         ↓
+Agent reads topics → outputs candidates.json (slug + angle + source_refs)
+         ↓
+resolve_sources.py → fills source_urls from topic files
+         ↓
+crawl.py → fetches full content
+         ↓
+task_builder.py → bundles into task files
+```
 
 ## Validation
 
 - `content_slug` must be unique across all candidates
-- `matched_topic_slug` should match a known directive/interest slug
-- `source_urls` must contain at least 1 valid HTTP(S) URL
-- **`source_urls` MUST be copied verbatim from the topic file's `articles[].url` field.** Do NOT invent, modify, extend, or shorten URLs. If a URL appears truncated in the topic file, use it exactly as-is — the pipeline handles truncated URLs internally.
-- **All `source_urls` must be about the same event/narrative.** Never bundle unrelated stories into one candidate just because they share a topic or appeared in the same time window. If two articles cover different events (e.g. "AI startup steals art" vs "AI beats doctors in ER"), they MUST be separate candidates — even if both fall under the same topic_slug.
+- `matched_topic_slug` must match a topic file in `data/v9/topics/`
+- `source_refs` indices must be within range of the topic file's articles array
+- **All sources for one candidate must be about the same event/narrative.** Never bundle unrelated stories into one candidate.
 - No `null` values — use `""` or `[]` for empty fields
 
 ## Public Content Dedup
 
-The `index.json` file at `data/v9/topics/index.json` may contain a `public_picks_context` field. This lists content already published in the public pool. **Do NOT create candidates that cover the same event or angle as any item listed there.** This prevents duplication between public and private content.
+The `index.json` at `data/v9/topics/index.json` may contain `public_picks_context`. Content already in the public pool must NOT be duplicated.
+
+## content_slug Rules
+
+- Descriptive, kebab-case, based on the specific article content
+- 3-6 words, lowercase, hyphens only (e.g. "coreweave-anthropic-cloud-deal")
+- Must be unique across candidates
+- Will be used as both the filename and the content ID in the API

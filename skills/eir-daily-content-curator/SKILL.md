@@ -95,20 +95,21 @@ cd scripts
 python3 -m pipeline.search              # Search for each topic
 python3 -m pipeline.candidate_selector  # Group results for agent selection
 # ↓ Agent step: review topic files, write candidates.json (see below)
+python3 -m pipeline.resolve_sources     # Fill source_urls from topic files
 python3 -m pipeline.crawl               # Fetch full content
 python3 -m pipeline.task_builder        # Bundle into task files
 ```
 
 > All `python3 -m pipeline.*` commands must be run from the `scripts/` directory.
 
-**Agent selection step** (between `candidate_selector` and `crawl`):
+**Agent selection step** (between `candidate_selector` and `resolve_sources`):
 
 `candidate_selector` outputs per-topic JSON files to `data/v9/topics/`. Your agent should:
 1. Read each topic file
 2. Pick 0-3 candidates per topic based on relevance and freshness
-3. Write `data/v9/candidates.json` with the selected candidates
+3. Write `data/v9/candidates.json` with: `content_slug`, `matched_topic_slug`, `suggested_angle`, `source_refs` (article indices)
 
-See `references/candidates-spec.md` for the exact JSON format.
+The agent does **NOT** output `source_urls` — those are auto-filled by `resolve_sources.py` from the topic files. See `references/candidates-spec.md` for the exact JSON format.
 
 > **Note on crawl fallback:** If a candidate URL isn't in the search cache, `crawl.py` automatically tries: Browse API → Crawl4AI → web_fetch → HTML head extraction. No manual intervention needed.
 
@@ -182,7 +183,8 @@ cd scripts && python3 -m pipeline.eir_sync fetch
 ```bash
 python3 -m pipeline.search              # Search for each directive topic
 python3 -m pipeline.candidate_selector  # Group results for agent selection
-# ↓ Agent step: review topic files, write candidates.json (see references/candidates-spec.md)
+# ↓ Agent step: review topic files, write candidates.json (slug + angle + source_refs)
+python3 -m pipeline.resolve_sources     # Fill source_urls from topic files
 python3 -m pipeline.crawl               # Fetch full content from candidate URLs
 python3 -m pipeline.task_builder        # Bundle into task files (auto-selects eir writer prompt)
 ```
@@ -223,6 +225,7 @@ All in `scripts/pipeline/`:
 | `crawl.py` | Fetch content via Browse API, Crawl4AI fallback | Both |
 | `grounding.py` | Configurable search API client | Both |
 | `candidate_selector.py` | Group results, prepare for agent selection | Both |
+| `resolve_sources.py` | Fill source_urls from topic files after agent selection | Both |
 | `task_builder.py` | Bundle candidates into task files | Both |
 | `generate.py` | Build prompts for content generation | Both |
 | `validate_content.py` | Validate generated content against spec | Both |
